@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apply for Private Coaching | Vintus Performance</title>
+  <meta name="description" content="Apply for private coaching with Anthony Santos. 2-minute assessment, AI-personalized results, and limited spots available.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .funnel-wrap { max-width: 600px; margin: 0 auto; }
+    .f-screen { display: none; }
+    .f-screen.active { display: block; }
+    .f-progress { height: 2px; background: rgba(255,255,255,0.1); margin-bottom: 2rem; }
+    .f-progress-fill { height: 100%; background: var(--gold); transition: width 0.4s ease; }
+    .f-eyebrow { font-size:11px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:0.6rem; }
+    .f-title { font-family:var(--font-display); font-size:clamp(1.6rem,4vw,2.4rem); font-weight:700; text-transform:uppercase; line-height:1.1; margin-bottom:0.5rem; }
+    .f-sub { font-size:14px; color:var(--gray-400); line-height:1.7; margin-bottom:1.5rem; }
+    .f-choices { display:flex; flex-direction:column; gap:10px; }
+    .f-choice {
+      display:flex; align-items:center; gap:14px;
+      padding:14px 18px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:transparent;
+      color:var(--white);
+      cursor:pointer;
+      font-family:var(--font-body);
+      font-size:15px;
+      text-align:left;
+      transition:border-color 0.15s, background 0.15s;
+    }
+    .f-choice:hover { border-color:rgba(201,168,76,0.5); background:rgba(201,168,76,0.05); }
+    .f-choice.selected { border-color:var(--gold); background:rgba(201,168,76,0.08); }
+    .f-nav { display:flex; justify-content:space-between; align-items:center; margin-top:2rem; }
+    .f-input { width:100%; padding:12px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); color:var(--white); font-family:var(--font-body); font-size:15px; outline:none; transition:border-color 0.2s; }
+    .f-input:focus { border-color:var(--gold); }
+    .f-textarea { width:100%; padding:14px 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); color:var(--white); font-family:var(--font-body); font-size:15px; min-height:110px; resize:vertical; outline:none; transition:border-color 0.2s; }
+    .f-textarea:focus { border-color:var(--gold); }
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .f-label { font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--gray-400); margin-bottom:6px; display:block; }
+    .f-group { margin-bottom:14px; }
+    .f-card { border:1px solid rgba(255,255,255,0.08); padding:1.5rem; margin-bottom:12px; }
+    .f-card-label { font-size:11px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
+    .f-card-body { font-size:14px; color:var(--gray-100); line-height:1.7; }
+    .f-rec-box { border:1.5px solid var(--gold); padding:1.5rem; margin-bottom:12px; }
+    .f-scarcity { display:flex; align-items:center; gap:10px; padding:12px 16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); margin-bottom:1.5rem; font-size:13px; color:var(--gray-100); }
+    .f-dot { width:8px; height:8px; border-radius:50%; background:#5cb85c; flex-shrink:0; }
+    .time-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .time-btn { padding:12px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:var(--white); cursor:pointer; font-family:var(--font-body); font-size:13px; text-align:center; transition:all 0.15s; }
+    .time-btn:hover:not(.taken) { border-color:var(--gold); background:rgba(201,168,76,0.06); }
+    .time-btn.taken { opacity:0.3; cursor:not-allowed; text-decoration:line-through; }
+    .time-btn.selected { border-color:var(--gold); background:rgba(201,168,76,0.1); }
+    .loading-dots { display:flex; gap:8px; justify-content:center; padding:3rem 0; }
+    .loading-dots span { width:10px; height:10px; border-radius:50%; background:var(--gold); animation:bounce 1.2s infinite; opacity:0.4; }
+    .loading-dots span:nth-child(2) { animation-delay:0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay:0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:scale(0.7);opacity:0.3} 40%{transform:scale(1);opacity:1} }
+    .entry-cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:1.5rem; }
+    .entry-card { border:1px solid rgba(255,255,255,0.1); padding:1.5rem; cursor:pointer; transition:border-color 0.15s, background 0.15s; text-align:left; background:transparent; color:var(--white); }
+    .entry-card:hover { border-color:rgba(201,168,76,0.5); background:rgba(201,168,76,0.05); }
+    .entry-card-icon { font-size:1.5rem; margin-bottom:0.75rem; }
+    .entry-card-title { font-family:var(--font-display); font-size:1.1rem; font-weight:700; text-transform:uppercase; margin-bottom:4px; }
+    .entry-card-sub { font-size:13px; color:var(--gray-400); }
+    .check-item { display:flex; gap:10px; align-items:flex-start; margin-bottom:8px; font-size:14px; color:var(--gray-100); }
+    .check-item::before { content:'·'; color:var(--gold); font-size:1.2rem; line-height:1.2; flex-shrink:0; }
+    @media(max-width:600px) { .f-row,.entry-cards,.time-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Vintus<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="services.html">Services</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="contact.html">Contact</a></li>
+  </ul>
+  <a href="apply.html" class="btn btn-primary nav-cta">Apply for Coaching</a>
+  <button class="nav-mobile-toggle" aria-label="Open menu"><span></span><span></span><span></span></button>
+</nav>
+<div class="mobile-menu">
+  <button class="mobile-close">✕</button>
+  <a href="index.html">Home</a>
+  <a href="services.html">Services</a>
+  <a href="about.html">About</a>
+  <a href="contact.html">Contact</a>
+</div>
+
+<section class="apply-section">
+  <div class="funnel-wrap">
+
+    <!-- S0: Entry -->
+    <div class="f-screen active" id="s0">
+      <p class="f-eyebrow">Private Coaching · $997/month</p>
+      <h1 class="f-title">Apply for<br>Private Coaching</h1>
+      <p class="f-sub">Before we can offer you a spot, Anthony needs to understand your goals, your lifestyle, and your readiness. Choose how to complete your assessment.</p>
+      <div class="entry-cards">
+        <button class="entry-card" onclick="goTo(1)">
+          <div class="entry-card-icon">📋</div>
+          <div class="entry-card-title">Written Assessment</div>
+          <div class="entry-card-sub">2–3 minute application</div>
+        </button>
+        <button class="entry-card" onclick="verbalInfo()">
+          <div class="entry-card-icon">🎙️</div>
+          <div class="entry-card-title">Verbal Assessment</div>
+          <div class="entry-card-sub">AI guides you by voice</div>
+        </button>
+      </div>
+      <p style="font-size:12px; color:var(--gray-400); margin-top:1.25rem; text-align:center;">🔒 Your information is private and never shared.</p>
+    </div>
+
+    <!-- S1: Goal -->
+    <div class="f-screen" id="s1">
+      <div class="f-progress"><div class="f-progress-fill" style="width:16%"></div></div>
+      <p class="f-eyebrow">Section 1 of 6 — Goals</p>
+      <h2 class="f-title">What is your<br>primary goal?</h2>
+      <div class="f-choices">
+        <button class="f-choice" onclick="pick(this,'goal','Lose Body Fat')">🔥 Lose Body Fat</button>
+        <button class="f-choice" onclick="pick(this,'goal','Build Muscle')">💪 Build Muscle</button>
+        <button class="f-choice" onclick="pick(this,'goal','Increase Strength')">⚡ Increase Strength</button>
+        <button class="f-choice" onclick="pick(this,'goal','Improve Endurance')">🏃 Improve Endurance</button>
+        <button class="f-choice" onclick="pick(this,'goal','Hybrid Athlete')">🏆 Hybrid Athlete</button>
+        <button class="f-choice" onclick="pick(this,'goal','General Health')">❤️ General Health</button>
+      </div>
+      <div class="f-nav">
+        <button class="btn btn-outline" onclick="goTo(0)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="n1" onclick="goTo(2)" disabled style="padding:10px 24px; font-size:13px;">Next</button>
+      </div>
+    </div>
+
+    <!-- S2: Commitment -->
+    <div class="f-screen" id="s2">
+      <div class="f-progress"><div class="f-progress-fill" style="width:33%"></div></div>
+      <p class="f-eyebrow">Section 2 of 6 — Commitment</p>
+      <h2 class="f-title">How many days<br>can you train?</h2>
+      <div class="f-choices">
+        <button class="f-choice" onclick="pick(this,'days','3 days/week')">📅 3 days/week</button>
+        <button class="f-choice" onclick="pick(this,'days','4 days/week')">📅 4 days/week</button>
+        <button class="f-choice" onclick="pick(this,'days','5 days/week')">📅 5 days/week</button>
+        <button class="f-choice" onclick="pick(this,'days','6+ days/week')">📅 6+ days/week</button>
+        <button class="f-choice" onclick="pick(this,'days','Whatever it takes')">🔥 Whatever it takes</button>
+      </div>
+      <div class="f-nav">
+        <button class="btn btn-outline" onclick="goTo(1)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="n2" onclick="goTo(3)" disabled style="padding:10px 24px; font-size:13px;">Next</button>
+      </div>
+    </div>
+
+    <!-- S3: Situation -->
+    <div class="f-screen" id="s3">
+      <div class="f-progress"><div class="f-progress-fill" style="width:50%"></div></div>
+      <p class="f-eyebrow">Section 3 of 6 — Current Situation</p>
+      <h2 class="f-title">Where are<br>you now?</h2>
+      <div class="f-row">
+        <div class="f-group"><label class="f-label">Current weight (lbs)</label><input class="f-input" type="number" id="cw" placeholder="185" oninput="chk3()"></div>
+        <div class="f-group"><label class="f-label">Goal weight (lbs)</label><input class="f-input" type="number" id="gw" placeholder="170" oninput="chk3()"></div>
+      </div>
+      <div class="f-row">
+        <div class="f-group"><label class="f-label">Occupation</label><input class="f-input" type="text" id="occ" placeholder="Software Engineer" oninput="chk3()"></div>
+        <div class="f-group"><label class="f-label">Hours worked/week</label><input class="f-input" type="number" id="hrs" placeholder="50" oninput="chk3()"></div>
+      </div>
+      <div class="f-nav">
+        <button class="btn btn-outline" onclick="goTo(2)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="n3" onclick="goTo(4)" disabled style="padding:10px 24px; font-size:13px;">Next</button>
+      </div>
+    </div>
+
+    <!-- S4: Obstacles -->
+    <div class="f-screen" id="s4">
+      <div class="f-progress"><div class="f-progress-fill" style="width:66%"></div></div>
+      <p class="f-eyebrow">Section 4 of 6 — Obstacles</p>
+      <h2 class="f-title">What's holding<br>you back?</h2>
+      <p class="f-sub">Be specific — this is where your personalized plan starts to take shape.</p>
+      <textarea class="f-textarea" id="obs" placeholder="e.g. I work 60 hours a week and struggle to stay consistent with nutrition. I've tried programs before but lost motivation after a few weeks..." oninput="chk4()"></textarea>
+      <div class="f-nav">
+        <button class="btn btn-outline" onclick="goTo(3)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="n4" onclick="goTo(5)" disabled style="padding:10px 24px; font-size:13px;">Next</button>
+      </div>
+    </div>
+
+    <!-- S5: Readiness -->
+    <div class="f-screen" id="s5">
+      <div class="f-progress"><div class="f-progress-fill" style="width:83%"></div></div>
+      <p class="f-eyebrow">Section 5 of 6 — Investment Readiness</p>
+      <h2 class="f-title">Which best<br>describes you?</h2>
+      <div class="f-choices">
+        <button class="f-choice" onclick="pick(this,'ready','Just exploring')">👀 Just exploring</button>
+        <button class="f-choice" onclick="pick(this,'ready','Ready within 30 days')">📆 Ready within 30 days</button>
+        <button class="f-choice" onclick="pick(this,'ready','Ready immediately')">🚀 Ready immediately</button>
+      </div>
+      <div class="f-nav">
+        <button class="btn btn-outline" onclick="goTo(4)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="n5" onclick="goTo(6)" disabled style="padding:10px 24px; font-size:13px;">Next</button>
+      </div>
+    </div>
+
+    <!-- S6: Contact -->
+    <div class="f-screen" id="s6">
+      <div class="f-progress"><div class="f-progress-fill" style="width:100%"></div></div>
+      <p class="f-eyebrow">Section 6 of 6 — Contact Info</p>
+      <h2 class="f-title">Where do we<br>send your results?</h2>
+      <div class="f-group"><label class="f-label">Full name</label><input class="f-input" type="text" id="cn" placeholder="First and last name" oninput="chk6()"></div>
+      <div class="f-row">
+        <div class="f-group"><label class="f-label">Email</label><input class="f-input" type="email" id="ce" placeholder="you@email.com" oninput="chk6()"></div>
+        <div class="f-group"><label class="f-label">Phone</label><input class="f-input" type="tel" id="cp" placeholder="(555) 000-0000" oninput="chk6()"></div>
+      </div>
+      <div class="f-group"><label class="f-label">Instagram (optional)</label><input class="f-input" type="text" id="ci" placeholder="@yourhandle"></div>
+      <div class="f-nav">
+        <button class="btn btn-outline" onclick="goTo(5)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="n6" onclick="generate()" disabled style="padding:10px 24px; font-size:13px;">Generate My Results →</button>
+      </div>
+    </div>
+
+    <!-- S7: Loading -->
+    <div class="f-screen" id="s7" style="text-align:center; padding:2rem 0;">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <p id="loadMsg" style="font-family:var(--font-display); font-size:1.3rem; font-weight:700; text-transform:uppercase; color:var(--gold); margin-top:0.5rem;">Analyzing your assessment...</p>
+      <p style="font-size:13px; color:var(--gray-400); margin-top:6px;">Building your personalized results page</p>
+    </div>
+
+    <!-- S8: Results -->
+    <div class="f-screen" id="s8">
+      <p class="f-eyebrow">Your Personalized Results</p>
+      <h2 class="f-title" id="rHead">Results</h2>
+      <div id="rContent"></div>
+      <div class="f-scarcity"><div class="f-dot"></div><strong>7 active clients · 3 open coaching spots remaining</strong></div>
+      <button class="btn btn-primary" style="width:100%; justify-content:center; font-size:14px; padding:16px;" onclick="goTo(9)">Schedule Your Consultation →</button>
+      <p style="font-size:12px; color:var(--gray-400); text-align:center; margin-top:10px;">No commitment. 30-minute strategy call with Anthony.</p>
+    </div>
+
+    <!-- S9: Book -->
+    <div class="f-screen" id="s9">
+      <p class="f-eyebrow">Step 4 — Schedule</p>
+      <h2 class="f-title">Choose Your<br>Consultation Slot</h2>
+      <p class="f-sub">All times EST. Spots fill fast — Anthony is actively coaching.</p>
+      <div class="time-grid" id="timeGrid"></div>
+      <div class="f-nav" style="margin-top:1.5rem;">
+        <button class="btn btn-outline" onclick="goTo(8)" style="padding:10px 20px; font-size:13px;">← Back</button>
+        <button class="btn btn-primary" id="bookBtn" onclick="goTo(10)" disabled style="padding:10px 24px; font-size:13px;">Confirm Booking</button>
+      </div>
+    </div>
+
+    <!-- S10: Confirmed -->
+    <div class="f-screen" id="s10" style="padding:1rem 0;">
+      <div style="width:48px; height:48px; border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:1.5rem;">✓</div>
+      <p class="f-eyebrow">Consultation Confirmed</p>
+      <h2 class="f-title">You're In.</h2>
+      <p style="font-size:15px; color:var(--gray-400); line-height:1.8; margin:1rem 0 2rem;">Anthony will be in touch at the email and phone you provided. Check your inbox for confirmation details and what to expect on the call.</p>
+      <div class="f-card">
+        <div class="f-card-label">What to expect on the call</div>
+        <div class="check-item">30 minutes — current situation deep dive</div>
+        <div class="check-item">Your desired outcome and exact goals</div>
+        <div class="check-item">Identifying your real roadblocks</div>
+        <div class="check-item">Custom program recommendation</div>
+        <div class="check-item">Option to start same-day via Stripe — $997/month</div>
+      </div>
+      <div class="f-card">
+        <div class="f-card-label">Confirmation sent to</div>
+        <div class="f-card-body" id="confEmail" style="font-weight:600;"></div>
+      </div>
+      <p style="font-size:13px; color:var(--gray-400); margin-top:1.5rem;">Questions? DM <strong style="color:var(--white);">@vintusperformance</strong> on Instagram or email <strong style="color:var(--white);">vintusperformance@gmail.com</strong></p>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">Vintus<span>.</span></div>
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="services.html">Services</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <div class="footer-copy">© 2026 Vintus Performance. Discipline Within, Dominance Beyond.</div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+const A = {};
+const ANTHROPIC_API_KEY = 'YOUR_ANTHROPIC_API_KEY';
+
+const slots = [
+  {label:'Mon Jun 15 · 9:00 AM EST', taken:false},
+  {label:'Mon Jun 15 · 11:00 AM EST', taken:true},
+  {label:'Tue Jun 16 · 8:00 AM EST', taken:false},
+  {label:'Tue Jun 16 · 2:00 PM EST', taken:true},
+  {label:'Wed Jun 17 · 10:00 AM EST', taken:false},
+  {label:'Wed Jun 17 · 4:00 PM EST', taken:true},
+  {label:'Thu Jun 18 · 9:00 AM EST', taken:true},
+  {label:'Thu Jun 18 · 1:00 PM EST', taken:false},
+  {label:'Fri Jun 19 · 8:00 AM EST', taken:false},
+  {label:'Fri Jun 19 · 3:00 PM EST', taken:true},
+];
+
+const loadMsgs = ['Analyzing your assessment...','Calculating your transformation timeline...','Building your personalized results...','Almost ready...'];
+
+function goTo(n) {
+  document.querySelectorAll('.f-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s'+n).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function verbalInfo() {
+  alert('Verbal AI Assessment coming soon! This feature will guide you through the same questions using AI voice — no typing required. For now, use the written assessment to apply.');
+}
+
+function pick(btn, key, val) {
+  btn.closest('.f-choices').querySelectorAll('.f-choice').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  A[key] = val;
+  const map = {goal:'n1', days:'n2', ready:'n5'};
+  if(map[key]) document.getElementById(map[key]).disabled = false;
+}
+
+function chk3() {
+  A.cw = document.getElementById('cw').value;
+  A.gw = document.getElementById('gw').value;
+  A.occ = document.getElementById('occ').value;
+  A.hrs = document.getElementById('hrs').value;
+  document.getElementById('n3').disabled = !(A.cw && A.gw && A.occ && A.hrs);
+}
+
+function chk4() {
+  A.obs = document.getElementById('obs').value.trim();
+  document.getElementById('n4').disabled = A.obs.length < 10;
+}
+
+function chk6() {
+  A.name = document.getElementById('cn').value;
+  A.email = document.getElementById('ce').value;
+  A.phone = document.getElementById('cp').value;
+  document.getElementById('n6').disabled = !(A.name && A.email && A.phone);
+}
+
+function buildTimeGrid() {
+  const grid = document.getElementById('timeGrid');
+  grid.innerHTML = '';
+  slots.forEach(slot => {
+    const btn = document.createElement('button');
+    btn.className = 'time-btn' + (slot.taken ? ' taken' : '');
+    btn.textContent = slot.label + (slot.taken ? ' — Booked' : '');
+    if (!slot.taken) {
+      btn.onclick = () => {
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('bookBtn').disabled = false;
+      };
+    }
+    grid.appendChild(btn);
+  });
+}
+
+async function generate() {
+  A.name = document.getElementById('cn').value;
+  A.email = document.getElementById('ce').value;
+  A.phone = document.getElementById('cp').value;
+  A.ig = document.getElementById('ci').value;
+  document.getElementById('confEmail').textContent = A.email;
+  goTo(7);
+  buildTimeGrid();
+  let mi = 0;
+  const mEl = document.getElementById('loadMsg');
+  const int = setInterval(() => { mEl.textContent = loadMsgs[++mi % loadMsgs.length]; }, 1600);
+
+  const first = A.name.split(' ')[0];
+  const diff = parseInt(A.cw) - parseInt(A.gw);
+  const wGoal = diff > 0 ? `lose ${diff} lbs` : diff < 0 ? `gain ${Math.abs(diff)} lbs` : 'maintain current weight';
+
+  const prompt = `You are the AI brain behind Vintus Performance, a premium personal coaching brand founded by Anthony Santos — a certified personal trainer and Ironman triathlete based in Morristown, NJ. Anthony completed his first IRONMAN 70.3 at age 18, suffered a fibula fracture requiring 2 surgeries in 2025, and came back to complete his second 70.3 in 5 hours 31 minutes in 2026. He is currently training for a full IRONMAN at Lake Placid on July 19, 2026.
+
+A potential coaching client just completed a 6-section assessment. Generate a RESULTS PAGE — a premium fitness diagnostic that feels personalized, specific, and compelling. Write in second person ("you"). Be direct and data-driven.
+
+Client data:
+- Name: ${A.name} (use first name: ${first})
+- Primary goal: ${A.goal}
+- Training availability: ${A.days}
+- Current weight: ${A.cw} lbs | Goal weight: ${A.gw} lbs (needs to ${wGoal})
+- Occupation: ${A.occ}, works ${A.hrs} hours/week
+- Main obstacle: ${A.obs}
+- Investment readiness: ${A.ready}
+
+Return ONLY a JSON object, no markdown, no extra text:
+{
+  "headline": "short punchy headline using ${first}'s name — make it feel personal and direct",
+  "summary": "2-3 sentences: honest, specific assessment of their situation based on their actual data",
+  "timeline": "realistic timeline to hit their goal with coaching e.g. '4–6 months'",
+  "insights": ["specific insight about their situation", "second insight", "third insight"],
+  "obstacleReframe": "one sentence: reframe their stated obstacle as something actionable and solvable",
+  "whyCoaching": ["specific reason private coaching fits their life", "second reason", "third reason"]
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const r = JSON.parse(text.replace(/```json|```/g,'').trim());
+    clearInterval(int);
+    document.getElementById('rHead').textContent = r.headline;
+    document.getElementById('rContent').innerHTML = `
+      <div class="f-card"><div class="f-card-label">Assessment summary</div><div class="f-card-body">${r.summary}</div></div>
+      <div class="f-card"><div class="f-card-label">Estimated timeline with coaching</div><div class="f-card-body" style="font-family:var(--font-display);font-size:1.8rem;font-weight:700;color:var(--gold);">${r.timeline}</div></div>
+      <div class="f-card"><div class="f-card-label">Key insights</div><div class="f-card-body">${r.insights.map(i=>`<div class="check-item">${i}</div>`).join('')}</div></div>
+      <div class="f-card"><div class="f-card-label">Your obstacle — reframed</div><div class="f-card-body">${r.obstacleReframe}</div></div>
+      <div class="f-rec-box">
+        <div class="f-card-label">Recommended for you</div>
+        <div style="font-family:var(--font-display);font-size:1.8rem;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Private Coaching</div>
+        <div style="font-size:13px;color:var(--gray-400);margin-bottom:1rem;">$997/month · cancel anytime</div>
+        ${r.whyCoaching.map(w=>`<div class="check-item">${w}</div>`).join('')}
+        <div style="border-top:1px solid rgba(255,255,255,0.08);margin:1rem 0;padding-top:1rem;">
+          <div class="check-item">Fully customized training + nutrition</div>
+          <div class="check-item">Unlimited messaging + weekly check-ins</div>
+          <div class="check-item">Weekly program adjustments</div>
+          <div class="check-item">AI-powered dashboard</div>
+        </div>
+      </div>`;
+    goTo(8);
+  } catch(err) {
+    clearInterval(int);
+    document.getElementById('rContent').innerHTML = `<div class="f-card"><div class="f-card-body">Something went wrong. Please refresh and try again, or contact us directly at vintusperformance@gmail.com</div></div>`;
+    goTo(8);
+  }
+}
+</script>
+</body>
+</html>
