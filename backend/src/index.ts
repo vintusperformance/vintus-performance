@@ -1,0 +1,73 @@
+import { env } from "./config/env.js";
+import express from "express";
+import helmet from "helmet";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import morgan from "morgan";
+import { corsOptions } from "./config/cors.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { logger } from "./lib/logger.js";
+import { startCrons } from "./services/cron.service.js";
+import apiRoutes from "./routes/index.js";
+import webhookRoutes from "./routes/webhook.routes.js";
+import smsWebhookRoutes from "./routes/sms-webhook.routes.js";
+
+const app = express();
+
+// Trust Railway's reverse proxy so rate limiters use the real client IP
+app.set("trust proxy", 1);
+
+// ---------------------------------------------------------------------------
+// Global middleware
+// ---------------------------------------------------------------------------
+app.use(helmet());
+app.use(cors(corsOptions));
+app.use(cookieParser());
+app.use(morgan("short"));
+
+// ---------------------------------------------------------------------------
+// Webhook routes — mounted BEFORE express.json() so they get the raw body.
+// Stripe webhook signature verification requires the raw request body.
+// ---------------------------------------------------------------------------
+app.use("/api/webhooks", webhookRoutes);
+app.use("/api/webhooks", smsWebhookRoutes);
+
+// ---------------------------------------------------------------------------
+// JSON body parser — applied AFTER webhook routes
+// ---------------------------------------------------------------------------
+app.use(express.json());
+
+// ---------------------------------------------------------------------------
+// Health check
+// ---------------------------------------------------------------------------
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// ---------------------------------------------------------------------------
+// API v1 routes
+// ---------------------------------------------------------------------------
+app.use("/api/v1", apiRoutes);
+
+// ---------------------------------------------------------------------------
+// Global error handler (must be last middleware)
+// ---------------------------------------------------------------------------
+app.use(errorHandler);
+
+// ---------------------------------------------------------------------------
+// Start server
+// ---------------------------------------------------------------------------
+const PORT = env.PORT;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Vintus Performance API running on port ${PORT}`);
+  console.log(`Environment: ${env.NODE_ENV}`);
+  logger.info(`Vintus Performance API running on port ${PORT}`);
+  logger.info(`Environment: ${env.NODE_ENV}`);
+
+  // Always register cron jobs — admin can toggle them on/off at runtime
+  startCrons();
+  logger.info(`Cron jobs registered (currently ${env.CRON_ENABLED ? "enabled" : "paused — toggle from admin dashboard"})`);
+});
+
+export default app;

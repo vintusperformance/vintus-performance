@@ -1,0 +1,1434 @@
+import { PlanTier, SubscriptionStatus } from "@prisma/client";
+import type { Prisma, MessageChannel, MessageCategory } from "@prisma/client";
+import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
+import { env } from "../config/env.js";
+import { stripe } from "../config/stripe.js";
+import { sendSMS } from "../lib/twilio.js";
+import { sendEmail } from "../lib/resend.js";
+
+/**
+ * Admin Service — client management, analytics, system health, and workout overrides.
+ */
+
+// ============================================================
+// Tier prices for MRR calculation
+// ============================================================
+
+// Only PRIVATE_COACHING contributes to MRR (recurring).
+// One-time purchases are revenue but not monthly recurring.
+const TIER_MONTHLY_PRICE: Record<string, number> = {
+  PRIVATE_COACHING: 500,
+  TRAINING_30DAY: 0,
+  TRAINING_60DAY: 0,
+  TRAINING_90DAY: 0,
+  NUTRITION_4WEEK: 0,
+  NUTRITION_8WEEK: 0,
+};
+
+// ============================================================
+// CLIENT MANAGEMENT
+// ============================================================
+
+/**
+ * Get paginated list of clients with profile summary, subscription, and adherence.
+ */
+export async function getClients(options: {
+  page: number;
+  limit: number;
+  search?: string;
+  tier?: string;
+  status?: string;
+}): Promise<{
+  clients: unknown[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const { page, limit, search, tier, status } = options;
+
+  // Build filter conditions
+  const where: Prisma.UserWhereInput = {
+    role: "CLIENT",
+  };
+
+  if (search) {
+    where.OR = [
+      { email: { contains: search, mode: "insensitive" } },
+      { athleteProfile: { firstName: { contains: search, mode: "insensitive" } } },
+      { athleteProfile: { lastName: { contains: search, mode: "insensitive" } } },
+    ];
+  }
+
+  if (tier) {
+    if (!Object.values(PlanTier).includes(tier as PlanTier)) {
+      const err = new Error("Invalid tier: " + tier) as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    where.subscription = { planTier: tier as PlanTier };
+  }
+
+  if (status) {
+    if (!Object.values(SubscriptionStatus).includes(status as SubscriptionStatus)) {
+      const err = new Error("Invalid status: " + status) as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    where.subscription = {
+      ...where.subscription as Prisma.SubscriptionWhereInput,
+      status: status as SubscriptionStatus,
+    };
+  }
+
+  const [clients, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        athleteProfile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            primaryGoal: true,
+            personaType: true,
+            experienceLevel: true,
+            trainingDaysPerWeek: true,
+          },
+        },
+        subscription: {
+          select: {
+            planTier: true,
+            status: true,
+            currentPeriodEnd: true,
+          },
+        },
+      },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  // Fetch current week adherence for each client
+  const weekStart = getWeekStart(new Date());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const enriched = await Promise.all(
+    clients.map(async (client) => {
+      const adherenceRecord = await prisma.adherenceRecord.findFirst({
+        where: { userId: client.id, weekStartDate: weekStart },
+        select: { adherenceRate: true, completedCount: true, scheduledCount: true },
+      });
+
+      return {
+        ...client,
+        adherence: adherenceRecord
+          ? {
+              rate: adherenceRecord.adherenceRate,
+              completed: adherenceRecord.completedCount,
+              scheduled: adherenceRecord.scheduledCount,
+            }
+          : null,
+      };
+    })
+  );
+
+  return {
+    clients: enriched,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+/**
+ * Get full client detail — profile, subscription, adherence, recent workouts, messages, escalations.
+ */
+export async function getClientDetail(userId: string): Promise<unknown> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      athleteProfile: {
+        include: {
+          workoutPlans: {
+            where: { isActive: true },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            include: {
+              sessions: {
+                orderBy: { scheduledDate: "asc" },
+                select: {
+                  id: true,
+                  scheduledDate: true,
+                  sessionType: true,
+                  title: true,
+                  description: true,
+                  status: true,
+                  completedAt: true,
+                  actualDuration: true,
+                  prescribedDuration: true,
+                  prescribedTSS: true,
+                  athleteNotes: true,
+                  rpe: true,
+                },
+              },
+              adjustmentLogs: {
+                orderBy: { createdAt: "desc" },
+                take: 10,
+                select: {
+                  id: true,
+                  triggerEvent: true,
+                  adjustmentType: true,
+                  description: true,
+                  createdAt: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      subscription: true,
+      messageLogs: {
+        orderBy: { sentAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          channel: true,
+          category: true,
+          content: true,
+          sentAt: true,
+          failedAt: true,
+          failureReason: true,
+        },
+      },
+      escalationEvents: {
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          triggerReason: true,
+          escalationLevel: true,
+          messageSent: true,
+          callBooked: true,
+          resolvedAt: true,
+          resolution: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    const err = new Error("User not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Strip sensitive fields — never send passwordHash to the client
+  const { passwordHash: _, ...safeUser } = user;
+  const userResponse = safeUser as typeof user;
+
+  // Get adherence history (last 8 weeks)
+  const eightWeeksAgo = new Date();
+  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+  eightWeeksAgo.setUTCHours(0, 0, 0, 0);
+
+  const adherenceHistory = await prisma.adherenceRecord.findMany({
+    where: { userId, weekStartDate: { gte: eightWeeksAgo } },
+    orderBy: { weekStartDate: "desc" },
+  });
+
+  // Get consecutive missed count
+  const consecutiveMissed = await getConsecutiveMissedForAdmin(userId);
+
+  return {
+    ...userResponse,
+    adherenceHistory,
+    consecutiveMissed,
+  };
+}
+
+/**
+ * Add/update admin notes on a client's profile.
+ */
+/**
+ * Update a client's athlete profile fields (admin-editable subset).
+ */
+export async function updateClientProfile(
+  userId: string,
+  updates: {
+    primaryGoal?: string;
+    trainingDaysPerWeek?: number;
+    experienceLevel?: string;
+    equipmentAccess?: string;
+    injuryHistory?: string | null;
+    stressLevel?: number;
+    preferredTrainingTime?: string;
+    timezone?: string;
+    messagingDisabled?: boolean;
+  }
+): Promise<unknown> {
+  const profile = await prisma.athleteProfile.findUnique({
+    where: { userId },
+  });
+
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const updated = await prisma.athleteProfile.update({
+    where: { userId },
+    data: updates,
+    select: { firstName: true, lastName: true, timezone: true, primaryGoal: true, trainingDaysPerWeek: true, experienceLevel: true, equipmentAccess: true, messagingDisabled: true },
+  });
+
+  logger.info({ userId, fields: Object.keys(updates) }, "Admin updated client profile");
+  return updated;
+}
+
+export async function updateClientNotes(
+  userId: string,
+  notes: string
+): Promise<unknown> {
+  const profile = await prisma.athleteProfile.findUnique({
+    where: { userId },
+  });
+
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Store in dedicated adminNotes field — NEVER in aiSummary.
+  // aiSummary is client-visible and fed to the AI coach.
+  const updated = await prisma.athleteProfile.update({
+    where: { userId },
+    data: { adminNotes: notes },
+    select: { adminNotes: true },
+  });
+
+  // One-time cleanup: if aiSummary was previously contaminated with [ADMIN NOTES],
+  // strip that section out to restore clean AI context.
+  if (profile.aiSummary?.includes("[ADMIN NOTES]")) {
+    const cleanSummary = profile.aiSummary.substring(0, profile.aiSummary.indexOf("[ADMIN NOTES]")).trim();
+    await prisma.athleteProfile.update({
+      where: { userId },
+      data: { aiSummary: cleanSummary || profile.aiSummary.split("[ADMIN NOTES]")[0].trim() },
+    });
+    logger.info({ userId }, "Cleaned contaminated aiSummary — removed [ADMIN NOTES] block");
+  }
+
+  logger.info({ userId }, "Admin notes updated (stored in adminNotes field)");
+  return { adminNotes: updated.adminNotes };
+}
+
+/**
+ * Send a custom message to a client (bypasses template system).
+ */
+export async function sendCustomMessage(
+  userId: string,
+  content: string,
+  channel: "SMS" | "EMAIL"
+): Promise<{ messageId: string }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { athleteProfile: true },
+  });
+
+  if (!user) {
+    const err = new Error("User not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  let externalId: string | null = null;
+  let failedAt: Date | undefined;
+  let failureReason: string | undefined;
+
+  if (channel === "SMS") {
+    const phone = user.athleteProfile?.phone;
+    if (phone) {
+      externalId = await sendSMS(phone, content);
+      if (!externalId) {
+        failedAt = new Date();
+        failureReason = "SMS delivery failed";
+      }
+    } else {
+      failedAt = new Date();
+      failureReason = "No phone number on file";
+      logger.warn({ userId }, "Cannot send custom SMS: no phone number on profile");
+    }
+  } else {
+    externalId = await sendEmail(user.email, "Message from Vintus Performance", content);
+    if (!externalId) {
+      failedAt = new Date();
+      failureReason = "Email delivery failed";
+    }
+  }
+
+  const log = await prisma.messageLog.create({
+    data: {
+      userId,
+      channel: channel as MessageChannel,
+      category: "SYSTEM" as MessageCategory,
+      templateId: "admin-custom",
+      content,
+      externalId,
+      failedAt,
+      failureReason,
+    },
+  });
+
+  logger.info({ userId, messageId: log.id, channel }, "Custom admin message sent");
+  return { messageId: log.id };
+}
+
+/**
+ * Pause, reactivate, approve, or reject a client's subscription.
+ */
+export async function setClientStatus(
+  userId: string,
+  action: "pause" | "activate" | "approve" | "reject"
+): Promise<{ success: boolean; status: string }> {
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId },
+  });
+
+  if (!subscription) {
+    const err = new Error("No subscription found for this user") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Determine new status based on action
+  let newStatus: SubscriptionStatus;
+
+  if (action === "approve") {
+    if (subscription.status !== "PENDING_APPROVAL") {
+      const err = new Error("Subscription is not pending approval") as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    newStatus = "ACTIVE";
+  } else if (action === "reject") {
+    if (subscription.status !== "PENDING_APPROVAL") {
+      const err = new Error("Subscription is not pending approval") as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    newStatus = "CANCELED";
+  } else if (action === "pause") {
+    if (subscription.status !== "ACTIVE") {
+      const err = new Error("Can only pause an active subscription") as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    newStatus = "PAUSED";
+  } else {
+    // activate — only from PAUSED
+    if (subscription.status !== "PAUSED") {
+      const err = new Error("Can only reactivate a paused subscription") as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    newStatus = "ACTIVE";
+  }
+
+  if (subscription.status === newStatus) {
+    return { success: true, status: newStatus };
+  }
+
+  await prisma.subscription.update({
+    where: { userId },
+    data: { status: newStatus as SubscriptionStatus },
+  });
+
+  // Toggle messaging when pausing/activating
+  if (action === "pause" || action === "activate") {
+    const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+    if (profile) {
+      await prisma.athleteProfile.update({
+        where: { userId },
+        data: { messagingDisabled: action === "pause" },
+      });
+    }
+  }
+
+  // Fire welcome sequence when admin approves
+  if (action === "approve") {
+    try {
+      const { sendWelcomeSequence } = await import("./messaging.service.js");
+      await sendWelcomeSequence(userId);
+    } catch (err) {
+      logger.error({ err, userId }, "Welcome sequence failed after admin approval");
+    }
+  }
+
+  logger.info({ userId, action, newStatus }, "Admin changed client status");
+  return { success: true, status: newStatus };
+}
+
+/**
+ * Count subscriptions awaiting admin approval.
+ */
+export async function getPendingApprovalCount(): Promise<number> {
+  return prisma.subscription.count({
+    where: { status: "PENDING_APPROVAL" },
+  });
+}
+
+/**
+ * Get pending message triggers (messages queued by cron but not yet sent).
+ */
+export async function getPendingTriggers(): Promise<unknown[]> {
+  const triggers = await prisma.messageLog.findMany({
+    where: {
+      failureReason: { startsWith: "PENDING_TRIGGER:" },
+      failedAt: null,
+    },
+    orderBy: { sentAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      userId: true,
+      channel: true,
+      category: true,
+      content: true,
+      sentAt: true,
+      failureReason: true,
+      user: {
+        select: {
+          email: true,
+          athleteProfile: { select: { firstName: true, lastName: true, phone: true } },
+        },
+      },
+    },
+  });
+
+  return triggers.map((t) => ({
+    ...t,
+    triggerDescription: t.failureReason?.replace("PENDING_TRIGGER:", "") || t.category,
+  }));
+}
+
+/**
+ * Fire a pending message trigger — actually send the SMS/email.
+ */
+export async function fireTrigger(messageLogId: string): Promise<{ success: boolean }> {
+  const log = await prisma.messageLog.findUnique({
+    where: { id: messageLogId },
+    include: { user: { include: { athleteProfile: true } } },
+  });
+
+  if (!log) {
+    const err = new Error("Message trigger not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (!log.failureReason?.startsWith("PENDING_TRIGGER:")) {
+    const err = new Error("This message is not a pending trigger") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const phone = log.user.athleteProfile?.phone;
+  const email = log.user.email;
+
+  try {
+    if (log.channel === "SMS" && phone) {
+      const sid = await sendSMS(phone, log.content);
+      if (!sid) {
+        await prisma.messageLog.update({
+          where: { id: messageLogId },
+          data: { failedAt: new Date(), failureReason: "SMS delivery returned null SID" },
+        });
+        const smsErr = new Error("SMS delivery failed") as Error & { statusCode?: number };
+        smsErr.statusCode = 502;
+        throw smsErr;
+      }
+      await prisma.messageLog.update({
+        where: { id: messageLogId },
+        data: { failureReason: null, externalId: sid, sentAt: new Date() },
+      });
+    } else if (log.channel === "EMAIL" && email) {
+      const emailId = await sendEmail(email, log.category, log.content);
+      await prisma.messageLog.update({
+        where: { id: messageLogId },
+        data: { failureReason: null, externalId: emailId ?? null, sentAt: new Date() },
+      });
+    } else {
+      const err = new Error("No phone/email available for this client") as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+
+    logger.info({ messageLogId, userId: log.userId, category: log.category }, "Pending trigger fired");
+    return { success: true };
+  } catch (sendErr) {
+    await prisma.messageLog.update({
+      where: { id: messageLogId },
+      data: { failedAt: new Date(), failureReason: String(sendErr) },
+    });
+    throw sendErr;
+  }
+}
+
+/**
+ * Dismiss a pending trigger without sending.
+ */
+export async function dismissTrigger(messageLogId: string): Promise<{ success: boolean }> {
+  const log = await prisma.messageLog.findUnique({ where: { id: messageLogId } });
+  if (!log) {
+    const err = new Error("Message trigger not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  await prisma.messageLog.update({
+    where: { id: messageLogId },
+    data: { failureReason: "DISMISSED", failedAt: new Date() },
+  });
+  return { success: true };
+}
+
+/**
+ * Get all items needing admin attention (action queue).
+ */
+export async function getActionQueue(): Promise<{
+  pendingApprovals: unknown[];
+  endingSoon: unknown[];
+  completedPlans: unknown[];
+  unresolvedEscalations: unknown[];
+}> {
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const [pendingApprovals, endingSoon, completedPlans, unresolvedEscalations] = await Promise.all([
+    // 1. Pending approvals
+    prisma.user.findMany({
+      where: { role: "CLIENT", subscription: { status: "PENDING_APPROVAL" } },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        athleteProfile: { select: { firstName: true, lastName: true } },
+        subscription: { select: { planTier: true, status: true, createdAt: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    // 2. Plans ending in next 7 days
+    prisma.user.findMany({
+      where: {
+        role: "CLIENT",
+        subscription: {
+          status: "ACTIVE",
+          currentPeriodEnd: { lte: sevenDaysFromNow, gte: now },
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        athleteProfile: { select: { firstName: true, lastName: true } },
+        subscription: { select: { planTier: true, currentPeriodEnd: true } },
+      },
+      orderBy: { subscription: { currentPeriodEnd: "asc" } },
+    }),
+    // 3. Completed plans awaiting renewal response
+    prisma.user.findMany({
+      where: {
+        role: "CLIENT",
+        subscription: {
+          renewalPromptedAt: { not: null },
+          renewalResponseAt: null,
+          status: { not: "CANCELED" },
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        athleteProfile: { select: { firstName: true, lastName: true } },
+        subscription: { select: { planTier: true, currentPeriodEnd: true, renewalPromptedAt: true, scheduledDeleteAt: true } },
+      },
+      orderBy: { subscription: { renewalPromptedAt: "desc" } },
+    }),
+    // 4. Unresolved escalations
+    prisma.escalationEvent.findMany({
+      where: { resolvedAt: null },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            athleteProfile: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+  ]);
+
+  // Compute daysRemaining for endingSoon
+  const endingSoonWithDays = endingSoon.map((u) => ({
+    ...u,
+    daysRemaining: u.subscription
+      ? Math.ceil((new Date(u.subscription.currentPeriodEnd).getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+      : 0,
+  }));
+
+  // Compute daysUntilDelete for completedPlans
+  const completedWithDays = completedPlans.map((u) => ({
+    ...u,
+    daysUntilDelete: u.subscription?.scheduledDeleteAt
+      ? Math.max(0, Math.ceil((new Date(u.subscription.scheduledDeleteAt).getTime() - now.getTime()) / (24 * 60 * 60 * 1000)))
+      : null,
+  }));
+
+  return {
+    pendingApprovals,
+    endingSoon: endingSoonWithDays,
+    completedPlans: completedWithDays,
+    unresolvedEscalations,
+  };
+}
+
+/**
+ * Get paginated message feed for the admin messaging tab.
+ */
+export async function getMessageFeed(options: {
+  page: number;
+  limit: number;
+  category?: string;
+  status?: string;
+  search?: string;
+  date?: string;
+}): Promise<{
+  messages: unknown[];
+  stats: { totalToday: number; deliveredToday: number; failedToday: number; deliveryRate: number };
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const { page, limit, category, status, search, date } = options;
+
+  // Default to today
+  const filterDate = date ? new Date(date) : new Date();
+  filterDate.setUTCHours(0, 0, 0, 0);
+  const filterDateEnd = new Date(filterDate);
+  filterDateEnd.setDate(filterDateEnd.getDate() + 1);
+
+  const where: Prisma.MessageLogWhereInput = {
+    sentAt: { gte: filterDate, lt: filterDateEnd },
+  };
+
+  if (category) {
+    where.category = category as MessageCategory;
+  }
+
+  if (status === "failed") {
+    where.failedAt = { not: null };
+  } else if (status === "sent") {
+    where.failedAt = null;
+  }
+
+  if (search) {
+    where.user = {
+      OR: [
+        { email: { contains: search, mode: "insensitive" } },
+        { athleteProfile: { firstName: { contains: search, mode: "insensitive" } } },
+        { athleteProfile: { lastName: { contains: search, mode: "insensitive" } } },
+      ],
+    };
+  }
+
+  const [messages, total, todayTotal, todayFailed] = await Promise.all([
+    prisma.messageLog.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { sentAt: "desc" },
+      select: {
+        id: true,
+        userId: true,
+        channel: true,
+        category: true,
+        content: true,
+        sentAt: true,
+        deliveredAt: true,
+        failedAt: true,
+        failureReason: true,
+        user: {
+          select: {
+            email: true,
+            athleteProfile: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    }),
+    prisma.messageLog.count({ where }),
+    prisma.messageLog.count({ where: { sentAt: { gte: filterDate, lt: filterDateEnd } } }),
+    prisma.messageLog.count({ where: { sentAt: { gte: filterDate, lt: filterDateEnd }, failedAt: { not: null } } }),
+  ]);
+
+  const deliveredToday = todayTotal - todayFailed;
+  const deliveryRate = todayTotal > 0 ? Math.round((deliveredToday / todayTotal) * 100) : 100;
+
+  return {
+    messages,
+    stats: { totalToday: todayTotal, deliveredToday, failedToday: todayFailed, deliveryRate },
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+/**
+ * Change a client's plan tier (e.g., upgrade from 30-day to 90-day).
+ */
+export async function changePlanTier(
+  userId: string,
+  newTier: string
+): Promise<{ success: boolean; planTier: string }> {
+  if (!Object.values(PlanTier).includes(newTier as PlanTier)) {
+    const err = new Error("Invalid plan tier: " + newTier) as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const subscription = await prisma.subscription.findUnique({ where: { userId } });
+  if (!subscription) {
+    const err = new Error("No subscription found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  await prisma.subscription.update({
+    where: { userId },
+    data: { planTier: newTier as PlanTier },
+  });
+
+  logger.info({ userId, oldTier: subscription.planTier, newTier }, "Admin changed client plan tier");
+  return { success: true, planTier: newTier };
+}
+
+/**
+ * Extend a client's subscription end date.
+ */
+export async function extendSubscription(
+  userId: string,
+  additionalDays: number
+): Promise<{ success: boolean; newEndDate: Date }> {
+  if (additionalDays < 1 || additionalDays > 365) {
+    const err = new Error("Days must be between 1 and 365") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const subscription = await prisma.subscription.findUnique({ where: { userId } });
+  if (!subscription) {
+    const err = new Error("No subscription found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const currentEnd = new Date(subscription.currentPeriodEnd);
+  const newEnd = new Date(currentEnd.getTime() + additionalDays * 24 * 60 * 60 * 1000);
+
+  await prisma.subscription.update({
+    where: { userId },
+    data: {
+      currentPeriodEnd: newEnd,
+      // Clear renewal/deactivation if subscription was extended
+      renewalPromptedAt: null,
+      renewalResponseAt: null,
+      scheduledDeleteAt: null,
+    },
+  });
+
+  logger.info({ userId, additionalDays, newEnd }, "Admin extended subscription");
+  return { success: true, newEndDate: newEnd };
+}
+
+/**
+ * Resolve an escalation event.
+ */
+export async function resolveEscalation(
+  escalationId: string,
+  resolution: string
+): Promise<{ success: boolean }> {
+  const escalation = await prisma.escalationEvent.findUnique({ where: { id: escalationId } });
+  if (!escalation) {
+    const err = new Error("Escalation not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (escalation.resolvedAt) {
+    return { success: true }; // already resolved
+  }
+
+  await prisma.escalationEvent.update({
+    where: { id: escalationId },
+    data: { resolvedAt: new Date(), resolution },
+  });
+
+  logger.info({ escalationId, resolution }, "Escalation resolved");
+  return { success: true };
+}
+
+/**
+ * Trigger plan regeneration for a client (using AI).
+ */
+export async function regeneratePlan(userId: string): Promise<{ planId: string; sessionCount: number }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const { generateInitialPlan } = await import("./workout.service.js");
+  const result = await generateInitialPlan(profile.id);
+
+  logger.info({ userId, planId: result.planId }, "Admin triggered plan regeneration");
+  return result;
+}
+
+/**
+ * Permanently delete a client and all associated data.
+ * Prisma cascade deletes handle related records (profile, subscription, messages, etc.).
+ */
+export async function deleteClient(userId: string): Promise<{ success: boolean }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, email: true },
+  });
+
+  if (!user) {
+    const err = new Error("User not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (user.role === "ADMIN") {
+    const err = new Error("Cannot delete admin users") as Error & { statusCode?: number };
+    err.statusCode = 403;
+    throw err;
+  }
+
+  await prisma.user.delete({ where: { id: userId } });
+
+  logger.info({ userId, email: user.email }, "Admin permanently deleted client");
+  return { success: true };
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+
+/**
+ * Get aggregate business overview metrics.
+ */
+export async function getAnalyticsOverview(): Promise<{
+  totalClients: number;
+  activeClients: number;
+  byTier: Record<string, number>;
+  avgAdherenceRate: number;
+  churnedLast30Days: number;
+  newLast30Days: number;
+  mrr: number;
+}> {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [
+    totalClients,
+    activeSubs,
+    tierGroups,
+    churnedLast30,
+    newLast30,
+    recentAdherence,
+  ] = await Promise.all([
+    // Total clients (all users with CLIENT role)
+    prisma.user.count({ where: { role: "CLIENT" } }),
+
+    // Active subscriptions
+    prisma.subscription.count({ where: { status: "ACTIVE" } }),
+
+    // Group by tier
+    prisma.subscription.groupBy({
+      by: ["planTier"],
+      where: { status: "ACTIVE" },
+      _count: { id: true },
+    }),
+
+    // Churned in last 30 days
+    prisma.subscription.count({
+      where: { status: "CANCELED", updatedAt: { gte: thirtyDaysAgo } },
+    }),
+
+    // New in last 30 days
+    prisma.subscription.count({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+    }),
+
+    // Average adherence (last 4 weeks)
+    prisma.adherenceRecord.aggregate({
+      where: {
+        weekStartDate: {
+          gte: (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - 28);
+            d.setUTCHours(0, 0, 0, 0);
+            return d;
+          })(),
+        },
+      },
+      _avg: { adherenceRate: true },
+    }),
+  ]);
+
+  // Build tier map
+  const byTier: Record<string, number> = {
+    PRIVATE_COACHING: 0,
+    TRAINING_30DAY: 0,
+    TRAINING_60DAY: 0,
+    TRAINING_90DAY: 0,
+    NUTRITION_4WEEK: 0,
+    NUTRITION_8WEEK: 0,
+  };
+  for (const group of tierGroups) {
+    byTier[group.planTier] = group._count.id;
+  }
+
+  // Calculate MRR
+  const mrr = Object.entries(byTier).reduce(
+    (sum, [tier, count]) => sum + (TIER_MONTHLY_PRICE[tier] ?? 0) * count,
+    0
+  );
+
+  return {
+    totalClients,
+    activeClients: activeSubs,
+    byTier,
+    avgAdherenceRate: Math.round((recentAdherence._avg.adherenceRate ?? 0) * 100) / 100,
+    churnedLast30Days: churnedLast30,
+    newLast30Days: newLast30,
+    mrr,
+  };
+}
+
+/**
+ * Get aggregate adherence trends (weekly averages for the last 12 weeks).
+ */
+export async function getAdherenceTrends(): Promise<unknown[]> {
+  const twelveWeeksAgo = new Date();
+  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+  twelveWeeksAgo.setUTCHours(0, 0, 0, 0);
+
+  const records = await prisma.adherenceRecord.findMany({
+    where: { weekStartDate: { gte: twelveWeeksAgo } },
+    select: {
+      weekStartDate: true,
+      adherenceRate: true,
+      completedCount: true,
+      scheduledCount: true,
+      missedCount: true,
+    },
+  });
+
+  // Group by week
+  const weekMap = new Map<
+    string,
+    { rates: number[]; completed: number; scheduled: number; missed: number }
+  >();
+
+  for (const record of records) {
+    const weekKey = record.weekStartDate.toISOString().split("T")[0];
+    const existing = weekMap.get(weekKey) ?? {
+      rates: [],
+      completed: 0,
+      scheduled: 0,
+      missed: 0,
+    };
+    existing.rates.push(record.adherenceRate);
+    existing.completed += record.completedCount;
+    existing.scheduled += record.scheduledCount;
+    existing.missed += record.missedCount;
+    weekMap.set(weekKey, existing);
+  }
+
+  // Convert to sorted array
+  const weeks = Array.from(weekMap.entries())
+    .map(([weekStart, data]) => ({
+      weekStart,
+      avgAdherenceRate:
+        data.rates.length > 0
+          ? Math.round((data.rates.reduce((a, b) => a + b, 0) / data.rates.length) * 100) / 100
+          : 0,
+      totalCompleted: data.completed,
+      totalScheduled: data.scheduled,
+      totalMissed: data.missed,
+      clientCount: data.rates.length,
+    }))
+    .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+
+  return weeks;
+}
+
+/**
+ * Get recent escalation events with user info and resolution status.
+ */
+export async function getEscalationEvents(options: {
+  page: number;
+  limit: number;
+  resolved?: boolean;
+}): Promise<{
+  escalations: unknown[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const { page, limit, resolved } = options;
+
+  const where: Prisma.EscalationEventWhereInput = {};
+  if (resolved === true) {
+    where.resolvedAt = { not: null };
+  } else if (resolved === false) {
+    where.resolvedAt = null;
+  }
+
+  const [escalations, total] = await Promise.all([
+    prisma.escalationEvent.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            athleteProfile: {
+              select: { firstName: true, lastName: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.escalationEvent.count({ where }),
+  ]);
+
+  return {
+    escalations,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+// ============================================================
+// SYSTEM
+// ============================================================
+
+/**
+ * Check health of external services: database, Twilio, Resend, Anthropic, Stripe.
+ */
+export async function getSystemHealth(): Promise<
+  Record<string, { status: "ok" | "error"; latencyMs: number; error?: string }>
+> {
+  const results: Record<
+    string,
+    { status: "ok" | "error"; latencyMs: number; error?: string }
+  > = {};
+
+  // Database check
+  const dbStart = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    results.database = { status: "ok", latencyMs: Date.now() - dbStart };
+  } catch (err) {
+    results.database = {
+      status: "error",
+      latencyMs: Date.now() - dbStart,
+      error: (err as Error).message,
+    };
+  }
+
+  // Stripe check
+  const stripeStart = Date.now();
+  try {
+    await stripe.balance.retrieve();
+    results.stripe = { status: "ok", latencyMs: Date.now() - stripeStart };
+  } catch (err) {
+    results.stripe = {
+      status: "error",
+      latencyMs: Date.now() - stripeStart,
+      error: (err as Error).message,
+    };
+  }
+
+  // Twilio check — verify credentials by fetching account info
+  const twilioStart = Date.now();
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}.json`,
+      {
+        headers: {
+          Authorization:
+            "Basic " +
+            Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString(
+              "base64"
+            ),
+        },
+      }
+    );
+    if (response.ok) {
+      results.twilio = { status: "ok", latencyMs: Date.now() - twilioStart };
+    } else {
+      results.twilio = {
+        status: "error",
+        latencyMs: Date.now() - twilioStart,
+        error: `HTTP ${response.status}`,
+      };
+    }
+  } catch (err) {
+    results.twilio = {
+      status: "error",
+      latencyMs: Date.now() - twilioStart,
+      error: (err as Error).message,
+    };
+  }
+
+  // Resend check — list API keys endpoint as a ping
+  const resendStart = Date.now();
+  try {
+    const response = await fetch("https://api.resend.com/api-keys", {
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` },
+    });
+    if (response.ok || response.status === 200) {
+      results.resend = { status: "ok", latencyMs: Date.now() - resendStart };
+    } else {
+      results.resend = {
+        status: "error",
+        latencyMs: Date.now() - resendStart,
+        error: `HTTP ${response.status}`,
+      };
+    }
+  } catch (err) {
+    results.resend = {
+      status: "error",
+      latencyMs: Date.now() - resendStart,
+      error: (err as Error).message,
+    };
+  }
+
+  // Anthropic check — list models as a lightweight ping
+  const anthropicStart = Date.now();
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/models", {
+      headers: {
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+    });
+    if (response.ok) {
+      results.anthropic = { status: "ok", latencyMs: Date.now() - anthropicStart };
+    } else {
+      results.anthropic = {
+        status: "error",
+        latencyMs: Date.now() - anthropicStart,
+        error: `HTTP ${response.status}`,
+      };
+    }
+  } catch (err) {
+    results.anthropic = {
+      status: "error",
+      latencyMs: Date.now() - anthropicStart,
+      error: (err as Error).message,
+    };
+  }
+
+  return results;
+}
+
+/**
+ * Get cron job status — last runs, errors from recent logs.
+ */
+export async function getCronStatus(): Promise<{
+  lastDailyReview: Date | null;
+  lastWeeklyDigest: Date | null;
+  recentErrors: unknown[];
+  activeClientCount: number;
+}> {
+  // Use message logs as proxy for last cron activity
+  const [lastDailyMsg, lastDigestMsg, activeCount] = await Promise.all([
+    // Last daily review indicator: most recent WORKOUT_MISSED, CHECK_IN, or MOTIVATION message
+    prisma.messageLog.findFirst({
+      where: {
+        category: { in: ["WORKOUT_MISSED", "CHECK_IN", "MOTIVATION", "RECOVERY_TIP"] },
+      },
+      orderBy: { sentAt: "desc" },
+      select: { sentAt: true },
+    }),
+
+    // Last weekly digest: SYSTEM category email
+    prisma.messageLog.findFirst({
+      where: {
+        category: "SYSTEM",
+        channel: "EMAIL",
+        templateId: "weekly-digest",
+      },
+      orderBy: { sentAt: "desc" },
+      select: { sentAt: true },
+    }),
+
+    // Active client count
+    prisma.subscription.count({ where: { status: "ACTIVE" } }),
+  ]);
+
+  // Recent failed messages as error indicators
+  const recentErrors = await prisma.messageLog.findMany({
+    where: {
+      failedAt: { not: null },
+      sentAt: {
+        gte: (() => {
+          const d = new Date();
+          d.setDate(d.getDate() - 7);
+          return d;
+        })(),
+      },
+    },
+    orderBy: { sentAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      userId: true,
+      channel: true,
+      category: true,
+      failureReason: true,
+      sentAt: true,
+    },
+  });
+
+  return {
+    lastDailyReview: lastDailyMsg?.sentAt ?? null,
+    lastWeeklyDigest: lastDigestMsg?.sentAt ?? null,
+    recentErrors,
+    activeClientCount: activeCount,
+  };
+}
+
+// ============================================================
+// WORKOUT OVERRIDE
+// ============================================================
+
+/**
+ * Admin override for a workout session — partial update.
+ */
+export async function overrideWorkoutSession(
+  sessionId: string,
+  data: {
+    title?: string;
+    description?: string;
+    sessionType?: string;
+    prescribedDuration?: number;
+    prescribedTSS?: number;
+    status?: string;
+    content?: Record<string, unknown>;
+    athleteNotes?: string;
+  }
+): Promise<unknown> {
+  const session = await prisma.workoutSession.findUnique({
+    where: { id: sessionId },
+    include: { workoutPlan: { select: { id: true, athleteProfileId: true } } },
+  });
+
+  if (!session) {
+    const err = new Error("Workout session not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const updateData: Prisma.WorkoutSessionUpdateInput = {};
+
+  if (data.title !== undefined) updateData.title = data.title;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.sessionType !== undefined) updateData.sessionType = data.sessionType as Prisma.EnumSessionTypeFieldUpdateOperationsInput["set"];
+  if (data.prescribedDuration !== undefined) updateData.prescribedDuration = data.prescribedDuration;
+  if (data.prescribedTSS !== undefined) updateData.prescribedTSS = data.prescribedTSS;
+  if (data.status !== undefined) updateData.status = data.status as Prisma.EnumSessionStatusFieldUpdateOperationsInput["set"];
+  if (data.content !== undefined) updateData.content = data.content as unknown as Prisma.InputJsonValue;
+  if (data.athleteNotes !== undefined) updateData.athleteNotes = data.athleteNotes;
+
+  const updated = await prisma.workoutSession.update({
+    where: { id: sessionId },
+    data: updateData,
+  });
+
+  // Log the override as an adjustment
+  await prisma.adjustmentLog.create({
+    data: {
+      workoutPlanId: session.workoutPlanId,
+      triggerEvent: "admin_override",
+      triggerData: { sessionId, changes: data } as unknown as Prisma.InputJsonValue,
+      adjustmentType: "admin_override",
+      description: `Admin override on session "${session.title}": ${Object.keys(data).join(", ")} updated.`,
+      affectedSessions: [sessionId],
+    },
+  });
+
+  logger.info({ sessionId, changes: Object.keys(data) }, "Workout session overridden by admin");
+
+  return updated;
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  return d;
+}
+
+async function getConsecutiveMissedForAdmin(userId: string): Promise<number> {
+  const profile = await prisma.athleteProfile.findUnique({
+    where: { userId },
+  });
+  if (!profile) return 0;
+
+  const recentSessions = await prisma.workoutSession.findMany({
+    where: {
+      workoutPlan: { athleteProfileId: profile.id },
+      scheduledDate: { lte: new Date() },
+      status: { in: ["COMPLETED", "MISSED", "SKIPPED"] },
+    },
+    orderBy: { scheduledDate: "desc" },
+    take: 30,
+    select: { status: true },
+  });
+
+  let streak = 0;
+  for (const session of recentSessions) {
+    if (session.status === "MISSED" || session.status === "SKIPPED") {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
