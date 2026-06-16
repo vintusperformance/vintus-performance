@@ -829,50 +829,26 @@
                 <h2 class="reveal">Preview Your <span class="accent">Transformation</span></h2>
             </div>
             <div class="workout-grid">
-                <div class="workout-card reveal" data-workout="strength">
-                    <div class="workout-card-image">
-                        <div class="workout-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M6.5 6.5h11M6.5 17.5h11M3 12h18M4.5 6.5v11M19.5 6.5v11"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="workout-card-content">
-                        <h3>Strength Training</h3>
-                        <p>Build muscle, increase power</p>
-                        <button class="workout-preview-btn" data-modal="strength">Preview Workout</button>
-                    </div>
-                </div>
-                <div class="workout-card reveal" data-workout="hiit">
-                    <div class="workout-card-image">
-                        <div class="workout-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="workout-card-content">
-                        <h3>HIIT Conditioning</h3>
-                        <p>Burn fat, boost endurance</p>
-                        <button class="workout-preview-btn" data-modal="hiit">Preview Workout</button>
-                    </div>
-                </div>
-                <div class="workout-card reveal" data-workout="endurance">
-                    <div class="workout-card-image">
-                        <div class="workout-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="workout-card-content">
-                        <h3>Endurance</h3>
-                        <p>Go longer, recover faster</p>
-                        <button class="workout-preview-btn" data-modal="endurance">Preview Workout</button>
-                    </div>
-                </div>
-            </div>
+            <div style="display: flex; gap: 1.5rem; justify-content: center; align-items: flex-start; flex-wrap: wrap; margin-top: 3rem;">
+    <div style="flex: 1; min-width: 280px; max-width: 380px; text-align: center;">
+        <video autoplay muted loop playsinline style="width: 100%; border-radius: 4px; display: block;">
+            <source src="Strength.mp4" type="video/mp4">
+        </video>
+        <p style="margin-top: 1rem; font-family: var(--font-heading); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--off-white);">Strength Training</p>
+    </div>
+    <div style="flex: 1; min-width: 280px; max-width: 380px; text-align: center;">
+        <video autoplay muted loop playsinline style="width: 100%; border-radius: 4px; display: block;">
+            <source src="Conditioning.mp4" type="video/mp4">
+        </video>
+        <p style="margin-top: 1rem; font-family: var(--font-heading); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--off-white);">Conditioning</p>
+    </div>
+    <div style="flex: 1; min-width: 280px; max-width: 380px; text-align: center;">
+        <video autoplay muted loop playsinline style="width: 100%; border-radius: 4px; display: block;">
+            <source src="Nutrition.mp4" type="video/mp4">
+        </video>
+        <p style="margin-top: 1rem; font-family: var(--font-heading); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--off-white);">Nutrition</p>
+    </div>
+</div>   
         </div>
     </section>
 
