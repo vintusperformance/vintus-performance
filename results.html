@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Your personalized fitness assessment results from Vintus Performance.">
+    <title>Your Results | Vintus Performance</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3EV%3C/text%3E%3C/svg%3E">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css?v=2">
+    <link rel="stylesheet" href="css/results.css?v=2">
+    <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
+</head>
+<body class="results-page" style="background: #000 !important;">
+    <!-- Navigation -->
+    <nav>
+        <a href="/" class="logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="logo-img"></a>
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/features">Services</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact</a></li>
+        </ul>
+        <div class="nav-social">
+            <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+            </a>
+            <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            </a>
+        </div>
+        <a href="/book" class="nav-cta">Free Consultation</a>
+        <div class="mobile-menu" id="mobileMenu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <a href="/">Home</a>
+        <a href="/features">Services</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+        <a href="/book" class="btn-outline" style="margin-top: 2rem;">Free Consultation</a>
+        <div class="mobile-social" style="display: flex; gap: 1.5rem; margin-top: 2rem; justify-content: center;">
+            <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+            <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>
+            <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+        </div>
+    </div>
+
+    <!-- Results Content -->
+    <section class="results-section" id="resultsSection">
+        <!-- Loading state (shown initially) -->
+        <div class="results-loading" id="resultsLoading">
+            <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4"/>
+            </svg>
+            <p>Analyzing your assessment...</p>
+        </div>
+
+        <!-- Error state (hidden) -->
+        <div class="results-error" id="resultsError" style="display:none;">
+            <p id="resultsErrorMsg">Unable to load results.</p>
+            <p><a href="/assessment" style="color:var(--silver);">Take the assessment again</a></p>
+        </div>
+
+        <!-- Results content (hidden until data loads) -->
+        <div id="resultsContent" style="display:none;">
+            <div class="results-header">
+                <h1>Your Transformation Blueprint</h1>
+                <p>Based on your assessment, here's your personalized analysis.</p>
+            </div>
+
+            <!-- Persona Badge -->
+            <div style="text-align:center;">
+                <div class="results-persona" id="personaBadge" style="display:none;"></div>
+            </div>
+
+            <!-- AI Summary -->
+            <div class="results-summary">
+                <div class="results-summary-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    <span>AI-Powered Analysis</span>
+                </div>
+                <div class="results-summary-body" id="aiSummaryText"></div>
+            </div>
+
+            <!-- Risk Flags -->
+            <div class="results-flags" id="riskFlags" style="display:none;"></div>
+
+            <!-- Featured: Private Coaching -->
+            <h2 class="results-plans-title">Our Recommendation</h2>
+            <div class="results-featured">
+                <div class="plan-card recommended" data-tier="PRIVATE_COACHING">
+                    <div class="plan-badge">Most Popular</div>
+                    <h3>Private Coaching</h3>
+                    <p class="plan-tagline">Your dedicated performance coach &mdash; always adapting, always in your corner.</p>
+                    <div class="plan-price">$500</div>
+                    <div class="plan-period">per month</div>
+                    <ul class="plan-features">
+                        <li>Your dedicated coach, available 7 days via text</li>
+                        <li>Fully custom programming built around YOUR life</li>
+                        <li>Real-time plan adjustments based on how you feel each day</li>
+                        <li>Weekly 1-on-1 strategy calls with your coach</li>
+                        <li>Wearable integration & biometric tracking</li>
+                        <li>Weekly performance digest with detailed analytics</li>
+                        <li>Priority support &mdash; fastest response times guaranteed</li>
+                        <li>The ultimate hands-on coaching experience</li>
+                    </ul>
+                    <button class="plan-select" data-tier="PRIVATE_COACHING">Get Started</button>
+                </div>
+            </div>
+
+            <!-- Training Plans -->
+            <h2 class="results-category-title">Training Plans</h2>
+            <div class="results-plans-3" id="trainingCards">
+                <div class="plan-card" data-tier="TRAINING_30DAY">
+                    <h3>30-Day Plan</h3>
+                    <p class="plan-tagline">Build the foundation. Your coach keeps you locked in.</p>
+                    <div class="plan-price">$99</div>
+                    <div class="plan-period">one-time &middot; 30-day access</div>
+                    <ul class="plan-features">
+                        <li>Personal coach check-ins via text throughout your program</li>
+                        <li>Custom 4-week plan built from your assessment results</li>
+                        <li>Workouts that adapt daily based on how you feel</li>
+                        <li>Coach follows up if you miss a session &mdash; real accountability</li>
+                        <li>Progress tracking dashboard with real-time metrics</li>
+                        <li>Built to create lasting habits in just 30 days</li>
+                    </ul>
+                    <button class="plan-select" data-tier="TRAINING_30DAY">Select Plan</button>
+                </div>
+
+                <div class="plan-card" data-tier="TRAINING_60DAY">
+                    <h3>60-Day Plan</h3>
+                    <p class="plan-tagline">Structured progression with a coach guiding every phase.</p>
+                    <div class="plan-price">$149</div>
+                    <div class="plan-period">one-time &middot; 60-day access</div>
+                    <ul class="plan-features">
+                        <li>Everything in the 30-Day, plus:</li>
+                        <li>8-week periodized programming &mdash; base, build, and peak phases</li>
+                        <li>Your coach texts you adjustments as your body adapts</li>
+                        <li>Recovery programming built into your schedule</li>
+                        <li>Designed for measurable, visible results you can see</li>
+                        <li>The sweet spot for serious progress</li>
+                    </ul>
+                    <button class="plan-select" data-tier="TRAINING_60DAY">Select Plan</button>
+                </div>
+
+                <div class="plan-card" data-tier="TRAINING_90DAY">
+                    <h3>90-Day Plan</h3>
+                    <p class="plan-tagline">The full transformation. Your coach with you every step.</p>
+                    <div class="plan-price">$199</div>
+                    <div class="plan-period">one-time &middot; 90-day access</div>
+                    <ul class="plan-features">
+                        <li>Everything in the 60-Day, plus:</li>
+                        <li>Full 12-week periodization with peak and deload cycles</li>
+                        <li>Your coach evolves your plan as you level up</li>
+                        <li>Weekly performance digests with trend analysis</li>
+                        <li>The complete transformation &mdash; this is where it clicks</li>
+                        <li>Our most popular plan for committed athletes</li>
+                    </ul>
+                    <button class="plan-select" data-tier="TRAINING_90DAY">Select Plan</button>
+                </div>
+            </div>
+
+            <!-- Nutrition Plans -->
+            <h2 class="results-category-title">Nutrition Plans</h2>
+            <div class="results-plans-2" id="nutritionCards">
+                <div class="plan-card" data-tier="NUTRITION_4WEEK">
+                    <h3>4-Week Nutrition</h3>
+                    <p class="plan-tagline">Dial in your fuel. Your coach makes sure it sticks.</p>
+                    <div class="plan-price">$229</div>
+                    <div class="plan-period">one-time &middot; 28-day access</div>
+                    <ul class="plan-features">
+                        <li>Coach-guided nutrition programming via text</li>
+                        <li>Personalized macro targets based on your goals and body</li>
+                        <li>Meal timing strategy aligned with your training schedule</li>
+                        <li>Supplement recommendations tailored to you</li>
+                        <li>Weekly check-ins &mdash; your coach adjusts as you progress</li>
+                        <li>Pairs with any training plan for maximum results</li>
+                    </ul>
+                    <button class="plan-select" data-tier="NUTRITION_4WEEK">Select Plan</button>
+                </div>
+
+                <div class="plan-card" data-tier="NUTRITION_8WEEK">
+                    <h3>8-Week Nutrition</h3>
+                    <p class="plan-tagline">Deep nutrition coaching for lasting, visible change.</p>
+                    <div class="plan-price">$399</div>
+                    <div class="plan-period">one-time &middot; 56-day access</div>
+                    <ul class="plan-features">
+                        <li>Everything in the 4-Week, plus:</li>
+                        <li>Phased nutrition that evolves with your training block</li>
+                        <li>Body composition tracking and real-time adjustments</li>
+                        <li>Deep-dive coaching on habits, not just macros</li>
+                        <li>8 weeks of hands-on guidance for lasting change</li>
+                        <li>The gold standard for body transformation</li>
+                    </ul>
+                    <button class="plan-select" data-tier="NUTRITION_8WEEK">Select Plan</button>
+                </div>
+            </div>
+
+            <!-- Footer Note -->
+            <div class="results-footer-note">
+                <p>All plans include full platform access. Choose the commitment level that fits your goals.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <a href="/" class="footer-logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="footer-logo-img"></a>
+                <ul class="footer-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/features">Services</a></li>
+                    <li><a href="/about">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                </ul>
+                <div class="footer-social">
+                    <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+                    <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>
+                    <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Vintus Performance. Discipline Within, Dominance Beyond.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/main.js?v=2"></script>
+    <script src="js/config.js?v=2"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/nav-auth.js?v=2"></script>
+    <script src="js/results.js?v=2"></script>
+</body>
+</html>

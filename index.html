@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Vintus Performance - Elite personal training and coaching. Discipline Within, Dominance Beyond. Certified trainer serving Morristown, NJ and remote clients.">
+    <meta name="keywords" content="personal training, fitness coaching, certified trainer, Morristown NJ, online coaching, nutrition plans">
+    <title>Vintus Performance | Elite Personal Training | Discipline Within, Dominance Beyond</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3EV%3C/text%3E%3C/svg%3E">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <!-- Critical CSS for instant black background -->
+    <style>
+        html, body { background: #000 !important; margin: 0; padding: 0; min-height: 100vh; }
+        .preloader { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; background: #000 !important; z-index: 99999; display: flex; align-items: center; justify-content: center; }
+    </style>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
+</head>
+<body style="background: #000 !important;">
+    <!-- SVG Definitions -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#a0a0a0"/>
+                <stop offset="50%" style="stop-color:#e5e5e5"/>
+                <stop offset="100%" style="stop-color:#c0c0c0"/>
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="preloader-content">
+            <img src="images/Vintus_LOGO.PNG" alt="Vintus Performance" class="preloader-logo-img">
+            <div class="preloader-text">Loading Excellence...</div>
+            <div class="preloader-bar">
+                <div class="preloader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="/" class="logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="logo-img"></a>
+        <ul class="nav-links">
+            <li><a href="/" class="active">Home</a></li>
+            <li><a href="/features">Services</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact</a></li>
+        </ul>
+        <div class="nav-social">
+            <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+            </a>
+            <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            </a>
+        </div>
+        <a href="/assessment" class="nav-cta">Start Assessment</a>
+        <div class="mobile-menu" id="mobileMenu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav" id="mobileNav">
+        <a href="/">Home</a>
+        <a href="/features">Services</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+        <a href="#heroQuizForm" class="btn-outline" style="margin-top: 2rem;">Free Consultation</a>
+        <div class="mobile-social" style="display: flex; gap: 1.5rem; margin-top: 2rem; justify-content: center;">
+            <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+            </a>
+            <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Hero Carousel Section with Form Overlay -->
+    <section class="hero-carousel" id="heroCarousel">
+        <div class="carousel-slides">
+            <!-- Slide 1: Swim Start -->
+            <div class="carousel-slide active" data-slide="1">
+                <div class="carousel-slide-bg" style="background-image: url('images/caro1.png?v=2'); background-position: center 35%;"></div>
+                <div class="carousel-slide-overlay"></div>
+            </div>
+            <!-- Slide 2: Cycling -->
+            <div class="carousel-slide" data-slide="2">
+                <div class="carousel-slide-bg" style="background-image: url('images/caro2.png?v=2'); background-position: center 30%;"></div>
+                <div class="carousel-slide-overlay"></div>
+            </div>
+            <!-- Slide 3: Running -->
+            <div class="carousel-slide" data-slide="3">
+                <div class="carousel-slide-bg" style="background-image: url('images/caro3.PNG?v=2'); background-position: center 70%;"></div>
+                <div class="carousel-slide-overlay"></div>
+            </div>
+            <!-- Slide 4: Sunset Swim -->
+            <div class="carousel-slide" data-slide="4">
+                <div class="carousel-slide-bg" style="background-image: url('images/caro4.PNG?v=2'); background-position: center 40%;"></div>
+                <div class="carousel-slide-overlay"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Form Overlay -->
+        <div class="hero-form-overlay">
+            <div class="container">
+                <div class="hero-form-wrapper hero-quiz-wrapper">
+                    <!-- Progress Bar -->
+                    <div class="hero-quiz-progress">
+                        <div class="hero-quiz-progress-bar" id="heroQuizProgress"></div>
+                    </div>
+
+                    <!-- Quiz Form -->
+                    <form class="hero-quiz-form" id="heroQuizForm">
+                        <!-- Step 1: Primary Goal -->
+                        <div class="hero-quiz-step active" data-step="1">
+                            <div class="hero-quiz-header">
+                                <div class="hero-label">Step 1 of 5</div>
+                                <h2>What's your primary performance goal right now?</h2>
+                            </div>
+                            <div class="hero-quiz-options">
+                                <button type="button" class="hero-quiz-option" data-value="build-muscle">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5h11M6.5 17.5h11M3 12h18M4.5 6.5v11M19.5 6.5v11"/></svg></span>
+                                    <span class="option-text">Build lean muscle</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="lose-fat">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></span>
+                                    <span class="option-text">Lose body fat</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="endurance">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+                                    <span class="option-text">Improve endurance / conditioning</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="well-rounded">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+                                    <span class="option-text">Become well-rounded (strength + performance)</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="other">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></span>
+                                    <span class="option-text">Other</span>
+                                </button>
+                            </div>
+                            <div class="hero-quiz-other" id="goalOtherInput" style="display: none;">
+                                <input type="text" placeholder="Tell us your specific goal..." id="goalOtherText">
+                            </div>
+                            <input type="hidden" name="primary_goal" id="primaryGoal">
+                        </div>
+
+                        <!-- Step 2: Training Days -->
+                        <div class="hero-quiz-step" data-step="2">
+                            <div class="hero-quiz-header">
+                                <div class="hero-label">Step 2 of 5</div>
+                                <h2>How many days per week can you realistically train?</h2>
+                            </div>
+                            <div class="hero-quiz-options">
+                                <button type="button" class="hero-quiz-option" data-value="2-3">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                                    <span class="option-text">2-3 days</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="4-5">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                                    <span class="option-text">4-5 days</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="6+">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                                    <span class="option-text">6+ days</span>
+                                </button>
+                            </div>
+                            <input type="hidden" name="training_days" id="trainingDays">
+                        </div>
+
+                        <!-- Step 3: Experience Level -->
+                        <div class="hero-quiz-step" data-step="3">
+                            <div class="hero-quiz-header">
+                                <div class="hero-label">Step 3 of 5</div>
+                                <h2>How would you describe your current training experience?</h2>
+                            </div>
+                            <div class="hero-quiz-options">
+                                <button type="button" class="hero-quiz-option" data-value="beginner">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></span>
+                                    <span class="option-content"><span class="option-text">Beginner</span><span class="option-desc">Still learning structure & consistency</span></span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="intermediate">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span>
+                                    <span class="option-content"><span class="option-text">Intermediate</span><span class="option-desc">Trained before, want refinement</span></span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="advanced">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
+                                    <span class="option-content"><span class="option-text">Advanced</span><span class="option-desc">Structured training, chasing performance</span></span>
+                                </button>
+                            </div>
+                            <input type="hidden" name="experience" id="experience">
+                        </div>
+
+                        <!-- Step 4: Biggest Challenge -->
+                        <div class="hero-quiz-step" data-step="4">
+                            <div class="hero-quiz-header">
+                                <div class="hero-label">Step 4 of 5</div>
+                                <h2>What's the biggest thing holding you back right now?</h2>
+                            </div>
+                            <div class="hero-quiz-options">
+                                <button type="button" class="hero-quiz-option" data-value="structure">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
+                                    <span class="option-text">Lack of structure / accountability</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="no-results">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+                                    <span class="option-text">Not seeing results despite effort</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="energy">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+                                    <span class="option-text">Inconsistent energy or recovery</span>
+                                </button>
+                                <button type="button" class="hero-quiz-option" data-value="unsure">
+                                    <span class="option-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                                    <span class="option-text">Unsure how to train or fuel properly</span>
+                                </button>
+                            </div>
+                            <input type="hidden" name="challenge" id="challenge">
+                        </div>
+
+                        <!-- Step 5: Contact Info -->
+                        <div class="hero-quiz-step" data-step="5">
+                            <div class="hero-quiz-header">
+                                <div class="hero-label">Final Step</div>
+                                <h2>Almost there! Where should we send your personalized plan?</h2>
+                            </div>
+                            <div class="hero-quiz-contact">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <input type="text" id="heroFirstName" name="first_name" placeholder="First Name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" id="heroLastName" name="last_name" placeholder="Last Name">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <input type="email" id="heroEmail" name="email" placeholder="Email Address" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="tel" id="heroPhone" name="phone" placeholder="Phone Number" required>
+                                </div>
+                                <button type="submit" class="btn-primary hero-quiz-submit">
+                                    <span class="submit-text">Get My Personalized Plan</span>
+                                    <span class="submit-loading" style="display: none;">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                                            <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="32"/>
+                                        </svg>
+                                        Analyzing...
+                                    </span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="submit-arrow">
+                                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Back Button -->
+                    <button type="button" class="hero-quiz-back" id="heroQuizBack" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back
+                    </button>
+
+                    <!-- Results Section (hidden initially) -->
+                    <div class="hero-quiz-results" id="heroQuizResults" style="display: none;">
+                        <div class="hero-quiz-header">
+                            <div class="hero-label">Your Personalized Analysis</div>
+                            <h2>Here's What We Found, <span id="resultName">Friend</span></h2>
+                        </div>
+                        <div class="hero-quiz-ai-content" id="heroAiContent">
+                            <!-- AI-generated content will be inserted here -->
+                        </div>
+                        <div class="hero-quiz-cta">
+                            <p>Ready to see your full custom program?</p>
+                            <a href="/assessment" class="btn-primary">
+                                View Your Custom Plan
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                                </svg>
+                            </a>
+                            <p class="form-disclaimer" style="margin-top:1rem;">
+                                <a href="/book" style="color:var(--silver);text-decoration:underline;">Or book a free strategy call</a> for Private Coaching
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carousel Navigation -->
+        <div class="carousel-nav">
+            <button class="carousel-arrow carousel-prev" aria-label="Previous slide">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <div class="carousel-dots">
+                <button class="carousel-dot active" data-slide="1" aria-label="Slide 1"></button>
+                <button class="carousel-dot" data-slide="2" aria-label="Slide 2"></button>
+                <button class="carousel-dot" data-slide="3" aria-label="Slide 3"></button>
+                <button class="carousel-dot" data-slide="4" aria-label="Slide 4"></button>
+            </div>
+            <button class="carousel-arrow carousel-next" aria-label="Next slide">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="carousel-progress">
+            <div class="carousel-progress-bar"></div>
+        </div>
+    </section>
+
+    <!-- Quick Services Overview -->
+    <section class="services-preview" style="padding: 4rem 0; background: var(--black-light);">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label reveal">What We Offer</div>
+                <h2 class="reveal">Tailored for <span class="accent">High Achievers</span></h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem;">
+                <div class="card reveal">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--silver), var(--silver-dark)); display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="2">
+                            <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                            <line x1="6" y1="1" x2="6" y2="4"/>
+                            <line x1="10" y1="1" x2="10" y2="4"/>
+                            <line x1="14" y1="1" x2="14" y2="4"/>
+                        </svg>
+                    </div>
+                    <h3 style="font-family: var(--font-heading); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">Training Plans</h3>
+                    <p style="color: var(--gray); line-height: 1.7; margin-bottom: 1.5rem;">30, 60, and 90-day structured programs built for real results. Science-backed, time-efficient workouts.</p>
+                    <a href="/features#training" style="color: var(--silver); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.5rem; transition: color 0.3s ease;">
+                        Learn More
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="card reveal">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--silver), var(--silver-dark)); display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h3 style="font-family: var(--font-heading); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">Nutrition Plans</h3>
+                    <p style="color: var(--gray); line-height: 1.7; margin-bottom: 1.5rem;">Premium 4 and 8-week nutrition systems. Fully customizable with AI-powered survey for precision fueling.</p>
+                    <a href="/features#nutrition" style="color: var(--silver); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.5rem; transition: color 0.3s ease;">
+                        Learn More
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="card reveal">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--silver), var(--silver-dark)); display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--black)" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                    </div>
+                    <h3 style="font-family: var(--font-heading); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">Private Coaching</h3>
+                    <p style="color: var(--gray); line-height: 1.7; margin-bottom: 1.5rem;">Elite-level 1-on-1 coaching with weekly check-ins, program adjustments, and direct coach access.</p>
+                    <a href="/features#coaching" style="color: var(--silver); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.5rem; transition: color 0.3s ease;">
+                        Learn More
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statement Section -->
+    <section class="statement statement-with-bg">
+        <!-- Background image - add your image to images/statement-bg.jpg -->
+        <div class="statement-bg-image" style="background-image: url('images/landing2.png');"></div>
+        <div class="statement-overlay"></div>
+        <div class="container">
+            <h2 class="reveal">We don't guess.<br><span class="accent">We engineer results.</span></h2>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section style="padding: var(--section-padding) 0; background: var(--black-light);">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label reveal">Real Results</div>
+                <h2 class="reveal">What Clients <span class="accent">Say</span></h2>
+            </div>
+            <div class="testimonials-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem;">
+                <div class="testimonial-card reveal">
+                    <div class="testimonial-stars" style="color: #FFD700; margin-bottom: 1rem; font-size: 1.1rem;">★★★★★</div>
+                    <p class="testimonial-text">
+                        "I came in skeptical after trying other programs that promised the world. Anthony's approach is completely different - it's methodical, data-driven, and actually sustainable. Down 32 lbs in 4 months while getting stronger."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-info">
+                            <h4>Marcus C.</h4>
+                            <p>Software Engineer</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card reveal">
+                    <div class="testimonial-stars" style="color: #FFD700; margin-bottom: 1rem; font-size: 1.1rem;">★★★★★</div>
+                    <p class="testimonial-text">
+                        "As a busy mom of three, I needed something flexible. The weekly check-ins keep me accountable, and the program adapts when life gets crazy. Best shape of my life at 38."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-info">
+                            <h4>Rachel M.</h4>
+                            <p>Marketing Director</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card reveal">
+                    <div class="testimonial-stars" style="color: #FFD700; margin-bottom: 1rem; font-size: 1.1rem;">★★★★★</div>
+                    <p class="testimonial-text">
+                        "I've worked with personal trainers before, but never one who understood the demands of running a business. Anthony gets it - efficient workouts, strategic nutrition, real results."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-info">
+                            <h4>James T.</h4>
+                            <p>Business Owner</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scrolling Text Banner -->
+    <div class="scroll-text-container">
+        <div class="scroll-text">
+            <span>Discipline</span>
+            <span class="filled">Excellence</span>
+            <span>Transform</span>
+            <span class="filled">Elevate</span>
+            <span>Strength</span>
+            <span class="filled">Power</span>
+            <span>Discipline</span>
+            <span class="filled">Excellence</span>
+            <span>Transform</span>
+            <span class="filled">Elevate</span>
+            <span>Strength</span>
+            <span class="filled">Power</span>
+        </div>
+    </div>
+
+    <!-- Parallax Quote Section -->
+    <section class="parallax-section">
+        <div class="parallax-bg" style="background-image: url('images/parallax-gym.jpg');"></div>
+        <div class="parallax-overlay"></div>
+        <div class="float-element circle" style="top: 10%; right: 10%;"></div>
+        <div class="float-element square" style="bottom: 20%; left: 5%;"></div>
+        <div class="parallax-content reveal">
+            <div class="section-label" style="color: var(--silver);">The Mindset</div>
+            <h2>The Body Achieves What The <span class="accent">Mind Believes</span></h2>
+            <p>Every champion was once a contender who refused to give up. Your transformation starts the moment you decide to become unstoppable.</p>
+            <a href="#heroQuizForm" class="btn-primary" style="margin-top: 2rem;">Begin Your Journey</a>
+        </div>
+    </section>
+
+    <!-- Image Gallery Grid -->
+    <section style="background: var(--black);">
+        <div class="image-grid">
+            <div class="image-grid-item tall">
+                <div class="image-grid-item-inner" style="background-image: url('images/TallLeft.PNG');"></div>
+                <div class="image-grid-overlay">
+                    <h4>Strength</h4>
+                    <p>Building power from the ground up</p>
+                </div>
+            </div>
+            <div class="image-grid-item">
+                <div class="image-grid-item-inner" style="background-image: url('images/topmiddle.PNG'); background-position: center 45%;"></div>
+            </div>
+            <div class="image-grid-item">
+                <div class="image-grid-item-inner" style="background-image: url('images/topmiddle1.PNG'); background-position: center 45%;"></div>
+            </div>
+            <div class="image-grid-item wide">
+                <div class="image-grid-item-inner" style="background-image: url('images/middlehorizontal.PNG'); background-position: center 20%;"></div>
+                <div class="image-grid-overlay">
+                    <h4>Endurance</h4>
+                    <p>Push beyond your limits</p>
+                </div>
+            </div>
+            <div class="image-grid-item tall" style="grid-column: 4; grid-row: 1 / span 2;">
+                <div class="image-grid-item-inner" style="background-image: url('images/tallright.PNG'); background-position: center 25%;"></div>
+                <div class="image-grid-overlay">
+                    <h4>Dedication</h4>
+                    <p>Every rep counts</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BMI Calculator Section -->
+    <section class="calculator-section">
+        <div class="container">
+            <div class="calculator-wrapper">
+                <div class="calculator-info reveal">
+                    <div class="section-label">Free Tool</div>
+                    <h2>Know Your <span class="accent">Numbers</span></h2>
+                    <p>Understanding your body metrics is the first step to transformation. Use our calculator to get a baseline, then let us build your roadmap to success.</p>
+                    <div class="calculator-note">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <span>BMI is just one metric. Real progress requires a complete approach.</span>
+                    </div>
+                </div>
+                <div class="calculator-card reveal">
+                    <h3>BMI Calculator</h3>
+                    <div class="calc-toggle">
+                        <button class="calc-toggle-btn active" data-unit="imperial">Imperial</button>
+                        <button class="calc-toggle-btn" data-unit="metric">Metric</button>
+                    </div>
+                    <form id="bmiCalculator" class="calc-form">
+                        <div class="calc-row">
+                            <div class="calc-field">
+                                <label>Height</label>
+                                <div class="calc-input-group imperial-input">
+                                    <input type="number" id="heightFt" placeholder="ft" min="1" max="8">
+                                    <input type="number" id="heightIn" placeholder="in" min="0" max="11">
+                                </div>
+                                <div class="calc-input-group metric-input" style="display: none;">
+                                    <input type="number" id="heightCm" placeholder="cm" min="50" max="250">
+                                </div>
+                            </div>
+                            <div class="calc-field">
+                                <label>Weight</label>
+                                <div class="calc-input-group imperial-input">
+                                    <input type="number" id="weightLbs" placeholder="lbs" min="50" max="500">
+                                </div>
+                                <div class="calc-input-group metric-input" style="display: none;">
+                                    <input type="number" id="weightKg" placeholder="kg" min="20" max="250">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="calc-submit">Calculate BMI</button>
+                    </form>
+                    <div class="calc-result" id="bmiResult" style="display: none;">
+                        <div class="calc-result-number" id="bmiValue">--</div>
+                        <div class="calc-result-label" id="bmiCategory">--</div>
+                        <div class="calc-result-bar">
+                            <div class="calc-result-indicator" id="bmiIndicator"></div>
+                        </div>
+                        <div class="calc-result-scale">
+                            <span>Underweight</span>
+                            <span>Normal</span>
+                            <span>Overweight</span>
+                            <span>Obese</span>
+                        </div>
+                        <a href="#heroQuizForm" class="btn-primary calc-cta">Get Your Custom Plan</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Preview -->
+    <section class="about-section-mobile" style="padding: var(--section-padding) 0;">
+        <div class="container">
+            <div class="about-grid-section" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: center;">
+                <div class="reveal about-image-container" style="position: relative;">
+                    <img src="images/AboutVintus.png" alt="Anthony Santos - Vintus Performance" style="width: 100%; height: auto; display: block;">
+                </div>
+                <div>
+                    <div class="section-label reveal">Meet Your Coach</div>
+                    <h2 class="reveal" style="font-family: var(--font-heading); font-size: clamp(2.5rem, 4vw, 3.5rem); font-weight: 600; text-transform: uppercase; line-height: 1.1; margin-bottom: 2rem;">Vitality Within.<br><span style="background: var(--accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Built to Perform.</span></h2>
+                    <p class="reveal" style="color: var(--gray); font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                        At Vintus Performance, greatness starts from within. The name itself represents <strong style="color: var(--off-white);">"Vitality Within"</strong> - the idea that physical strength and mental dominance are inseparable.
+                    </p>
+                    <p class="reveal" style="color: var(--gray); font-size: 1.1rem; line-height: 1.8; margin-bottom: 2rem;">
+                        Founded by <strong style="color: var(--off-white);">Anthony Santos</strong>, a Certified Trainer and triathlete with 7+ years of strength training and endurance experience.
+                    </p>
+                    <div class="reveal" style="display: flex; gap: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 45px; height: 45px; background: var(--black-lighter); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 0.55rem; font-weight: 700; color: var(--silver);">CERT</div>
+                            <div style="font-size: 0.85rem; color: var(--gray);">
+                                <strong style="color: var(--off-white); display: block;">Certified Trainer</strong>
+                                Personal Training
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <img src="images/ironmanlogo.png" alt="Ironman 70.3" style="width: 45px; height: 45px; object-fit: contain;">
+                            <div style="font-size: 0.85rem; color: var(--gray);">
+                                <strong style="color: var(--off-white); display: block;">Ironman Triathlete</strong>
+                                Endurance Competitor
+                            </div>
+                        </div>
+                    </div>
+                    <a href="/about" class="btn-secondary reveal" style="margin-top: 2rem;">
+                        Full Story
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Values -->
+    <section class="values">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label reveal">Our Foundation</div>
+                <h2 class="reveal">Core Values That <span class="accent">Deliver Results</span></h2>
+            </div>
+            <div class="values-grid">
+                <div class="value-item reveal">
+                    <h3>Discipline</h3>
+                    <p>The foundation of sustainable success</p>
+                </div>
+                <div class="value-item reveal">
+                    <h3>Confidence</h3>
+                    <p>Built through consistency and progress</p>
+                </div>
+                <div class="value-item reveal">
+                    <h3>Health</h3>
+                    <p>Prioritized, never compromised</p>
+                </div>
+                <div class="value-item reveal">
+                    <h3>Excellence</h3>
+                    <p>In every plan, session, and detail</p>
+                </div>
+                <div class="value-item reveal">
+                    <h3>Integrity</h3>
+                    <p>You get what you pay for - and more</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Progress Rings Section -->
+    <section class="progress-section">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label reveal">By The Numbers</div>
+                <h2 class="reveal">Results That <span class="accent">Speak</span></h2>
+            </div>
+            <div class="progress-grid">
+                <div class="progress-item reveal">
+                    <div class="progress-ring" data-progress="95">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"/>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"/>
+                        </svg>
+                        <div class="progress-value">95%</div>
+                    </div>
+                    <h4>Client Retention</h4>
+                    <p>Clients who stay 6+ months</p>
+                </div>
+                <div class="progress-item reveal">
+                    <div class="progress-ring" data-progress="88">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"/>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"/>
+                        </svg>
+                        <div class="progress-value">88%</div>
+                    </div>
+                    <h4>Goal Achievement</h4>
+                    <p>Hit their target within plan</p>
+                </div>
+                <div class="progress-item reveal">
+                    <div class="progress-ring" data-progress="100">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="progress-bg" cx="50" cy="50" r="45"/>
+                            <circle class="progress-bar" cx="50" cy="50" r="45"/>
+                        </svg>
+                        <div class="progress-value">100%</div>
+                    </div>
+                    <h4>Personalized</h4>
+                    <p>Custom plans, zero templates</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Split Section - Training Philosophy -->
+    <section class="split-section">
+        <div class="split-image" style="display: flex; flex-direction: column;">
+            <div style="flex: 1; background-image: url('images/home1.PNG'); background-size: cover; background-position: center;"></div>
+            <div style="flex: 1; background-image: url('images/home2.PNG'); background-size: cover; background-position: center top;"></div>
+        </div>
+        <div class="split-content dark-bg">
+            <div class="section-label reveal">Our Approach</div>
+            <h2 class="reveal">Training That <span class="accent">Adapts</span> To Your Life</h2>
+            <p class="reveal">We understand that high achievers don't have time to waste. Every session is engineered for maximum impact - whether you have 30 minutes or 2 hours. Your program evolves with your schedule, your goals, and your progress.</p>
+            <div class="stagger-reveal revealed" style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+                <div>
+                    <div style="font-family: var(--font-heading); font-size: 2.5rem; font-weight: 700; background: var(--accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">24/7</div>
+                    <div style="font-size: 0.8rem; color: var(--gray); text-transform: uppercase; letter-spacing: 1px;">Coach Access</div>
+                </div>
+                <div>
+                    <div style="font-family: var(--font-heading); font-size: 2.5rem; font-weight: 700; background: var(--accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Weekly</div>
+                    <div style="font-size: 0.8rem; color: var(--gray); text-transform: uppercase; letter-spacing: 1px;">Plan Updates</div>
+                </div>
+            </div>
+            <a href="/features" class="btn-primary reveal">
+                See How It Works
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section" style="padding: 5rem 0; text-align: center; position: relative; background: linear-gradient(135deg, var(--black) 0%, var(--black-light) 100%);">
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(192, 192, 192, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(192, 192, 192, 0.02) 1px, transparent 1px); background-size: 80px 80px; pointer-events: none;"></div>
+        <div class="container" style="position: relative; z-index: 1;">
+            <h2 class="reveal" style="font-family: var(--font-heading); font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; text-transform: uppercase; margin-bottom: 1.5rem; line-height: 1.1;">Ready to <span style="background: var(--accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Transform</span>?</h2>
+            <p class="reveal" style="color: var(--gray); font-size: 1.2rem; max-width: 600px; margin: 0 auto 3rem;">Your life is full, your time is valuable, and your goals are non-negotiable. Start your journey today.</p>
+            <div class="reveal" style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;">
+                <a href="/assessment" class="btn-primary">
+                    Start Your Assessment
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <a href="/book" class="btn-secondary">
+                    Book Free Consultation
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Contact -->
+    <section class="quick-contact" style="padding: 3rem 0; background: var(--black); border-top: 1px solid var(--border-color);">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 3rem;">
+                <div>
+                    <h3 class="reveal" style="font-family: var(--font-heading); font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem;">Get In Touch</h3>
+                    <p class="reveal" style="color: var(--gray);">Morristown, NJ | Remote Training Available Worldwide</p>
+                </div>
+                <div class="reveal" style="display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
+                    <a href="mailto:vintusperformance@gmail.com" style="color: var(--off-white); text-decoration: none; font-size: 1.1rem; display: flex; align-items: center; gap: 0.75rem; transition: color 0.3s ease;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--silver)" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        vintusperformance@gmail.com
+                    </a>
+                    <div class="social-links">
+                        <a href="https://www.instagram.com/vintusofficial/" target="_blank" class="social-link" aria-label="Vintus Instagram">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                            </svg>
+                        </a>
+                        <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" class="social-link" aria-label="Facebook">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                        </a>
+                        <a href="https://www.tiktok.com/@vintusperformance" target="_blank" class="social-link" aria-label="TikTok">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sticky FAQ Button -->
+    <a href="/faq" class="sticky-faq">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        FAQ
+    </a>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <a href="/" class="footer-logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="footer-logo-img"></a>
+                <ul class="footer-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/features">Services</a></li>
+                    <li><a href="/about">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                </ul>
+                <div class="footer-social">
+                    <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                    </a>
+                    <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Vintus Performance. Discipline Within, Dominance Beyond.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/nav-auth.js"></script>
+</body>
+</html>
