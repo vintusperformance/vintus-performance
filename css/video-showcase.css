@@ -1,0 +1,106 @@
+/* =====================================================
+   VINTUS PERFORMANCE - Services Video Showcase
+   Symmetrical 3-up video grid (Strength / Conditioning / Nutrition)
+   ===================================================== */
+
+.video-showcase {
+    padding: 8rem 0 3rem;
+    background: var(--black);
+}
+
+.video-showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.video-panel {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+}
+
+.showcase-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.video-panel-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    background: linear-gradient(to top, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.2) 55%, transparent 100%);
+    pointer-events: none;
+}
+
+.video-panel-content {
+    padding: 1.75rem;
+    pointer-events: auto;
+}
+
+.video-panel-number {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    color: var(--silver);
+    margin-bottom: 0.5rem;
+}
+
+.video-panel-title {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.25rem;
+}
+
+.video-panel-subtitle {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.video-panel-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--white);
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 2px;
+    transition: all var(--transition-normal);
+}
+
+.video-panel-link:hover {
+    color: var(--silver);
+    border-color: var(--silver);
+    gap: 0.6rem;
+}
+
+@media (max-width: 900px) {
+    .video-showcase {
+        padding: 6rem 0 2rem;
+    }
+
+    .video-showcase-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .video-panel {
+        aspect-ratio: 16 / 10;
+    }
+}
