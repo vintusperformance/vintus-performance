@@ -20,6 +20,13 @@
     <link rel="stylesheet" href="css/video-showcase.css">
     <style>
         /* Features Page Specific Styles */
+
+        /* Video showcase now leads the page, so the hero below it
+           doesn't need to clear the fixed nav on its own anymore. */
+        .page-hero-secondary {
+            padding-top: 4rem;
+        }
+
         .pricing-badge {
             position: absolute;
             top: -12px;
@@ -160,6 +167,10 @@
 
         /* Mobile Comparison */
         @media (max-width: 768px) {
+            .page-hero-secondary {
+                padding-top: 2.5rem;
+            }
+
             .comparison-cards {
                 grid-template-columns: 1fr !important;
                 gap: 2rem !important;
@@ -264,89 +275,73 @@
         </div>
     </div>
 
+    <!-- Services Video Showcase -->
+    <section class="video-showcase" id="videoShowcase">
+        <div class="container">
+            <div class="video-showcase-grid">
+                <!-- Panel 1: Strength -->
+                <div class="video-panel" data-index="0">
+                    <video class="showcase-video" muted loop playsinline preload="none" poster="images/poster-strength.jpg">
+                        <source data-src="Strength.mp4" type="video/mp4">
+                    </video>
+                    <div class="video-panel-overlay">
+                        <div class="video-panel-content">
+                            <span class="video-panel-number">01</span>
+                            <h3 class="video-panel-title">Strength</h3>
+                            <p class="video-panel-subtitle">Build raw power</p>
+                            <a href="#coaching" class="video-panel-link">
+                                Learn more
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Conditioning -->
+                <div class="video-panel" data-index="1">
+                    <video class="showcase-video" muted loop playsinline preload="none" poster="images/poster-conditioning.jpg">
+                        <source data-src="Conditioning.mp4" type="video/mp4">
+                    </video>
+                    <div class="video-panel-overlay">
+                        <div class="video-panel-content">
+                            <span class="video-panel-number">02</span>
+                            <h3 class="video-panel-title">Conditioning</h3>
+                            <p class="video-panel-subtitle">Elite endurance</p>
+                            <a href="#training" class="video-panel-link">
+                                Learn more
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Nutrition -->
+                <div class="video-panel" data-index="2">
+                    <video class="showcase-video" muted loop playsinline preload="none" poster="images/poster-nutrition.jpg">
+                        <source data-src="Nutrition.mp4" type="video/mp4">
+                    </video>
+                    <div class="video-panel-overlay">
+                        <div class="video-panel-content">
+                            <span class="video-panel-number">03</span>
+                            <h3 class="video-panel-title">Nutrition</h3>
+                            <p class="video-panel-subtitle">Fuel performance</p>
+                            <a href="#nutrition" class="video-panel-link">
+                                Learn more
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Page Hero -->
-    <section class="page-hero">
+    <section class="page-hero page-hero-secondary">
         <div class="container">
             <div class="section-label reveal">Our Services</div>
             <h1 class="reveal">Programs & <span style="background: var(--accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Coaching</span></h1>
             <p class="reveal">Customized solutions for high-performing individuals who demand results.</p>
-        </div>
-    </section>
-
-    <!-- Services Video Showcase -->
-    <section class="video-showcase" id="videoShowcase">
-        <div class="video-showcase-stage">
-            <!-- Panel 1: Strength -->
-            <div class="video-panel active" data-index="0">
-                <video class="showcase-video" muted loop playsinline preload="none" poster="images/poster-strength.jpg">
-                    <source data-src="Strength.mp4" type="video/mp4">
-                </video>
-                <div class="video-panel-overlay">
-                    <div class="video-panel-content">
-                        <span class="video-panel-number">01</span>
-                        <h3 class="video-panel-title">Strength</h3>
-                        <p class="video-panel-subtitle">Build raw power</p>
-                        <a href="#coaching" class="video-panel-link">
-                            Learn more
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Panel 2: Conditioning -->
-            <div class="video-panel" data-index="1">
-                <video class="showcase-video" muted loop playsinline preload="none" poster="images/poster-conditioning.jpg">
-                    <source data-src="Conditioning.mp4" type="video/mp4">
-                </video>
-                <div class="video-panel-overlay">
-                    <div class="video-panel-content">
-                        <span class="video-panel-number">02</span>
-                        <h3 class="video-panel-title">Conditioning</h3>
-                        <p class="video-panel-subtitle">Elite endurance</p>
-                        <a href="#training" class="video-panel-link">
-                            Learn more
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Panel 3: Nutrition -->
-            <div class="video-panel" data-index="2">
-                <video class="showcase-video" muted loop playsinline preload="none" poster="images/poster-nutrition.jpg">
-                    <source data-src="Nutrition.mp4" type="video/mp4">
-                </video>
-                <div class="video-panel-overlay">
-                    <div class="video-panel-content">
-                        <span class="video-panel-number">03</span>
-                        <h3 class="video-panel-title">Nutrition</h3>
-                        <p class="video-panel-subtitle">Fuel performance</p>
-                        <a href="#nutrition" class="video-panel-link">
-                            Learn more
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab Navigation -->
-        <div class="container">
-            <div class="video-showcase-tabs">
-                <button class="showcase-tab active" data-index="0">
-                    <span class="tab-label">Strength</span>
-                    <span class="tab-progress"><span class="tab-progress-bar"></span></span>
-                </button>
-                <button class="showcase-tab" data-index="1">
-                    <span class="tab-label">Conditioning</span>
-                    <span class="tab-progress"><span class="tab-progress-bar"></span></span>
-                </button>
-                <button class="showcase-tab" data-index="2">
-                    <span class="tab-label">Nutrition</span>
-                    <span class="tab-progress"><span class="tab-progress-bar"></span></span>
-                </button>
-            </div>
         </div>
     </section>
 
