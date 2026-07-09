@@ -18,7 +18,7 @@ const PLANS: Omit<PlanRecommendation, "recommended">[] = [
     tier: "PRIVATE_COACHING",
     name: "Private Coaching",
     tagline: "Your dedicated performance coach, always adapting.",
-    price: 500,
+    price: 997,
     period: "/mo",
     isRecurring: true,
     durationLabel: "Monthly subscription",
