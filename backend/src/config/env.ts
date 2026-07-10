@@ -37,6 +37,9 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().startsWith("re_", "RESEND_API_KEY must start with re_"),
   RESEND_FROM_EMAIL: z.string().email("RESEND_FROM_EMAIL must be a valid email"),
 
+  // Coach notifications (Private Coaching monthly renewal reminders, etc.)
+  COACH_EMAIL: z.string().email("COACH_EMAIL must be a valid email").default("anthony@vintusperformance.org"),
+
   // Anthropic
   ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
 

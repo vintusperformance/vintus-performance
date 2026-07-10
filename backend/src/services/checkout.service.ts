@@ -266,6 +266,13 @@ async function handleSubscriptionUpdated(
     trialing: "TRIALING",
   };
   const status = statusMap[subscription.status] ?? "ACTIVE";
+  const newPeriodEnd = new Date(subscription.current_period_end * 1000);
+
+  // A rolled-over billing period means a fresh month started — clear the
+  // coach reminder flag so the new period gets its own renewal reminder.
+  const periodRolledOver =
+    !existing?.currentPeriodEnd ||
+    existing.currentPeriodEnd.getTime() !== newPeriodEnd.getTime();
 
   await prisma.subscription.update({
     where: { userId },
@@ -274,8 +281,9 @@ async function handleSubscriptionUpdated(
       stripePriceId,
       status,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodEnd: newPeriodEnd,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      ...(periodRolledOver ? { coachReminderSentAt: null } : {}),
     },
   });
 

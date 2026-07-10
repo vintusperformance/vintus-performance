@@ -405,12 +405,15 @@ model Subscription {
   renewalResponseAt  DateTime?
   scheduledDeleteAt  DateTime?
 
+  // Coach-facing reminder to review/update next month's Private Coaching plan
+  coachReminderSentAt DateTime?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
 enum PlanTier {
-  PRIVATE_COACHING     // $500/mo recurring subscription
+  PRIVATE_COACHING     // $997/mo recurring subscription
   TRAINING_30DAY       // $99 one-time, 30-day access
   TRAINING_60DAY       // $149 one-time, 60-day access
   TRAINING_90DAY       // $199 one-time, 90-day access
