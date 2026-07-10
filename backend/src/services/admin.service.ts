@@ -18,7 +18,7 @@ import { sendEmail } from "../lib/resend.js";
 // Only PRIVATE_COACHING contributes to MRR (recurring).
 // One-time purchases are revenue but not monthly recurring.
 const TIER_MONTHLY_PRICE: Record<string, number> = {
-  PRIVATE_COACHING: 500,
+  PRIVATE_COACHING: 997,
   TRAINING_30DAY: 0,
   TRAINING_60DAY: 0,
   TRAINING_90DAY: 0,
