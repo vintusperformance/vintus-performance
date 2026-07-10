@@ -510,7 +510,7 @@ async function generatePlanWithClaude(
   const userPrompt = lines.join("\n");
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-5",
     max_tokens: 4000,
     temperature: 0.4,
     system: PLAN_GENERATION_SYSTEM_PROMPT,

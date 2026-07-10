@@ -11,7 +11,7 @@ import type { Prisma } from "@prisma/client";
 // Constants
 // ============================================================
 
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-5";
 const MAX_CONTEXT_MESSAGES = 20;
 const RATE_LIMIT_PER_HOUR = 30;
 
