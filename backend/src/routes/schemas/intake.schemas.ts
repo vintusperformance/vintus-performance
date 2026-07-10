@@ -28,6 +28,7 @@ export const expandedIntakeSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Must be a valid email address"),
   phone: z.string().optional(),
+  smsConsent: z.boolean().optional().default(false),
 
   // Demographics
   dateOfBirth: z.string().datetime({ offset: true }).optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),

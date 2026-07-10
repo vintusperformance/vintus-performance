@@ -19,6 +19,7 @@
     lastName: '',
     email: '',
     phone: '',
+    smsConsent: false,
     dateOfBirth: '',
     occupation: '',
     timezone: 'America/New_York',
@@ -188,6 +189,7 @@
         answers.lastName = document.getElementById('lastName').value.trim();
         answers.email = document.getElementById('email').value.trim();
         answers.phone = document.getElementById('phone').value.trim();
+        answers.smsConsent = document.getElementById('smsConsentCheckbox').classList.contains('checked');
         break;
       case 2:
         answers.dateOfBirth = document.getElementById('dateOfBirth').value || '';
@@ -228,6 +230,7 @@
 
     // Optional fields — only include if provided
     if (answers.phone) payload.phone = answers.phone;
+    payload.smsConsent = !!answers.smsConsent;
     if (answers.dateOfBirth) payload.dateOfBirth = answers.dateOfBirth;
     if (answers.occupation) payload.occupation = answers.occupation;
     if (answers.timezone) payload.timezone = answers.timezone;

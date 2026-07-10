@@ -58,6 +58,7 @@ model AthleteProfile {
   firstName       String
   lastName        String
   phone           String?
+  smsConsent      Boolean  @default(false)
   timezone        String   @default("America/New_York")
   dateOfBirth     DateTime?
 
