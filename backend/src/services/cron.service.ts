@@ -183,6 +183,11 @@ export function startCrons(): void {
     } catch (err) {
       logger.error({ err }, "Welcome sequence cron failed");
     }
+    try {
+      await coachRenewalReminderCron();
+    } catch (err) {
+      logger.error({ err }, "Coach renewal reminder cron failed");
+    }
   });
 
   // Clear stale dedup entries daily at 4am UTC
@@ -1082,5 +1087,71 @@ async function welcomeSequenceCron(): Promise<void> {
 
   if (processed > 0) {
     logger.info({ processed }, "Welcome sequence cron completed");
+  }
+}
+
+// ============================================================
+// coachRenewalReminderCron — notify the coach ahead of each
+// Private Coaching client's monthly renewal so the plan can be
+// reviewed and regenerated for the next month.
+// ============================================================
+
+const COACH_REMINDER_LEAD_DAYS = 5;
+
+async function coachRenewalReminderCron(): Promise<void> {
+  const now = new Date();
+  const leadWindowEnd = new Date(now.getTime() + COACH_REMINDER_LEAD_DAYS * 24 * 60 * 60 * 1000);
+
+  const dueClients = await prisma.subscription.findMany({
+    where: {
+      planTier: "PRIVATE_COACHING",
+      status: "ACTIVE",
+      coachReminderSentAt: null,
+      currentPeriodEnd: { gte: now, lte: leadWindowEnd },
+    },
+    include: {
+      user: {
+        select: {
+          email: true,
+          athleteProfile: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
+  });
+
+  let sent = 0;
+
+  for (const sub of dueClients) {
+    const firstName = sub.user.athleteProfile?.firstName ?? "";
+    const lastName = sub.user.athleteProfile?.lastName ?? "";
+    const clientName = `${firstName} ${lastName}`.trim() || sub.user.email;
+    const renewalDate = sub.currentPeriodEnd.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    try {
+      await sendEmail(
+        env.COACH_EMAIL,
+        `Renewal coming up: ${clientName} — ${renewalDate}`,
+        `${clientName}'s (${sub.user.email}) Private Coaching month renews on ${renewalDate}. ` +
+          `Log into the admin dashboard to review their progress and click "Regenerate Plan" ` +
+          `to build their next month before it renews.`
+      );
+
+      await prisma.subscription.update({
+        where: { userId: sub.userId },
+        data: { coachReminderSentAt: new Date() },
+      });
+
+      sent++;
+    } catch (err) {
+      logger.error({ err, userId: sub.userId }, "Failed to send coach renewal reminder");
+    }
+  }
+
+  if (sent > 0) {
+    logger.info({ sent }, "Coach renewal reminder cron completed");
   }
 }
