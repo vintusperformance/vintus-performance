@@ -7,6 +7,12 @@
   var TOTAL_STEPS = 8;
   var currentStep = 1;
 
+  // Carry a plan-preview tier intent (?tier=X) through to results.html
+  var urlTier = new URLSearchParams(window.location.search).get('tier');
+  if (urlTier) {
+    localStorage.setItem('vintus_selected_tier', urlTier);
+  }
+
   // Collected answers
   var answers = {
     firstName: '',

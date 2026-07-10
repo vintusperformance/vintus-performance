@@ -75,6 +75,8 @@
     // Show content, hide loading
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
+
+    highlightSelectedTier();
   }
 
   // ── Quick quiz: generate summary from localStorage data ──
@@ -132,6 +134,31 @@
     // Show content, hide loading
     loadingEl.style.display = 'none';
     contentEl.style.display = 'block';
+
+    highlightSelectedTier();
+  }
+
+  // ── Scroll to and highlight the plan the visitor came here for
+  //    (set by plan-preview.js or a prior plan-select click) ──
+  function highlightSelectedTier() {
+    var tier = localStorage.getItem('vintus_selected_tier');
+    if (!tier) return;
+    localStorage.removeItem('vintus_selected_tier');
+
+    var card = document.querySelector('.plan-card[data-tier="' + tier + '"]');
+    if (!card) return;
+
+    card.classList.add('plan-card--selected');
+    if (!card.querySelector('.plan-badge')) {
+      var badge = document.createElement('div');
+      badge.className = 'plan-badge';
+      badge.textContent = 'The Plan You Wanted';
+      card.appendChild(badge);
+    }
+
+    setTimeout(function () {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
   }
 
   // ── Plan selection ──

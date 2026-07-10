@@ -201,6 +201,11 @@
     box-shadow: 0 0 60px rgba(192, 192, 192, 0.1);
 }
 
+.plan-card--selected {
+    border: 2px solid var(--silver);
+    box-shadow: 0 0 40px rgba(192, 192, 192, 0.18);
+}
+
 .plan-badge {
     position: absolute;
     top: -1px;
