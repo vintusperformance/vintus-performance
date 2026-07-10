@@ -1,0 +1,400 @@
+/* =====================================================
+   VINTUS PERFORMANCE - Training Calendar
+   Weekly grid, drag-and-drop reschedule, mobile move modal
+   ===================================================== */
+
+.cal-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 9rem 5% 6rem;
+    min-height: 100vh;
+}
+
+.cal-page-header {
+    margin-bottom: 2rem;
+}
+
+.cal-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    transition: color var(--transition-normal);
+}
+
+.cal-back-link:hover {
+    color: var(--silver);
+}
+
+.cal-page-header h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ── Card ── */
+
+.cal-card {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    padding: 1.75rem;
+}
+
+.cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.cal-header h3 {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.cal-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--gray);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.cal-nav-btn:hover {
+    border-color: var(--silver);
+    color: var(--silver);
+}
+
+.cal-adherence {
+    text-align: center;
+    color: var(--silver);
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    min-height: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Loading shimmer ── */
+
+.cal-loading-shimmer {
+    height: 320px;
+    background: linear-gradient(90deg, var(--black-card) 0%, rgba(192, 192, 192, 0.06) 50%, var(--black-card) 100%);
+    background-size: 200% 100%;
+    animation: calShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes calShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Week grid ── */
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.75rem;
+}
+
+.cal-day {
+    border: 1px solid var(--border-color);
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    transition: border-color var(--transition-normal), background var(--transition-normal);
+}
+
+.cal-day--today {
+    border-color: var(--silver);
+}
+
+.cal-day--past {
+    opacity: 0.55;
+}
+
+.cal-day--dragover {
+    background: rgba(192, 192, 192, 0.08);
+    border-color: var(--silver);
+}
+
+.cal-day-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cal-day-name {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gray);
+}
+
+.cal-day-num {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.cal-day--today .cal-day-num {
+    color: var(--silver);
+}
+
+.cal-day-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem;
+}
+
+.cal-rest-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--gray-dark);
+    font-size: 0.78rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* ── Workout cards ── */
+
+.cal-workout {
+    background: var(--black);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--silver);
+    padding: 0.6rem 0.65rem;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.cal-workout:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-1px);
+}
+
+.cal-workout--dragging {
+    opacity: 0.4;
+}
+
+.cal-workout-type {
+    font-size: 0.65rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 0.2rem;
+}
+
+.cal-workout-title {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 0.35rem;
+}
+
+.cal-workout-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--gray);
+}
+
+.cal-workout-status {
+    font-weight: 700;
+}
+
+.cal-workout--completed {
+    border-left-color: #7ba382;
+}
+
+.cal-workout--completed .cal-workout-status {
+    color: #7ba382;
+}
+
+.cal-workout--missed {
+    border-left-color: #c47a6e;
+}
+
+.cal-workout--missed .cal-workout-status {
+    color: #c47a6e;
+}
+
+.cal-workout--skipped {
+    border-left-color: var(--gray);
+    opacity: 0.75;
+}
+
+.cal-workout--rescheduled {
+    border-left-color: #7c93ad;
+}
+
+.cal-workout-replan {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+    background: transparent;
+    border: 1px solid rgba(196, 122, 110, 0.4);
+    color: #c47a6e;
+    padding: 0.35rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.cal-workout-replan:hover {
+    background: rgba(196, 122, 110, 0.1);
+}
+
+/* ── Mobile move modal ── */
+
+.cal-move-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 500;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.cal-move-modal-content {
+    width: 100%;
+    max-width: 480px;
+    background: var(--black-light);
+    border: 1px solid var(--border-color-hover);
+    border-bottom: none;
+    padding: 1.75rem 1.5rem 2rem;
+}
+
+.cal-move-modal-content p {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1.25rem;
+    text-align: center;
+}
+
+.cal-move-days {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.cal-move-day-btn {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    color: var(--white);
+    padding: 0.75rem 0.4rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.cal-move-day-btn:hover:not(:disabled) {
+    border-color: var(--silver);
+    color: var(--silver);
+}
+
+.cal-move-day-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.cal-move-cancel {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border-color-hover);
+    color: var(--gray);
+    padding: 0.85rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.cal-move-cancel:hover {
+    color: var(--silver);
+    border-color: var(--silver);
+}
+
+/* ── Toast ── */
+
+.cal-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--black-light);
+    border: 1px solid var(--border-color-hover);
+    color: var(--white);
+    padding: 0.9rem 1.5rem;
+    font-size: 0.9rem;
+    z-index: 600;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 900px) {
+    .cal-section {
+        padding: 7rem 5% 4rem;
+    }
+
+    .cal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cal-day {
+        min-height: unset;
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .cal-day-header {
+        flex-direction: row;
+        gap: 0.5rem;
+        border-bottom: none;
+        border-right: 1px solid var(--border-color);
+        min-width: 70px;
+        justify-content: center;
+    }
+
+    .cal-day-body {
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .cal-rest-label {
+        justify-content: flex-start;
+        padding-left: 0.5rem;
+    }
+}
