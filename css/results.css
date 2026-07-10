@@ -1,0 +1,349 @@
+/* =====================================================
+   VINTUS PERFORMANCE - Assessment Results
+   AI analysis, risk flags, and plan recommendation cards
+   ===================================================== */
+
+.results-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 8rem 5% 5rem;
+    min-height: 100vh;
+}
+
+/* ── Loading / Error states ── */
+
+.results-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    min-height: 60vh;
+    color: var(--gray);
+    font-size: 1rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    color: var(--silver);
+    animation: resultsSpin 1s linear infinite;
+}
+
+@keyframes resultsSpin {
+    to { transform: rotate(360deg); }
+}
+
+.results-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 60vh;
+    text-align: center;
+    color: var(--gray);
+    font-size: 1.05rem;
+}
+
+/* ── Header ── */
+
+.results-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.results-header h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+}
+
+.results-header p {
+    color: var(--gray);
+    font-size: 1.05rem;
+}
+
+.results-persona {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--silver);
+    color: var(--silver);
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin: 1.5rem 0 2.5rem;
+}
+
+/* ── AI Summary ── */
+
+.results-summary {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--silver);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.results-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--silver);
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+.results-summary-header svg {
+    width: 20px;
+    height: 20px;
+}
+
+.results-summary-body {
+    color: var(--off-white);
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+/* ── Risk flags ── */
+
+.results-flags {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+}
+
+.results-flag {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(200, 140, 60, 0.08);
+    border: 1px solid rgba(200, 140, 60, 0.35);
+    color: #d9a45a;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+}
+
+.results-flag svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ── Section titles ── */
+
+.results-plans-title,
+.results-category-title {
+    text-align: center;
+    font-family: var(--font-heading);
+    font-size: clamp(1.3rem, 3vw, 1.7rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 3rem 0 1.75rem;
+}
+
+.results-plans-title {
+    margin-top: 1rem;
+}
+
+/* ── Plan grids ── */
+
+.results-featured {
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.results-plans-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+.results-plans-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+/* ── Plan card ── */
+
+.plan-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    padding: 2.25rem 2rem;
+    transition: all var(--transition-normal);
+}
+
+.plan-card:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-4px);
+}
+
+.plan-card.recommended {
+    border: 2px solid var(--silver);
+    background: linear-gradient(180deg, rgba(192, 192, 192, 0.06) 0%, var(--black-card) 100%);
+    box-shadow: 0 0 60px rgba(192, 192, 192, 0.1);
+}
+
+.plan-badge {
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--black);
+    padding: 0.4rem 1.25rem;
+    font-family: var(--font-heading);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.plan-card h3 {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.plan-tagline {
+    color: var(--gray);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    min-height: 2.7rem;
+}
+
+.plan-price {
+    font-family: var(--font-heading);
+    font-size: 2.6rem;
+    font-weight: 700;
+    background: var(--accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+}
+
+.plan-period {
+    color: var(--gray);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+}
+
+.plan-features li {
+    position: relative;
+    padding-left: 1.6rem;
+    color: var(--off-white);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.plan-features li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.35em;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid var(--silver);
+    border-bottom: 2px solid var(--silver);
+    transform: rotate(-45deg);
+}
+
+.plan-select {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    background: transparent;
+    color: var(--silver);
+    border: 1px solid var(--silver);
+    padding: 1rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.plan-select:hover {
+    background: var(--silver);
+    color: var(--black);
+}
+
+.plan-card.recommended .plan-select {
+    background: var(--silver);
+    color: var(--black);
+    border-color: var(--silver);
+}
+
+.plan-card.recommended .plan-select:hover {
+    background: var(--white);
+    border-color: var(--white);
+}
+
+/* ── Footer note ── */
+
+.results-footer-note {
+    text-align: center;
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-top: 3rem;
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 900px) {
+    .results-plans-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .results-plans-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .results-section {
+        padding: 6.5rem 5% 3rem;
+    }
+
+    .plan-card {
+        padding: 1.75rem 1.5rem;
+    }
+}
