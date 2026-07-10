@@ -1,0 +1,257 @@
+/* =====================================================
+   VINTUS PERFORMANCE - Account Settings
+   Profile, Subscription (billing-forward placement), Security
+   ===================================================== */
+
+.settings-section {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 9rem 5% 6rem;
+    min-height: 100vh;
+}
+
+.settings-title {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 4vw, 2.6rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.6rem;
+}
+
+.settings-subtitle {
+    color: var(--gray);
+    font-size: 1rem;
+    margin-bottom: 3rem;
+}
+
+.settings-loading {
+    color: var(--gray);
+    text-align: center;
+    padding: 4rem 0;
+    font-size: 1rem;
+}
+
+/* ── Cards ── */
+
+.settings-card {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    padding: 2rem 2.25rem;
+    margin-bottom: 2rem;
+}
+
+.settings-card-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1.5rem;
+}
+
+/* Subscription is the business-critical card — billing/renewal info
+   a paying client checks most, so it gets a silver accent to stand
+   apart from the routine profile/security cards. */
+#subscriptionCard {
+    border: 1px solid var(--border-color-hover);
+    border-left: 3px solid var(--silver);
+}
+
+/* ── Fields ── */
+
+.settings-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.settings-field label {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--off-white);
+}
+
+.settings-field input,
+.settings-field select {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--border-color);
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    padding: 0.85rem 1rem;
+    transition: border-color var(--transition-normal);
+    color-scheme: dark;
+}
+
+.settings-field input::placeholder {
+    color: var(--gray-dark);
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+    outline: none;
+    border-color: var(--silver);
+}
+
+.settings-field input[readonly] {
+    color: var(--gray);
+    cursor: not-allowed;
+    background: var(--black-light);
+}
+
+/* ── Buttons ── */
+
+.settings-btn {
+    display: inline-block;
+    background: var(--silver);
+    color: var(--black);
+    border: 2px solid var(--silver);
+    padding: 0.9rem 2rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    margin-top: 0.5rem;
+}
+
+.settings-btn:hover {
+    background: var(--white);
+    border-color: var(--white);
+    transform: translateY(-2px);
+}
+
+.settings-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.settings-btn--outline {
+    background: transparent;
+    color: var(--silver);
+    border-color: var(--border-color-hover);
+}
+
+.settings-btn--outline:hover {
+    background: rgba(192, 192, 192, 0.08);
+    border-color: var(--silver);
+    color: var(--silver);
+}
+
+/* ── Messages ── */
+
+.settings-success,
+.settings-error {
+    display: none;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+}
+
+.settings-success {
+    color: #7ba382;
+    background: rgba(123, 163, 130, 0.08);
+    border: 1px solid rgba(123, 163, 130, 0.3);
+}
+
+.settings-error {
+    color: #c47a6e;
+    background: rgba(196, 122, 110, 0.08);
+    border: 1px solid rgba(196, 122, 110, 0.3);
+}
+
+/* ── Subscription info grid ── */
+
+.settings-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.settings-info-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+}
+
+.settings-info-value {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--white);
+}
+
+/* ── Status badges ── */
+
+.settings-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.settings-badge--active {
+    color: #7ba382;
+    background: rgba(123, 163, 130, 0.1);
+    border-color: rgba(123, 163, 130, 0.3);
+}
+
+.settings-badge--trialing {
+    color: #7c93ad;
+    background: rgba(124, 147, 173, 0.1);
+    border-color: rgba(124, 147, 173, 0.3);
+}
+
+.settings-badge--past_due,
+.settings-badge--canceled {
+    color: #c47a6e;
+    background: rgba(196, 122, 110, 0.1);
+    border-color: rgba(196, 122, 110, 0.3);
+}
+
+.settings-badge--default {
+    color: var(--gray);
+    background: rgba(136, 136, 136, 0.1);
+    border-color: var(--border-color);
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 640px) {
+    .settings-section {
+        padding: 7rem 5% 4rem;
+    }
+
+    .settings-card {
+        padding: 1.75rem 1.5rem;
+    }
+
+    .settings-row,
+    .settings-info-grid {
+        grid-template-columns: 1fr;
+    }
+}

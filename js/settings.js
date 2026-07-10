@@ -67,9 +67,12 @@
 
         // Tier display name
         var tierNames = {
-          'DIY_DIGITAL': 'DIY Digital',
-          'GUIDED_COACHING': 'Guided Coaching',
-          'PRIVATE_COACHING': 'Private Coaching'
+          'PRIVATE_COACHING': 'Private Coaching',
+          'TRAINING_30DAY': '30-Day Training Plan',
+          'TRAINING_60DAY': '60-Day Training Plan',
+          'TRAINING_90DAY': '90-Day Training Plan',
+          'NUTRITION_4WEEK': '4-Week Nutrition Plan',
+          'NUTRITION_8WEEK': '8-Week Nutrition Plan'
         };
         subTier.textContent = tierNames[sub.planTier] || sub.planTier || '--';
 

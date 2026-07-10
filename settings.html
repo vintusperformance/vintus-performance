@@ -100,7 +100,32 @@
                 </form>
             </div>
 
-            <!-- Section 2: Change Password -->
+            <!-- Section 2: Subscription Info (billing-forward: the section a
+                 paying client checks most, placed right after identity and
+                 before the less-frequent security task below) -->
+            <div class="settings-card" id="subscriptionCard" style="display:none;">
+                <h2 class="settings-card-title">Subscription</h2>
+                <div class="settings-info-grid">
+                    <div class="settings-info-item">
+                        <span class="settings-info-label">Plan Tier</span>
+                        <span class="settings-info-value" id="subTier">--</span>
+                    </div>
+                    <div class="settings-info-item">
+                        <span class="settings-info-label">Status</span>
+                        <span class="settings-info-value" id="subStatus">--</span>
+                    </div>
+                    <div class="settings-info-item">
+                        <span class="settings-info-label">Current Period Ends</span>
+                        <span class="settings-info-value" id="subPeriodEnd">--</span>
+                    </div>
+                </div>
+                <button class="settings-btn settings-btn--outline" id="manageSubBtn" style="display:none;">
+                    <span id="manageSubBtnText">Manage Subscription</span>
+                </button>
+                <div class="settings-error" id="subError"></div>
+            </div>
+
+            <!-- Section 3: Change Password -->
             <div class="settings-card">
                 <h2 class="settings-card-title">Change Password</h2>
                 <form id="passwordForm">
@@ -122,29 +147,6 @@
                     <div class="settings-success" id="passwordSuccess">Password updated. Redirecting to login...</div>
                     <div class="settings-error" id="passwordError"></div>
                 </form>
-            </div>
-
-            <!-- Section 3: Subscription Info -->
-            <div class="settings-card" id="subscriptionCard" style="display:none;">
-                <h2 class="settings-card-title">Subscription</h2>
-                <div class="settings-info-grid">
-                    <div class="settings-info-item">
-                        <span class="settings-info-label">Plan Tier</span>
-                        <span class="settings-info-value" id="subTier">--</span>
-                    </div>
-                    <div class="settings-info-item">
-                        <span class="settings-info-label">Status</span>
-                        <span class="settings-info-value" id="subStatus">--</span>
-                    </div>
-                    <div class="settings-info-item">
-                        <span class="settings-info-label">Current Period Ends</span>
-                        <span class="settings-info-value" id="subPeriodEnd">--</span>
-                    </div>
-                </div>
-                <button class="settings-btn settings-btn--outline" id="manageSubBtn" style="display:none;">
-                    <span id="manageSubBtnText">Manage Subscription</span>
-                </button>
-                <div class="settings-error" id="subError"></div>
             </div>
 
         </div>
