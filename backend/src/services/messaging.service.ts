@@ -200,7 +200,11 @@ export async function sendMessage(
 
   if (channel === "SMS") {
     const phone = user.athleteProfile?.phone;
-    if (phone) {
+    if (!user.athleteProfile?.smsConsent) {
+      failedAt = new Date();
+      failureReason = "No SMS consent on file";
+      logger.warn({ userId }, "Cannot send SMS: client has not opted in");
+    } else if (phone) {
       externalId = await sendSMS(phone, messageContent);
       if (!externalId) {
         failedAt = new Date();

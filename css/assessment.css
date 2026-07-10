@@ -366,6 +366,25 @@
     color: var(--off-white);
 }
 
+.assess-consent {
+    align-items: flex-start;
+    margin-top: 0.5rem;
+}
+
+.assess-consent .assess-checkbox-box {
+    margin-top: 0.15rem;
+}
+
+.assess-consent .assess-checkbox-label {
+    font-size: 0.82rem;
+    color: var(--gray);
+    line-height: 1.55;
+}
+
+.assess-consent .assess-checkbox-label a {
+    color: var(--silver);
+}
+
 /* ── Navigation ── */
 
 .assess-nav {
