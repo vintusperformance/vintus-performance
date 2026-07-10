@@ -1,0 +1,455 @@
+/* =====================================================
+   VINTUS PERFORMANCE - Elite Performance Assessment
+   8-step wizard: progress rail, cards, sliders, checkboxes
+   ===================================================== */
+
+.assess-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 8rem 5% 4rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Progress rail ── */
+
+.assess-progress {
+    position: relative;
+    height: 3px;
+    background: var(--border-color);
+    margin-bottom: 2.5rem;
+}
+
+.assess-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--silver);
+    transition: width 0.4s ease;
+}
+
+.assess-progress-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -13px;
+}
+
+.assess-step {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--black);
+    border: 2px solid var(--border-color);
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all var(--transition-normal);
+}
+
+.assess-step.active {
+    border-color: var(--silver);
+    color: var(--silver);
+    box-shadow: 0 0 0 4px rgba(192, 192, 192, 0.12);
+}
+
+.assess-step.completed {
+    background: var(--silver);
+    border-color: var(--silver);
+    color: var(--black);
+}
+
+/* ── Slides ── */
+
+.assess-slide {
+    display: none;
+}
+
+.assess-slide.active {
+    display: block;
+    animation: assessFadeIn 0.35s ease;
+}
+
+@keyframes assessFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.assess-slide-content {
+    flex: 1;
+}
+
+.assess-label {
+    display: inline-block;
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--silver);
+    margin-bottom: 0.75rem;
+}
+
+.assess-slide-content h2 {
+    font-family: var(--font-heading);
+    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+}
+
+.assess-subtitle {
+    color: var(--gray);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2.25rem;
+}
+
+/* ── Form fields ── */
+
+.assess-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.assess-fields-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.assess-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.assess-field label,
+.assess-slider-group label {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--off-white);
+}
+
+.assess-field label.required::after {
+    content: ' *';
+    color: var(--silver);
+}
+
+.assess-field input[type="text"],
+.assess-field input[type="email"],
+.assess-field input[type="tel"],
+.assess-field input[type="date"],
+.assess-field select,
+.assess-field textarea {
+    width: 100%;
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    padding: 0.9rem 1rem;
+    transition: border-color var(--transition-normal);
+    color-scheme: dark;
+}
+
+.assess-field textarea {
+    min-height: 90px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.assess-field input::placeholder,
+.assess-field textarea::placeholder {
+    color: var(--gray-dark);
+}
+
+.assess-field input:focus,
+.assess-field select:focus,
+.assess-field textarea:focus {
+    outline: none;
+    border-color: var(--silver);
+}
+
+/* ── Slider ── */
+
+.assess-slider-group {
+    margin-bottom: 2rem;
+}
+
+.assess-slider-group label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.assess-slider-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 0.4rem;
+    background: var(--silver);
+    color: var(--black);
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.assess-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border-color);
+    outline: none;
+}
+
+.assess-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--silver);
+    cursor: pointer;
+    transition: transform var(--transition-normal);
+}
+
+.assess-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.assess-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--silver);
+    border: none;
+    cursor: pointer;
+}
+
+/* ── Option cards ── */
+
+.assess-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.assess-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    color: var(--white);
+    padding: 1.1rem;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--transition-normal);
+}
+
+.assess-option:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-2px);
+}
+
+.assess-option.selected {
+    border-color: var(--silver);
+    background: rgba(192, 192, 192, 0.06);
+    box-shadow: 0 0 0 1px var(--silver);
+}
+
+.assess-option-icon {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray);
+    transition: color var(--transition-normal);
+}
+
+.assess-option-icon svg {
+    width: 26px;
+    height: 26px;
+}
+
+.assess-option.selected .assess-option-icon {
+    color: var(--silver);
+}
+
+.assess-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.assess-option-text strong {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.assess-option-text span {
+    font-size: 0.82rem;
+    color: var(--gray);
+}
+
+/* ── Checkboxes ── */
+
+.assess-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.85rem;
+}
+
+.assess-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: border-color var(--transition-normal);
+}
+
+.assess-checkbox:hover {
+    border-color: var(--border-color-hover);
+}
+
+.assess-checkbox-box {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--gray);
+    position: relative;
+    transition: all var(--transition-normal);
+}
+
+.assess-checkbox.checked .assess-checkbox-box {
+    background: var(--silver);
+    border-color: var(--silver);
+}
+
+.assess-checkbox.checked .assess-checkbox-box::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+    border: solid var(--black);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.assess-checkbox-label {
+    font-size: 0.9rem;
+    color: var(--off-white);
+}
+
+/* ── Navigation ── */
+
+.assess-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.assess-back,
+.assess-next,
+.assess-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    border: none;
+}
+
+.assess-back {
+    background: transparent;
+    color: var(--gray);
+    padding: 0.9rem 0;
+}
+
+.assess-back:hover {
+    color: var(--silver);
+}
+
+.assess-back svg {
+    width: 18px;
+    height: 18px;
+}
+
+.assess-next,
+.assess-submit {
+    background: var(--silver);
+    color: var(--black);
+    padding: 1rem 2.2rem;
+    margin-left: auto;
+    border: 2px solid var(--silver);
+}
+
+.assess-next:hover,
+.assess-submit:hover {
+    background: var(--white);
+    border-color: var(--white);
+    transform: translateY(-2px);
+}
+
+.assess-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 640px) {
+    .assess-container {
+        padding: 6.5rem 5% 3rem;
+    }
+
+    .assess-fields-row {
+        grid-template-columns: 1fr;
+    }
+
+    .assess-options,
+    .assess-checkboxes {
+        grid-template-columns: 1fr;
+    }
+
+    .assess-step {
+        width: 20px;
+        height: 20px;
+        font-size: 0.65rem;
+    }
+}
