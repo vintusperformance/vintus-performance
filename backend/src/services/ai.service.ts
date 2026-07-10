@@ -85,7 +85,7 @@ function checkRateLimit(): boolean {
 // Claude API Constants
 // ============================================================
 
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-5";
 
 const INTAKE_SYSTEM_PROMPT = `You are the AI engine behind Vintus Performance, a premium coaching brand. You analyze athlete intake surveys and produce:
 1) A persona classification (exactly one of: executive-athlete, endurance-competitor, hybrid-builder, recovery-first)
