@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { anthropic } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
 import type { Prisma } from "@prisma/client";
+import { FAQ_KNOWLEDGE } from "../data/faq-knowledge.js";
 
 /**
  * Chat Service — AI Coach "Jerry" live conversation.
@@ -241,6 +242,9 @@ THIS WEEK:
   }
 
   prompt += `
+
+BUSINESS KNOWLEDGE (use this to answer plans/billing/policy questions accurately — do not guess or invent details not listed here):
+${FAQ_KNOWLEDGE}
 
 SAFETY GUARDRAILS:
 - NEVER give specific medical advice. For injuries, say something like "That's outside my lane — reach out to your physician or PT before we adjust anything."
