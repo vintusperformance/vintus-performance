@@ -66,6 +66,9 @@ fitness account, it's wrong.
 2. **Never fabricate proof.** No testimonials, transformation stats, client counts,
    or results that aren't real. This includes "3 spots left" style scarcity unless
    the number is actually true.
+   - *Settled exception:* the "Popular" badge (`features.html`) and "Most Popular"
+     badge (`results.html`) on the 60-day tier are an approved marketing convention.
+     Anthony reviewed and decided to keep them. Do not re-flag on future reviews.
 3. **Compliance is not optional.** SMS requires explicit opt-in consent
    (`smsConsent` on AthleteProfile gates all sending). Terms and Privacy pages
    carry carrier-required disclosures — don't thin them out.
