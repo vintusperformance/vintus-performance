@@ -9,6 +9,7 @@ import { checkWelcomeSequence } from "./messaging.service.js";
 import * as adherenceService from "./adherence.service.js";
 import * as workoutService from "./workout.service.js";
 import * as readinessService from "./readiness.service.js";
+import * as adminService from "./admin.service.js";
 
 import { isAutoMessagingEnabled, isCronEnabled } from "../lib/feature-flags.js";
 
@@ -187,6 +188,18 @@ export function startCrons(): void {
       await coachRenewalReminderCron();
     } catch (err) {
       logger.error({ err }, "Coach renewal reminder cron failed");
+    }
+  });
+
+  // Daily admin digest — 11:00 UTC (~7am America/New_York)
+  cron.schedule("0 11 * * *", async () => {
+    if (!isCronEnabled()) {
+      return; // Admin has paused cron via dashboard
+    }
+    try {
+      await adminDailyDigestCron();
+    } catch (err) {
+      logger.error({ err }, "Admin daily digest cron failed");
     }
   });
 
@@ -1154,4 +1167,116 @@ async function coachRenewalReminderCron(): Promise<void> {
   if (sent > 0) {
     logger.info({ sent }, "Coach renewal reminder cron completed");
   }
+}
+
+// ============================================================
+// adminDailyDigestCron — one email each morning summarizing
+// everything waiting on the coach: pending approvals, escalations,
+// plans ending/completed, queued messages, and system health.
+// ============================================================
+
+async function adminDailyDigestCron(): Promise<void> {
+  const dedupKey = `admin-digest:${new Date().toISOString().split("T")[0]}`;
+  if (processedReviews.has(dedupKey)) return;
+
+  await sendAdminDailyDigest();
+  processedReviews.set(dedupKey, true);
+}
+
+function clientName(entry: { email: string; athleteProfile?: { firstName: string; lastName: string } | null }): string {
+  const p = entry.athleteProfile;
+  return p ? `${p.firstName} ${p.lastName}`.trim() || entry.email : entry.email;
+}
+
+async function sendAdminDailyDigest(): Promise<void> {
+  const [actionQueue, pendingTriggers, health] = await Promise.all([
+    adminService.getActionQueue(),
+    adminService.getPendingTriggers(),
+    adminService.getSystemHealth(),
+  ]);
+
+  const { pendingApprovals, endingSoon, completedPlans, unresolvedEscalations } = actionQueue;
+  const unhealthy = Object.entries(health).filter(([, v]) => v.status !== "ok");
+
+  const totalItems =
+    pendingApprovals.length +
+    unresolvedEscalations.length +
+    completedPlans.length +
+    pendingTriggers.length;
+
+  const sections: string[] = [];
+
+  if (unhealthy.length > 0) {
+    sections.push(
+      `<strong>⚠ System Health</strong><br>` +
+        unhealthy.map(([name]) => `${name}: not responding`).join("<br>")
+    );
+  }
+
+  if (pendingApprovals.length > 0) {
+    sections.push(
+      `<strong>New Clients Awaiting Approval (${pendingApprovals.length})</strong><br>` +
+        (pendingApprovals as Array<{ email: string; athleteProfile?: { firstName: string; lastName: string } | null; subscription?: { planTier: string } | null }>)
+          .map((c) => `${clientName(c)} — ${c.subscription?.planTier ?? "?"}`)
+          .join("<br>")
+    );
+  }
+
+  if (unresolvedEscalations.length > 0) {
+    sections.push(
+      `<strong>Unresolved Escalations (${unresolvedEscalations.length})</strong><br>` +
+        (unresolvedEscalations as Array<{ user: { email: string; athleteProfile?: { firstName: string; lastName: string } | null }; triggerReason: string; escalationLevel: number }>)
+          .map((e) => `${clientName(e.user)} — level ${e.escalationLevel} (${e.triggerReason})`)
+          .join("<br>")
+    );
+  }
+
+  if (completedPlans.length > 0) {
+    sections.push(
+      `<strong>Plans Completed — Awaiting Renewal Response (${completedPlans.length})</strong><br>` +
+        (completedPlans as Array<{ email: string; athleteProfile?: { firstName: string; lastName: string } | null; daysUntilDelete: number | null }>)
+          .map((c) => `${clientName(c)} — auto-deactivates in ${c.daysUntilDelete ?? "?"}d if no response`)
+          .join("<br>")
+    );
+  }
+
+  if (endingSoon.length > 0) {
+    sections.push(
+      `<strong>Plans Ending Within 7 Days (${endingSoon.length})</strong><br>` +
+        (endingSoon as Array<{ email: string; athleteProfile?: { firstName: string; lastName: string } | null; daysRemaining: number }>)
+          .map((c) => `${clientName(c)} — ${c.daysRemaining}d left`)
+          .join("<br>")
+    );
+  }
+
+  if (pendingTriggers.length > 0) {
+    sections.push(
+      `<strong>Queued Messages Awaiting Send (${pendingTriggers.length})</strong><br>` +
+        `Auto-messaging is off, so these are sitting in your Actions tab for manual review.`
+    );
+  }
+
+  if (totalItems === 0 && unhealthy.length === 0) {
+    sections.push(`Nothing needs your attention this morning. Everything's running clean.`);
+  }
+
+  const emailContent = [
+    `<strong>Vintus Performance — Daily Brief</strong>`,
+    ``,
+    ...sections.map((s) => s + `<br>`),
+    `<br><a href="${env.FRONTEND_URL}/admin.html">Open Admin Dashboard →</a>`,
+  ].join("<br>");
+
+  await sendEmail(
+    env.COACH_EMAIL,
+    totalItems > 0
+      ? `Daily Brief: ${totalItems} item${totalItems === 1 ? "" : "s"} need your attention`
+      : `Daily Brief: All clear`,
+    emailContent
+  );
+
+  logger.info(
+    { pendingApprovals: pendingApprovals.length, unresolvedEscalations: unresolvedEscalations.length, completedPlans: completedPlans.length, pendingTriggers: pendingTriggers.length, unhealthy: unhealthy.length },
+    "Admin daily digest sent"
+  );
 }
