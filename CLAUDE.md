@@ -94,26 +94,56 @@ Route work to the specialist rather than doing it inline. Each is a subagent in
 
 | Need | Agent |
 |---|---|
+| **Brand** | |
 | "Does this feel like Vintus?" — copy/positioning review | `brand-director` |
+| **Content** | |
 | Content pillars, posting cadence, platform strategy | `content-strategist` |
 | Hooks, reels, captions, carousels, emails, YouTube scripts | `script-writer` |
+| Reels/TikTok/Shorts retention, hook sharpening | `short-form-optimizer` |
+| Thumbnails, carousel layout, B-roll shot lists | `creative-director` |
+| **Social** | |
 | Scheduling/publishing to social (Buffer) | `social-media-manager` |
+| **Sales** | |
 | DMs, cold email, follow-up sequences | `outreach-agent` |
 | Objections, pricing conversations, consultation close | `sales-agent` |
+| Podcasts, collabs, affiliates, events | `partnership-agent` |
+| **Marketing** | |
+| Conversion path analysis, checkout/assessment friction | `funnel-optimization` |
+| Search visibility, metadata, blog strategy | `seo-agent` |
+| **Coaching** | |
 | Client adherence, churn risk, at-risk flagging | `client-success` |
+| Training/nutrition programming, plan quality review | `program-builder` |
+| Welcome sequences, onboarding, FAQ, milestone touches | `client-concierge` |
+| **Operations** | |
+| Lead pipeline, stage progression, follow-up aging | `crm-manager` |
 | Revenue/growth reporting, CEO weekly report | `analytics-agent` |
+| Revenue, subscription economics, forecasting | `finance-agent` |
+| Documenting workflows as repeatable SOPs | `sop-agent` |
+| **Innovation** | |
+| Competitors, tooling, wearables, "what's next?" | `rd-agent` |
 
 **Orchestration rules:**
 - Any client-facing copy any agent produces gets a `brand-director` pass before it ships.
 - `script-writer` takes direction from `content-strategist` — strategy precedes scripts.
+  `short-form-optimizer` sharpens what `script-writer` drafts; it doesn't write from scratch.
 - Anything that sends to a real client or posts publicly is **draft-first**, Anthony approves.
+- `crm-manager` runs on our own Postgres (`Lead`, `User`, `Subscription`). We do not use
+  an external CRM — splitting the data across systems would cost more than it buys.
 - Don't spawn an agent to answer something already answered in this file.
 
 ### Not yet buildable (missing integrations — don't pretend otherwise)
 
-Lead Generation (no Instagram/LinkedIn/Reddit access) · Paid Ads (no Meta Ads
-connector) · CRM Manager (no CRM connected) · Accountability wearables (no
-Whoop/Garmin/Strava/Apple Health integration) · Finance (no accounting connector).
+- **Lead Generation** — no prospect data source. Needs a paid provider (Apollo, Clay,
+  or similar). Scraping Instagram/LinkedIn directly violates their terms and risks the
+  accounts.
+- **Paid Ads** — no Meta/Google ads connector, no ad account, no spend authorized.
+- **Community Manager** — no connector provides Instagram/TikTok DM or comment access.
+  Buffer covers publishing and metrics only.
+- **Accountability (wearables)** — `DeviceConnection`, `device.routes.ts`, and
+  `device.service.ts` are already scaffolded for Strava/Garmin/Whoop/Oura/Fitbit/
+  Apple Health/TrainingPeaks, but adapters return stub data (`device.service.ts:177`).
+  Unblocking this is engineering work plus provider developer credentials — not a
+  connector purchase.
 
 When one of these is asked for, say what's missing rather than producing
 plausible-looking output from nothing.
