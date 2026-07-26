@@ -55,7 +55,8 @@
 
         <!-- Tabs -->
         <div class="admin-tabs">
-            <button class="admin-tab admin-tab--active" data-tab="overview">Overview</button>
+            <button class="admin-tab admin-tab--active" data-tab="command">Command</button>
+            <button class="admin-tab" data-tab="overview">Overview</button>
             <button class="admin-tab" data-tab="actions">Actions <span id="actionBadge" class="admin-pending-badge" style="display:none;"></span></button>
             <button class="admin-tab" data-tab="clients">Clients <span id="pendingBadge" class="admin-pending-badge" style="display:none;"></span></button>
             <button class="admin-tab" data-tab="messaging">Messaging</button>
@@ -66,8 +67,56 @@
         <!-- Tab Content -->
         <div class="admin-content">
 
+            <!-- Command Center Tab -->
+            <div class="admin-tab-content admin-tab-content--active" id="tabCommand">
+
+                <!-- Status headline -->
+                <div class="cc-headline" id="ccHeadline">
+                    <div class="cc-headline-status" id="ccStatus">Loading…</div>
+                    <div class="cc-headline-sub" id="ccStatusSub">Checking everything that needs your attention.</div>
+                </div>
+
+                <!-- Needs you now -->
+                <div class="admin-card cc-priority-card">
+                    <h3 class="admin-card-title">Needs You Now</h3>
+                    <div id="ccPriority"><div class="admin-empty">Loading…</div></div>
+                </div>
+
+                <!-- Business at a glance -->
+                <div class="cc-section-label">Business</div>
+                <div class="cc-metric-grid" id="ccMetrics">
+                    <div class="cc-metric">
+                        <span class="cc-metric-label">MRR</span>
+                        <span class="cc-metric-value" id="ccMrr">&mdash;</span>
+                        <span class="cc-metric-note">Recurring only</span>
+                    </div>
+                    <div class="cc-metric">
+                        <span class="cc-metric-label">Active Clients</span>
+                        <span class="cc-metric-value" id="ccActive">&mdash;</span>
+                        <span class="cc-metric-note" id="ccActiveNote">&nbsp;</span>
+                    </div>
+                    <div class="cc-metric">
+                        <span class="cc-metric-label">Avg Adherence</span>
+                        <span class="cc-metric-value" id="ccAdherence">&mdash;</span>
+                        <span class="cc-metric-note">Across active clients</span>
+                    </div>
+                    <div class="cc-metric">
+                        <span class="cc-metric-label">Net (30d)</span>
+                        <span class="cc-metric-value" id="ccNet">&mdash;</span>
+                        <span class="cc-metric-note" id="ccNetNote">&nbsp;</span>
+                    </div>
+                </div>
+
+                <!-- System -->
+                <div class="cc-section-label">System</div>
+                <div class="admin-card">
+                    <div class="cc-system-row" id="ccSystem"><div class="admin-empty">Loading…</div></div>
+                </div>
+
+            </div>
+
             <!-- Overview Tab -->
-            <div class="admin-tab-content admin-tab-content--active" id="tabOverview">
+            <div class="admin-tab-content" id="tabOverview">
                 <div class="admin-kpi-grid" id="kpiGrid">
                     <div class="admin-kpi"><span class="admin-kpi-label">Total Clients</span><span class="admin-kpi-value" id="kpiTotal">&mdash;</span></div>
                     <div class="admin-kpi"><span class="admin-kpi-label">Active</span><span class="admin-kpi-value" id="kpiActive">&mdash;</span></div>

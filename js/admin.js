@@ -11,7 +11,7 @@
   }
 
   /* ── State ── */
-  var loadedTabs = { overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false };
+  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false };
   var clientsPage = 1;
   var clientsTotalPages = 1;
   var escalationsPage = 1;
@@ -138,7 +138,8 @@
     if (loadedTabs[name] && !force) return;
     showTabLoading(name);
     loadedTabs[name] = true;
-    if (name === 'overview') loadOverview();
+    if (name === 'command') loadCommand();
+    else if (name === 'overview') loadOverview();
     else if (name === 'actions') loadActionQueue();
     else if (name === 'clients') loadClients();
     else if (name === 'messaging') loadMessaging();
@@ -212,6 +213,189 @@
         btn.disabled = false;
       });
     });
+  }
+
+  /* ── Command Center ── */
+
+  function goToTab(name) {
+    var btn = document.querySelector('.admin-tab[data-tab="' + name + '"]');
+    if (btn) btn.click();
+  }
+
+  async function loadCommand() {
+    try {
+      var results = await Promise.all([
+        apiGet('/api/v1/admin/analytics/overview'),
+        apiGet('/api/v1/admin/action-queue'),
+        apiGet('/api/v1/admin/system/health'),
+        apiGet('/api/v1/admin/triggers')
+      ]);
+
+      var overview = results[0].data;
+      var queue = results[1].data;
+      var health = results[2].data;
+      var triggers = (results[3].data && results[3].data.triggers) || [];
+
+      var pendingApprovals = queue.pendingApprovals || [];
+      var escalations = queue.unresolvedEscalations || [];
+      var completedPlans = queue.completedPlans || [];
+      var endingSoon = queue.endingSoon || [];
+
+      var downServices = Object.keys(health).filter(function (k) {
+        return health[k] && health[k].status !== 'ok';
+      });
+
+      // ── Priority list, ranked by cost of delay ──
+      var items = [];
+
+      if (pendingApprovals.length) {
+        items.push({
+          sev: 'critical',
+          title: pendingApprovals.length + ' client' + (pendingApprovals.length === 1 ? '' : 's') + ' awaiting approval',
+          detail: 'Paid and waiting. Their plan stays locked until you approve.',
+          action: 'Review', tab: 'clients'
+        });
+      }
+
+      if (downServices.length) {
+        items.push({
+          sev: 'critical',
+          title: downServices.join(', ') + ' not responding',
+          detail: 'A core service is failing health checks.',
+          action: 'Diagnose', tab: 'overview'
+        });
+      }
+
+      if (completedPlans.length) {
+        var soonest = null;
+        for (var c = 0; c < completedPlans.length; c++) {
+          var d = completedPlans[c].daysUntilDelete;
+          if (d != null && (soonest === null || d < soonest)) soonest = d;
+        }
+        items.push({
+          sev: 'warn',
+          title: completedPlans.length + ' plan' + (completedPlans.length === 1 ? '' : 's') + ' completed, awaiting renewal',
+          detail: soonest != null
+            ? 'Auto-deactivates in ' + soonest + ' day' + (soonest === 1 ? '' : 's') + ' without a response.'
+            : 'Renewal response outstanding.',
+          action: 'Open', tab: 'actions'
+        });
+      }
+
+      if (escalations.length) {
+        items.push({
+          sev: 'warn',
+          title: escalations.length + ' unresolved escalation' + (escalations.length === 1 ? '' : 's'),
+          detail: 'Clients falling behind who have already been flagged.',
+          action: 'Review', tab: 'escalations'
+        });
+      }
+
+      if (triggers.length) {
+        items.push({
+          sev: 'info',
+          title: triggers.length + ' message' + (triggers.length === 1 ? '' : 's') + ' queued for send',
+          detail: 'Auto-messaging is off, so these wait on your approval.',
+          action: 'Open', tab: 'actions'
+        });
+      }
+
+      if (endingSoon.length) {
+        items.push({
+          sev: 'info',
+          title: endingSoon.length + ' plan' + (endingSoon.length === 1 ? '' : 's') + ' ending within 7 days',
+          detail: 'Renewal conversations worth having now.',
+          action: 'Open', tab: 'actions'
+        });
+      }
+
+      // ── Headline ──
+      // Counts decisions only. Queued messages are a bulk queue, not individual
+      // judgment calls — folding them in produces an alarming, meaningless number.
+      var actionable = pendingApprovals.length + escalations.length + completedPlans.length;
+      var statusEl = document.getElementById('ccStatus');
+      var subEl = document.getElementById('ccStatusSub');
+      var headEl = document.getElementById('ccHeadline');
+
+      headEl.classList.remove('cc-headline--clear', 'cc-headline--warn', 'cc-headline--critical');
+
+      if (downServices.length || pendingApprovals.length) {
+        headEl.classList.add('cc-headline--critical');
+        statusEl.textContent = actionable + ' item' + (actionable === 1 ? '' : 's') + ' need you';
+        subEl.textContent = pendingApprovals.length
+          ? 'Someone paid and is waiting on activation.'
+          : 'A core service is down.';
+      } else if (actionable > 0) {
+        headEl.classList.add('cc-headline--warn');
+        statusEl.textContent = actionable + ' item' + (actionable === 1 ? '' : 's') + ' need you';
+        subEl.textContent = 'Nothing urgent. Worth clearing today.';
+      } else if (triggers.length) {
+        headEl.classList.add('cc-headline--clear');
+        statusEl.textContent = 'All clear';
+        subEl.textContent = 'No decisions waiting. ' + triggers.length + ' message' +
+          (triggers.length === 1 ? '' : 's') + ' queued for send when you want them.';
+      } else {
+        headEl.classList.add('cc-headline--clear');
+        statusEl.textContent = 'All clear';
+        subEl.textContent = 'Nothing is waiting on you. Everything is running clean.';
+      }
+
+      // ── Render priority list ──
+      var pEl = document.getElementById('ccPriority');
+      if (!items.length) {
+        pEl.innerHTML = '<div class="admin-empty">Nothing needs your attention right now.</div>';
+      } else {
+        var pHtml = '';
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i];
+          pHtml += '<div class="cc-item cc-item--' + it.sev + '">' +
+            '<span class="cc-item-dot"></span>' +
+            '<div class="cc-item-body">' +
+              '<div class="cc-item-title">' + esc(it.title) + '</div>' +
+              '<div class="cc-item-detail">' + esc(it.detail) + '</div>' +
+            '</div>' +
+            '<button class="cc-item-btn" data-goto="' + esc(it.tab) + '">' + esc(it.action) + '</button>' +
+          '</div>';
+        }
+        pEl.innerHTML = pHtml;
+        pEl.querySelectorAll('[data-goto]').forEach(function (btn) {
+          btn.addEventListener('click', function () { goToTab(btn.getAttribute('data-goto')); });
+        });
+      }
+
+      // ── Metrics ──
+      document.getElementById('ccMrr').textContent = fmtCurrency(overview.mrr);
+      document.getElementById('ccActive').textContent = overview.activeClients;
+      document.getElementById('ccActiveNote').textContent = overview.totalClients + ' total';
+      document.getElementById('ccAdherence').textContent = fmtPct(overview.avgAdherenceRate);
+
+      var net = (overview.newLast30Days || 0) - (overview.churnedLast30Days || 0);
+      var netEl = document.getElementById('ccNet');
+      netEl.textContent = (net > 0 ? '+' : '') + net;
+      netEl.className = 'cc-metric-value' + (net > 0 ? ' cc-pos' : net < 0 ? ' cc-neg' : '');
+      document.getElementById('ccNetNote').textContent =
+        (overview.newLast30Days || 0) + ' new · ' + (overview.churnedLast30Days || 0) + ' churned';
+
+      // ── System row ──
+      var sysHtml = '';
+      var svcKeys = Object.keys(health);
+      for (var s = 0; s < svcKeys.length; s++) {
+        var name = svcKeys[s];
+        var ok = health[name] && health[name].status === 'ok';
+        sysHtml += '<div class="cc-svc">' +
+          '<span class="cc-svc-dot ' + (ok ? 'cc-svc-dot--ok' : 'cc-svc-dot--down') + '"></span>' +
+          '<span class="cc-svc-name">' + esc(name) + '</span>' +
+        '</div>';
+      }
+      document.getElementById('ccSystem').innerHTML = sysHtml ||
+        '<div class="admin-empty">No health data.</div>';
+
+    } catch (e) {
+      document.getElementById('ccStatus').textContent = 'Unable to load';
+      document.getElementById('ccStatusSub').textContent = e.message || 'Something went wrong reaching the server.';
+      document.getElementById('ccPriority').innerHTML =
+        '<div class="admin-empty">Could not reach the admin API.</div>';
+    }
   }
 
   async function loadOverview() {
@@ -1733,7 +1917,7 @@
     clientsBody.innerHTML = '<tr><td colspan="7"><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div></td></tr>';
   }
 
-  loadTab('overview');
+  loadTab('command');
   loadPendingCount();
 
 })();
