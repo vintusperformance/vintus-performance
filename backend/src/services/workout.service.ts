@@ -521,7 +521,6 @@ async function generatePlanWithClaude(
     // 4000 sat right on the edge and truncated mid-object, which surfaced as an
     // opaque JSON parse failure and a silent fall back to templates.
     max_tokens: 8000,
-    temperature: 0.4,
     system: PLAN_GENERATION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
