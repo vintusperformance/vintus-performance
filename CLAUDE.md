@@ -134,6 +134,23 @@ Route work to the specialist rather than doing it inline. Each is a subagent in
   an external CRM — splitting the data across systems would cost more than it buys.
 - Don't spawn an agent to answer something already answered in this file.
 
+### Connectors available in session
+
+| Connector | Grants | Notable limit |
+|---|---|---|
+| GitHub | Repo, PRs, merges | — |
+| Buffer | Schedule/publish to social, post metrics | No DM or comment access |
+| Gmail | Read inbox, search threads, **create drafts** | **Cannot send** — by design |
+| Canva | Generate, edit, resize, export designs; brand kits | — |
+| Google Calendar | Read/create/update events, `suggest_time` | Anthony's calendar, not a client-facing booking system |
+
+Google Drive and Slack are added but not authorized.
+
+**Critical distinction:** these connectors give *this session* capability. They do
+**not** add features to vintusperformance.org. A client on the site cannot book through
+the Calendar connector, and client emails still send via Resend from the backend.
+Anything customer-facing is backend engineering, not a connector.
+
 ### Not yet buildable (missing integrations — don't pretend otherwise)
 
 - **Lead Generation** — no prospect data source. Needs a paid provider (Apollo, Clay,
