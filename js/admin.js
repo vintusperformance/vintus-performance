@@ -689,6 +689,54 @@
     }
   });
 
+  /**
+   * Render a persistent alert in the Plan Management section.
+   * Failure reasons must stay on screen long enough to read and copy — they are
+   * the only surfaced diagnostic when AI generation falls back to templates.
+   */
+  function showPlanAlert(opts) {
+    var el = document.getElementById('planMgmtAlert');
+    if (!el) return;
+
+    if (opts.kind === 'success') {
+      el.innerHTML = '<div class="admin-alert admin-alert--success">AI plan generated (' +
+        esc(opts.count) + ' sessions)</div>';
+      return;
+    }
+
+    var html = '<div class="admin-alert admin-alert--error">' +
+      '<strong>AI generation failed';
+    if (opts.count != null) html += ' &mdash; template plan used (' + esc(opts.count) + ' sessions)';
+    html += '.</strong>';
+    if (opts.count != null) html += '<br>This client has a generic plan, not a personalized one.';
+
+    if (opts.reason) {
+      html += '<div style="margin-top:0.6rem;padding:0.6rem;background:rgba(0,0,0,0.35);' +
+        'border-radius:4px;font-size:0.78rem;line-height:1.5;user-select:text;' +
+        'white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;" ' +
+        'id="planErrText">' + esc(opts.reason) + '</div>' +
+        '<button id="copyPlanErrBtn" style="margin-top:0.5rem;background:transparent;' +
+        'border:1px solid currentColor;color:inherit;font-size:0.72rem;padding:0.3rem 0.7rem;' +
+        'border-radius:4px;cursor:pointer;">Copy error</button>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+
+    var copyBtn = document.getElementById('copyPlanErrBtn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        var txt = document.getElementById('planErrText');
+        if (!txt) return;
+        navigator.clipboard.writeText(txt.textContent).then(function () {
+          copyBtn.textContent = 'Copied';
+          setTimeout(function () { copyBtn.textContent = 'Copy error'; }, 2000);
+        }).catch(function () { copyBtn.textContent = 'Select the text above to copy'; });
+      });
+    }
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   async function loadClientDetail(userId) {
     try {
       var res = await apiGet('/api/v1/admin/clients/' + encodeURIComponent(userId));
@@ -1096,22 +1144,18 @@
           var res = await apiPost('/api/v1/admin/clients/' + encodeURIComponent(userId) + '/regenerate-plan');
           var d = res.data || {};
           var count = d.sessionCount != null ? d.sessionCount : '?';
-          if (d.source === 'fallback') {
-            // Never let a template plan report as an AI success — that is exactly
-            // how generic plans reached clients unnoticed.
-            document.getElementById('planMgmtAlert').innerHTML =
-              '<div class="admin-alert admin-alert--error">' +
-              '<strong>AI generation failed &mdash; template plan used (' + count + ' sessions).</strong><br>' +
-              'This client has a generic plan, not a personalized one.' +
-              (d.fallbackReason ? '<br><span style="opacity:0.75;font-size:0.8rem;">' + esc(d.fallbackReason) + '</span>' : '') +
-              '</div>';
-          } else {
-            document.getElementById('planMgmtAlert').innerHTML =
-              '<div class="admin-alert admin-alert--success">AI plan generated (' + count + ' sessions)</div>';
-          }
-          loadClientDetail(userId);
+
+          // Refresh FIRST — loadClientDetail re-renders the panel and would wipe
+          // any alert written before it, which made the failure reason flash and
+          // vanish before it could be read.
+          await loadClientDetail(userId);
+          showPlanAlert(
+            d.source === 'fallback'
+              ? { kind: 'error', reason: d.fallbackReason, count: count }
+              : { kind: 'success', count: count }
+          );
         } catch (err) {
-          document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+          showPlanAlert({ kind: 'error', reason: err.message });
         } finally { regenPlanBtn.disabled = false; regenPlanBtn.textContent = 'Regenerate AI Plan'; }
       });
     }
