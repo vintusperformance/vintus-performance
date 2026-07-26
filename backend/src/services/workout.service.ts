@@ -531,7 +531,33 @@ async function generatePlanWithClaude(
     );
   }
 
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  // Diagnostic snapshot of the raw response shape — a prior failure returned
+  // stop_reason=end_turn with zero-length content, which is not explained by
+  // truncation or malformed JSON, so the block types and usage matter here.
+  const blockTypes = response.content.map((b) => b.type).join(",") || "none";
+  const outputTokens = response.usage?.output_tokens ?? "unknown";
+
+  if (response.content.length === 0) {
+    throw new Error(
+      `Claude returned an empty content array. stop_reason=${response.stop_reason}, ` +
+        `output_tokens=${outputTokens}`
+    );
+  }
+
+  // Find the first actual text block rather than assuming content[0] is text —
+  // a thinking/reasoning block ahead of the answer would otherwise be
+  // misreported as "empty" when the real content is one block later.
+  const textBlock = response.content.find(
+    (b): b is Extract<typeof b, { type: "text" }> => b.type === "text"
+  );
+  const text = textBlock?.text ?? "";
+
+  if (!text) {
+    throw new Error(
+      `Claude returned no usable text block. blockTypes=${blockTypes}, ` +
+        `stop_reason=${response.stop_reason}, output_tokens=${outputTokens}`
+    );
+  }
 
   // Parse JSON — strip markdown fences if present
   const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -544,7 +570,7 @@ async function generatePlanWithClaude(
     // from logs alone.
     throw new Error(
       `Claude returned unparseable JSON (${(parseErr as Error).message}). ` +
-        `stop_reason=${response.stop_reason}, length=${cleaned.length}. ` +
+        `stop_reason=${response.stop_reason}, blockTypes=${blockTypes}, length=${cleaned.length}. ` +
         `First 300 chars: ${cleaned.slice(0, 300)}`
     );
   }
