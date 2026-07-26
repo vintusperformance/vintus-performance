@@ -239,9 +239,18 @@ export async function submitRoutineQuestionnaire(
   const plan = await generateInitialPlan(profile.id);
 
   logger.info(
-    { userId, profileId: profile.id, planId: plan.planId },
+    { userId, profileId: profile.id, planId: plan.planId, source: plan.source },
     "Onboarding routine completed, initial plan generated"
   );
+
+  // A new client receiving a generic template instead of a personalized plan is a
+  // product failure, not a warning — log it loudly so it is visible in Railway.
+  if (plan.source === "fallback") {
+    logger.error(
+      { userId, profileId: profile.id, planId: plan.planId, reason: plan.fallbackReason },
+      "NEW CLIENT RECEIVED TEMPLATE PLAN — AI generation failed during onboarding"
+    );
+  }
 
   // Notify admin — client has completed onboarding with full profile + plan generated.
   // This is the ideal time: admin has all data to review before approving.

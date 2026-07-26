@@ -300,7 +300,7 @@ Rules:
 
 export async function generateInitialPlan(
   profileId: string
-): Promise<{ planId: string; sessionCount: number }> {
+): Promise<{ planId: string; sessionCount: number; source: "ai" | "fallback"; fallbackReason?: string }> {
   const profile = await prisma.athleteProfile.findUnique({
     where: { id: profileId },
   });
@@ -330,6 +330,8 @@ export async function generateInitialPlan(
     status: "SCHEDULED";
   }>;
   let planName = "Week 1 — Foundation Phase";
+  let source: "ai" | "fallback" = "ai";
+  let fallbackReason: string | undefined;
 
   const startDate = getWeekStart(new Date());
   const endDate = new Date(startDate);
@@ -376,7 +378,11 @@ export async function generateInitialPlan(
     logger.info({ profileId }, "AI-generated workout plan created");
   } catch (aiErr) {
     logger.error({ err: aiErr, profileId }, "Claude plan generation failed, using rule-based fallback");
-    // Fallback to rule-based generation
+    // Fallback to rule-based generation. Surfaced to the caller so the admin UI can
+    // say so — a silent fallback means generic template plans ship to paying clients
+    // with nothing indicating the AI never ran.
+    source = "fallback";
+    fallbackReason = (aiErr as Error).message;
     const result = generateRuleBasedPlan(profile, startDate);
     planName = result.planName;
     sessionData = result.sessionData;
@@ -401,11 +407,11 @@ export async function generateInitialPlan(
   });
 
   logger.info(
-    { profileId, planId: plan.id, sessionCount: sessionData.length },
+    { profileId, planId: plan.id, sessionCount: sessionData.length, source },
     "Initial workout plan saved"
   );
 
-  return { planId: plan.id, sessionCount: sessionData.length };
+  return { planId: plan.id, sessionCount: sessionData.length, source, fallbackReason };
 }
 
 // ============================================================
@@ -511,17 +517,38 @@ async function generatePlanWithClaude(
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 4000,
+    // A full week at the prescribed exercise counts runs 2.5-4k tokens of JSON.
+    // 4000 sat right on the edge and truncated mid-object, which surfaced as an
+    // opaque JSON parse failure and a silent fall back to templates.
+    max_tokens: 8000,
     temperature: 0.4,
     system: PLAN_GENERATION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
 
+  if (response.stop_reason === "max_tokens") {
+    throw new Error(
+      "Claude response hit the max_tokens limit and was truncated before the JSON closed"
+    );
+  }
+
   const text = response.content[0].type === "text" ? response.content[0].text : "";
 
   // Parse JSON — strip markdown fences if present
   const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  const parsed = JSON.parse(cleaned);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (parseErr) {
+    // Include what actually came back — without this the failure is undiagnosable
+    // from logs alone.
+    throw new Error(
+      `Claude returned unparseable JSON (${(parseErr as Error).message}). ` +
+        `stop_reason=${response.stop_reason}, length=${cleaned.length}. ` +
+        `First 300 chars: ${cleaned.slice(0, 300)}`
+    );
+  }
 
   // Validate structure
   if (!parsed.sessions || !Array.isArray(parsed.sessions) || parsed.sessions.length === 0) {
