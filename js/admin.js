@@ -1094,7 +1094,21 @@
         regenPlanBtn.textContent = 'Generating...';
         try {
           var res = await apiPost('/api/v1/admin/clients/' + encodeURIComponent(userId) + '/regenerate-plan');
-          document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--success">Plan regenerated (' + (res.data ? res.data.sessionCount : '?') + ' sessions)</div>';
+          var d = res.data || {};
+          var count = d.sessionCount != null ? d.sessionCount : '?';
+          if (d.source === 'fallback') {
+            // Never let a template plan report as an AI success — that is exactly
+            // how generic plans reached clients unnoticed.
+            document.getElementById('planMgmtAlert').innerHTML =
+              '<div class="admin-alert admin-alert--error">' +
+              '<strong>AI generation failed &mdash; template plan used (' + count + ' sessions).</strong><br>' +
+              'This client has a generic plan, not a personalized one.' +
+              (d.fallbackReason ? '<br><span style="opacity:0.75;font-size:0.8rem;">' + esc(d.fallbackReason) + '</span>' : '') +
+              '</div>';
+          } else {
+            document.getElementById('planMgmtAlert').innerHTML =
+              '<div class="admin-alert admin-alert--success">AI plan generated (' + count + ' sessions)</div>';
+          }
           loadClientDetail(userId);
         } catch (err) {
           document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';

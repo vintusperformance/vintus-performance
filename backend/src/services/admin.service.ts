@@ -888,7 +888,9 @@ export async function resolveEscalation(
 /**
  * Trigger plan regeneration for a client (using AI).
  */
-export async function regeneratePlan(userId: string): Promise<{ planId: string; sessionCount: number }> {
+export async function regeneratePlan(
+  userId: string
+): Promise<{ planId: string; sessionCount: number; source: "ai" | "fallback"; fallbackReason?: string }> {
   const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
   if (!profile) {
     const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
@@ -899,7 +901,10 @@ export async function regeneratePlan(userId: string): Promise<{ planId: string; 
   const { generateInitialPlan } = await import("./workout.service.js");
   const result = await generateInitialPlan(profile.id);
 
-  logger.info({ userId, planId: result.planId }, "Admin triggered plan regeneration");
+  logger.info(
+    { userId, planId: result.planId, source: result.source },
+    "Admin triggered plan regeneration"
+  );
   return result;
 }
 
