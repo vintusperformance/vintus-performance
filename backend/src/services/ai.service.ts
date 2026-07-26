@@ -138,7 +138,6 @@ export async function processIntake(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 500,
-      temperature: 0.3,
       system: INTAKE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
     });
@@ -159,7 +158,6 @@ export async function processIntake(
     const retryResponse = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 500,
-      temperature: 0.1,
       system: INTAKE_SYSTEM_PROMPT + "\n\nIMPORTANT: Your previous response was not valid JSON. Return ONLY a valid JSON object, nothing else.",
       messages: [{ role: "user", content: userPrompt }],
     });
@@ -292,7 +290,6 @@ export async function generateMessage(
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 150,
-      temperature: 0.8,
       system: MESSAGE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: contextLines.join("\n") }],
     });
