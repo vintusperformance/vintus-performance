@@ -104,20 +104,30 @@ export async function getAvailableSlots(month: number, year: number) {
   const endYear = month === 12 ? year + 1 : year;
   const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
 
-  const confirmedLeads = await prisma.lead.findMany({
-    where: {
-      type: "CONSULTATION",
-      status: { in: ["NEW", "CONFIRMED"] },
-      preferredDate: {
-        gte: startDate,
-        lt: endDate,
+  // Both free consultations and paid sessions land on the same calendar —
+  // check both so the two booking flows can't double-book the same time.
+  const [confirmedLeads, sessionBookings] = await Promise.all([
+    prisma.lead.findMany({
+      where: {
+        type: "CONSULTATION",
+        status: { in: ["NEW", "CONFIRMED"] },
+        preferredDate: { gte: startDate, lt: endDate },
       },
-    },
-    select: {
-      preferredDate: true,
-      preferredTime: true,
-    },
-  });
+      select: { preferredDate: true, preferredTime: true },
+    }),
+    prisma.sessionBooking.findMany({
+      where: {
+        scheduledDate: { gte: startDate, lt: endDate },
+        OR: [
+          { status: "PAID" },
+          // An abandoned checkout shouldn't permanently hold a slot hostage —
+          // only treat a still-pending booking as blocking for a short window.
+          { status: "PENDING_PAYMENT", createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } },
+        ],
+      },
+      select: { scheduledDate: true, scheduledTime: true },
+    }),
+  ]);
 
   // Build set of booked slots
   const bookedSlots: Record<string, string[]> = {};
@@ -128,6 +138,12 @@ export async function getAvailableSlots(month: number, year: number) {
       }
       bookedSlots[lead.preferredDate].push(lead.preferredTime);
     }
+  }
+  for (const booking of sessionBookings) {
+    if (!bookedSlots[booking.scheduledDate]) {
+      bookedSlots[booking.scheduledDate] = [];
+    }
+    bookedSlots[booking.scheduledDate].push(booking.scheduledTime);
   }
 
   return { bookedSlots };

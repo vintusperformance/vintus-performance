@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Book a paid training session with Vintus Performance. Select a time, tell us how we can help, and confirm with secure checkout.">
+    <title>Book a Session | Vintus Performance</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3EV%3C/text%3E%3C/svg%3E">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Booking Page Styles (shared visual language with /book) */
+        .booking-section {
+            padding-top: 120px;
+            padding-bottom: var(--section-padding);
+            min-height: 100vh;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(192, 192, 192, 0.03) 0%, transparent 50%),
+                var(--black);
+        }
+
+        .booking-header { text-align: center; margin-bottom: 3rem; }
+        .booking-header h1 {
+            font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 600; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
+        }
+        .booking-header p { color: var(--gray); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+        .booking-container {
+            display: grid; grid-template-columns: 1fr 380px; gap: 3rem;
+            max-width: 1100px; margin: 0 auto;
+        }
+        @media (max-width: 900px) { .booking-container { grid-template-columns: 1fr; } }
+
+        .calendar-wrapper {
+            background: var(--black-card); border: 1px solid var(--border-color); padding: 2rem;
+        }
+        .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .calendar-nav h3 { font-family: var(--font-heading); font-size: 1.3rem; text-transform: uppercase; letter-spacing: 1px; }
+        .calendar-nav-btn {
+            background: transparent; border: 1px solid var(--border-color); color: var(--white);
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all var(--transition-fast);
+        }
+        .calendar-nav-btn:hover { border-color: var(--silver); background: rgba(255, 255, 255, 0.05); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
+        .calendar-day-header {
+            text-align: center; font-size: 0.75rem; color: var(--gray);
+            text-transform: uppercase; letter-spacing: 1px; padding: 0.5rem 0;
+        }
+        .calendar-day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; border: 1px solid transparent; cursor: pointer;
+            transition: all var(--transition-fast); position: relative;
+        }
+        .calendar-day:hover:not(.disabled):not(.past) { border-color: var(--silver); background: rgba(255, 255, 255, 0.05); }
+        .calendar-day.selected { background: var(--accent); color: var(--black); font-weight: 600; }
+        .calendar-day.today { border-color: var(--silver-dark); }
+        .calendar-day.disabled, .calendar-day.past { color: var(--gray-dark); cursor: not-allowed; }
+        .calendar-day.has-slots::after {
+            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
+            background: var(--accent); border-radius: 50%;
+        }
+        .calendar-day.few-slots::after { background: #f59e0b; }
+
+        .time-slots-wrapper { margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color); }
+        .time-slots-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .time-slots-header h4 { font-family: var(--font-heading); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .time-slots-date { color: var(--gray); font-size: 0.9rem; }
+        .time-slots-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+        @media (max-width: 600px) { .time-slots-grid { grid-template-columns: repeat(2, 1fr); } }
+        .time-slot {
+            padding: 0.75rem 1rem; text-align: center; border: 1px solid var(--border-color);
+            background: transparent; color: var(--white); font-size: 0.9rem;
+            cursor: pointer; transition: all var(--transition-fast);
+        }
+        .time-slot:hover:not(.booked) { border-color: var(--silver); background: rgba(255, 255, 255, 0.05); }
+        .time-slot.selected { background: var(--accent); border-color: var(--accent); color: var(--black); font-weight: 600; }
+        .time-slot.booked {
+            background: rgba(255, 255, 255, 0.03); color: var(--gray-dark);
+            cursor: not-allowed; text-decoration: line-through;
+        }
+        .no-slots-message { text-align: center; color: var(--gray); padding: 2rem; }
+
+        .booking-sidebar { position: sticky; top: 100px; }
+        .booking-summary { background: var(--black-card); border: 1px solid var(--border-color); padding: 2rem; }
+        .booking-summary h3 {
+            font-family: var(--font-heading); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 0.35rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
+        }
+        .booking-summary .price {
+            font-family: var(--font-heading); font-size: 1.8rem; color: var(--accent);
+            margin: 1rem 0 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);
+        }
+        .booking-summary .price span { font-size: 0.95rem; color: var(--gray); font-weight: 400; }
+
+        .booking-detail { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
+        .booking-detail-icon {
+            width: 40px; height: 40px; background: rgba(255, 255, 255, 0.05);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .booking-detail-icon svg { width: 20px; height: 20px; stroke: var(--silver); }
+        .booking-detail-text { flex: 1; }
+        .booking-detail-label { font-size: 0.75rem; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem; }
+        .booking-detail-value { font-size: 0.95rem; color: var(--white); }
+        .booking-detail-value.placeholder { color: var(--gray-dark); font-style: italic; }
+
+        .headcount-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .headcount-stepper { display: flex; align-items: center; gap: 0.75rem; }
+        .headcount-btn {
+            width: 32px; height: 32px; border: 1px solid var(--border-color); background: transparent;
+            color: var(--white); cursor: pointer; font-size: 1rem; line-height: 1;
+        }
+        .headcount-btn:hover:not(:disabled) { border-color: var(--silver); }
+        .headcount-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .headcount-value { min-width: 1.5rem; text-align: center; font-family: var(--font-heading); font-size: 1.1rem; }
+
+        .booking-form { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+        .booking-form .form-group { margin-bottom: 1rem; }
+        .booking-form input,
+        .booking-form select,
+        .booking-form textarea {
+            width: 100%; padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color); color: var(--white); font-size: 0.9rem;
+            font-family: var(--font-body); transition: all var(--transition-fast);
+        }
+        .booking-form select { color-scheme: dark; }
+        .booking-form textarea { min-height: 90px; resize: vertical; }
+        .booking-form input:focus, .booking-form select:focus, .booking-form textarea:focus {
+            outline: none; border-color: var(--silver); background: rgba(255, 255, 255, 0.05);
+        }
+        .booking-form input::placeholder, .booking-form textarea::placeholder { color: var(--gray); }
+        .booking-form label { display: block; font-size: 0.8rem; color: var(--gray); margin-bottom: 0.4rem; }
+
+        .booking-submit { width: 100%; margin-top: 1.5rem; }
+        .booking-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .booking-error {
+            display: none; margin-top: 1rem; padding: 0.85rem 1rem; font-size: 0.85rem;
+            color: #f87171; background: rgba(248, 113, 113, 0.08); border-left: 2px solid #f87171;
+        }
+
+        .booking-note { margin-top: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.03); border-left: 2px solid var(--silver); }
+        .booking-note p { font-size: 0.85rem; color: var(--gray); line-height: 1.6; }
+
+        .availability-legend { display: flex; gap: 1.5rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--gray); }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .legend-dot.available { background: var(--accent); }
+        .legend-dot.limited { background: #f59e0b; }
+        .legend-dot.booked { background: var(--gray-dark); }
+
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7);
+            display: flex; align-items: center; justify-content: center; z-index: 10;
+        }
+        .loading-spinner {
+            width: 40px; height: 40px; border: 2px solid var(--border-color);
+            border-top-color: var(--silver); border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+    <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <a href="/" class="logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="logo-img"></a>
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/features">Services</a></li>
+            <li><a href="/about">About</a></li>
+            <li><a href="/contact">Contact</a></li>
+        </ul>
+        <div class="nav-social">
+            <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+            <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>
+            <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+        </div>
+        <a href="/book" class="nav-cta">Free Consultation</a>
+        <div class="mobile-menu" id="mobileMenu"><span></span><span></span><span></span></div>
+    </nav>
+    <div class="mobile-nav" id="mobileNav">
+        <a href="/">Home</a><a href="/features">Services</a><a href="/about">About</a><a href="/contact">Contact</a>
+        <a href="/book" class="btn-outline" style="margin-top:2rem;">Free Consultation</a>
+    </div>
+
+    <!-- Booking Section -->
+    <section class="booking-section">
+        <div class="container">
+            <div class="booking-header reveal">
+                <div class="section-label">Paid Session</div>
+                <h1 id="sessionTitle">Book a Session</h1>
+                <p id="sessionSubtitle">Pick a time, tell us how we can help, and confirm with secure checkout.</p>
+            </div>
+
+            <div class="booking-container">
+                <!-- Calendar -->
+                <div class="calendar-wrapper reveal" style="position: relative;">
+                    <div class="calendar-nav">
+                        <button class="calendar-nav-btn" id="prevMonth">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                        </button>
+                        <h3 id="currentMonth">Month Year</h3>
+                        <button class="calendar-nav-btn" id="nextMonth">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="calendar-grid" id="calendarGrid">
+                        <div class="calendar-day-header">Sun</div>
+                        <div class="calendar-day-header">Mon</div>
+                        <div class="calendar-day-header">Tue</div>
+                        <div class="calendar-day-header">Wed</div>
+                        <div class="calendar-day-header">Thu</div>
+                        <div class="calendar-day-header">Fri</div>
+                        <div class="calendar-day-header">Sat</div>
+                    </div>
+
+                    <div class="availability-legend">
+                        <div class="legend-item"><div class="legend-dot available"></div><span>Available</span></div>
+                        <div class="legend-item"><div class="legend-dot limited"></div><span>Limited</span></div>
+                        <div class="legend-item"><div class="legend-dot booked"></div><span>Booked</span></div>
+                    </div>
+
+                    <div class="time-slots-wrapper" id="timeSlotsWrapper" style="display: none;">
+                        <div class="time-slots-header">
+                            <h4>Available Times</h4>
+                            <span class="time-slots-date" id="selectedDateDisplay">Select a date</span>
+                        </div>
+                        <div class="time-slots-grid" id="timeSlotsGrid"></div>
+                    </div>
+
+                    <div id="calendarLoading" class="loading-overlay" style="display: none;">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+
+                <!-- Booking Summary Sidebar -->
+                <div class="booking-sidebar reveal">
+                    <div class="booking-summary">
+                        <h3 id="summarySessionLabel">Session</h3>
+                        <div class="price" id="summaryPrice">$0</div>
+
+                        <div class="booking-detail">
+                            <div class="booking-detail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                            <div class="booking-detail-text">
+                                <div class="booking-detail-label">Date</div>
+                                <div class="booking-detail-value" id="summaryDate"><span class="placeholder">Select a date</span></div>
+                            </div>
+                        </div>
+
+                        <div class="booking-detail">
+                            <div class="booking-detail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+                            <div class="booking-detail-text">
+                                <div class="booking-detail-label">Time</div>
+                                <div class="booking-detail-value" id="summaryTime"><span class="placeholder">Select a time</span></div>
+                            </div>
+                        </div>
+
+                        <div class="booking-detail">
+                            <div class="booking-detail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+                            <div class="booking-detail-text">
+                                <div class="booking-detail-label">Duration</div>
+                                <div class="booking-detail-value" id="summaryDuration">—</div>
+                            </div>
+                        </div>
+
+                        <div class="booking-detail" id="headcountDetail" style="display:none;">
+                            <div class="booking-detail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                            <div class="booking-detail-text" style="width:100%;">
+                                <div class="booking-detail-label">People Joining</div>
+                                <div class="headcount-row">
+                                    <div class="headcount-stepper">
+                                        <button type="button" class="headcount-btn" id="headcountMinus">&minus;</button>
+                                        <span class="headcount-value" id="headcountValue">1</span>
+                                        <button type="button" class="headcount-btn" id="headcountPlus">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Booking Form -->
+                        <form class="booking-form" id="bookingForm">
+                            <div class="form-group">
+                                <input type="text" id="firstName" name="firstName" placeholder="First Name *" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="lastName" name="lastName" placeholder="Last Name">
+                            </div>
+                            <div class="form-group">
+                                <input type="email" id="email" name="email" placeholder="Email Address *" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="tel" id="phone" name="phone" placeholder="Phone Number *" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="meetingPreference">How should we connect?</label>
+                                <select id="meetingPreference" name="meetingPreference" required>
+                                    <option value="">Select a method *</option>
+                                    <option value="Phone Call">Phone Call</option>
+                                    <option value="FaceTime">FaceTime</option>
+                                    <option value="Google Meet">Google Meet</option>
+                                    <option value="Zoom">Zoom</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="coachingContext">How can we help you?</label>
+                                <textarea id="coachingContext" name="coachingContext" placeholder="What do you want to focus on in this session?"></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary booking-submit" id="bookingSubmit" disabled>
+                                <span class="submit-text">Continue to Payment</span>
+                                <span class="submit-loading" style="display: none;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="32"/></svg>
+                                    Redirecting...
+                                </span>
+                            </button>
+                            <div class="booking-error" id="bookingError"></div>
+                        </form>
+
+                        <div class="booking-note">
+                            <p>You'll be taken to secure Stripe checkout to complete payment. Once paid, you'll get an email with your meeting details and how to reach your coach directly.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <a href="/" class="footer-logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="footer-logo-img"></a>
+                <ul class="footer-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/features">Services</a></li>
+                    <li><a href="/about">About</a></li>
+                    <li><a href="/contact">Contact</a></li>
+                </ul>
+                <div class="footer-social">
+                    <a href="https://www.instagram.com/vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+                    <a href="https://www.tiktok.com/@vintusperformance" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg></a>
+                    <a href="https://www.facebook.com/profile.php?id=61587130270730" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Vintus Performance. Discipline Within, Dominance Beyond.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/nav-auth.js"></script>
+    <script src="js/paid-session.js"></script>
+</body>
+</html>

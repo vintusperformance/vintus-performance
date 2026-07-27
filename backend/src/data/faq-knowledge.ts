@@ -15,6 +15,13 @@ PLANS & PRICING:
 - 4-Week Nutrition Plan: $229 one-time.
 - 8-Week Nutrition Plan: $399 one-time.
 - All plans are delivered digitally through the client's private Vintus Performance dashboard — not a PDF, not email attachments.
+
+PAID SESSIONS (one-off, no subscription — booked via /paid-session, not the dashboard):
+- 30-Minute Meeting: $85/person, 1-6 people, video call.
+- 60-Min Training Session (1-on-1): $150 flat, 1 person, video call.
+- 60-Min Training Session (1-on-2): $110/person, 1-2 people, video call.
+- 60-Min Training Session (Group): $65/person, 3-6 people, video call.
+- Booked by selecting a time on the calendar, a survey on how to help them, then Stripe checkout — headcount for per-person sessions determines the total charge. Confirmation email is sent after payment with the meeting method and how to reach Anthony directly.
 - One-time plans (Training/Nutrition) are billed once for the stated access period, then access is retained for a short renewal-decision window after the period ends before deactivation.
 - Private Coaching bills automatically every month until the client cancels.
 

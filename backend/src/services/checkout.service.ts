@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { sendWelcomeSequence } from "./messaging.service.js";
+import { handlePaidSessionCompleted } from "./session-booking.service.js";
 
 // ============================================================
 // Product → Stripe Price ID mapping
@@ -125,6 +126,13 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session
 ): Promise<void> {
+  // Paid one-off sessions (features.html "Book Now") use a different
+  // metadata shape and fulfillment path entirely — no User/Subscription involved.
+  if (session.metadata?.sessionBookingId) {
+    await handlePaidSessionCompleted(session);
+    return;
+  }
+
   const userId = session.metadata?.userId;
   const tier = session.metadata?.tier as PlanTier | undefined;
 

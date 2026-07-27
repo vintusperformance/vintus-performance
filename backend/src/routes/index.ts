@@ -12,6 +12,7 @@ import deviceRoutes from "./device.routes.js";
 import leadsRoutes from "./leads.routes.js";
 import chatRoutes from "./chat.routes.js";
 import profileRoutes from "./profile.routes.js";
+import sessionBookingRoutes from "./session-booking.routes.js";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/device", deviceRoutes);
 router.use("/leads", leadsRoutes);
 router.use("/chat", chatRoutes);
 router.use("/profile", profileRoutes);
+router.use("/session-bookings", sessionBookingRoutes);
 
 export default router;

@@ -39,6 +39,9 @@ const envSchema = z.object({
 
   // Coach notifications (Private Coaching monthly renewal reminders, etc.)
   COACH_EMAIL: z.string().email("COACH_EMAIL must be a valid email").default("anthony@vintusperformance.org"),
+  // Optional — shown to clients in paid-session confirmation emails so they can reach Anthony directly.
+  // Left unset until a real number is provided (never fabricate one).
+  COACH_PHONE: z.string().optional(),
 
   // Anthropic
   ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),

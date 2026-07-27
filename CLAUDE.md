@@ -32,6 +32,18 @@ Claude (plan generation, intake analysis, and the client-facing coach "Jerry").
 All plans deliver through the client's private dashboard — **never** "PDF" or
 email attachment. Say "delivered through your private dashboard."
 
+**Paid Sessions** — one-off bookable calls, separate from the subscription/plan
+tiers above. No client account or dashboard involved; booked at `/paid-session`
+(survey → calendar → Stripe checkout → confirmation email with meeting details
+and Anthony's direct contact info).
+
+| Session | Price | Headcount |
+|---|---|---|
+| 30-Minute Meeting | $85/person | 1-6 |
+| 60-Min Training Session — 1-on-1 | $150 flat | 1 |
+| 60-Min Training Session — 1-on-2 | $110/person | 1-2 |
+| 60-Min Training Session — Group | $65/person | 3-6 |
+
 Canonical client-facing FAQ facts live in `backend/src/data/faq-knowledge.ts`.
 That file is the single source of truth for pricing/policy answers. If it
 contradicts this file, fix both.
