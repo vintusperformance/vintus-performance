@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Your Vintus Performance session is confirmed.">
+    <title>Session Confirmed | Vintus Performance</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3EV%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .confirmed-section {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 120px 1.5rem 4rem; background: var(--black); text-align: center;
+        }
+        .confirmed-card { max-width: 520px; }
+        .confirmed-icon {
+            width: 64px; height: 64px; margin: 0 auto 1.5rem; background: var(--accent);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+        .confirmed-icon svg { width: 30px; height: 30px; stroke: var(--black); }
+        .confirmed-card h1 {
+            font-family: var(--font-heading); font-size: clamp(1.6rem, 4vw, 2.2rem);
+            text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1rem;
+        }
+        .confirmed-card p { color: var(--gray); line-height: 1.7; margin-bottom: 2rem; }
+    </style>
+</head>
+<body>
+    <section class="confirmed-section">
+        <div class="confirmed-card">
+            <div class="confirmed-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <h1>You're Booked</h1>
+            <p>Payment received. A confirmation email is on its way with your meeting time, how to connect, and how to reach your coach directly.</p>
+            <a href="/" class="btn-primary">Return Home</a>
+        </div>
+    </section>
+</body>
+</html>

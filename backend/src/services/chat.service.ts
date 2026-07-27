@@ -3,6 +3,7 @@ import { anthropic } from "../lib/anthropic.js";
 import { logger } from "../lib/logger.js";
 import type { Prisma } from "@prisma/client";
 import { FAQ_KNOWLEDGE } from "../data/faq-knowledge.js";
+import { executeJerryAdjustment, type JerryAdjustmentParams } from "./workout.service.js";
 
 /**
  * Chat Service — AI Coach "Jerry" live conversation.
@@ -43,6 +44,7 @@ function checkUserRateLimit(userId: string): boolean {
 // ============================================================
 
 interface AthleteContext {
+  planTier: string | null;
   firstName: string;
   primaryGoal: string | null;
   experienceLevel: string | null;
@@ -87,7 +89,10 @@ function getWeekStart(date: Date): Date {
 async function gatherAthleteContext(userId: string): Promise<AthleteContext> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { athleteProfile: true },
+    include: {
+      athleteProfile: true,
+      subscription: { select: { planTier: true } },
+    },
   });
 
   if (!user?.athleteProfile) {
@@ -163,6 +168,7 @@ async function gatherAthleteContext(userId: string): Promise<AthleteContext> {
       : null;
 
   return {
+    planTier: user.subscription?.planTier ?? null,
     firstName: profile.firstName,
     primaryGoal: profile.primaryGoal,
     experienceLevel: profile.experienceLevel,
@@ -182,8 +188,11 @@ async function gatherAthleteContext(userId: string): Promise<AthleteContext> {
 // buildChatSystemPrompt — dynamic prompt with athlete context
 // ============================================================
 
-function buildChatSystemPrompt(ctx: AthleteContext): string {
+function buildChatSystemPrompt(ctx: AthleteContext, canAdjustPlan: boolean): string {
+  const todayStr = new Date().toISOString().split("T")[0];
   let prompt = `You are "Jerry" — the elite AI performance coach at Vintus Performance. You are having a live text conversation with an athlete on their dashboard.
+
+TODAY'S DATE: ${todayStr}
 
 IDENTITY:
 - You are a real coach, not a chatbot. Never say "I'm an AI" or "As an AI."
@@ -244,6 +253,17 @@ THIS WEEK:
 - Adherence: ${Math.round(ctx.weekStats.adherenceRate * 100)}%`;
   }
 
+  if (canAdjustPlan) {
+    prompt += `
+
+PLAN ADJUSTMENTS:
+- You can use the adjust_upcoming_workout tool to actually change a session — swap an exercise, reduce intensity 15%, or skip a session — when the client asks for it in conversation.
+- Only sessions from today through 7 days out can be touched. Resolve relative dates ("today", "tomorrow", "Thursday") to YYYY-MM-DD yourself using today's date above.
+- For exercise swaps, use the exact exercise name as the client would see it in their session. If the tool tells you a swap isn't pre-approved, it will list what IS approved — offer those instead of arguing or trying a different name for the same swap.
+- Don't use the tool for anything outside these three actions (no rewriting whole weeks, no volume increases) — for anything bigger, tell them it's outside what you can change directly and suggest they flag it for their coach.
+- After a successful tool call, briefly confirm what changed in plain language — don't just say "done."`;
+  }
+
   prompt += `
 
 BUSINESS KNOWLEDGE (use this to answer plans/billing/policy questions accurately — do not guess or invent details not listed here):
@@ -264,12 +284,48 @@ RESPONSE FORMAT:
 }
 
 // ============================================================
+// Jerry's one bounded tool — Private Coaching only (see gate in sendMessage)
+// ============================================================
+
+const SESSION_ADJUSTMENT_TOOL = {
+  name: "adjust_upcoming_workout",
+  description:
+    "Adjust a client's upcoming workout session (today through 7 days out): swap an exercise for a pre-approved alternative, reduce intensity 15%, or skip the session entirely. Only call this when the client has actually asked for a change in this conversation.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      date: {
+        type: "string",
+        description: "Session date in YYYY-MM-DD format. Must be today or within the next 7 days.",
+      },
+      action: {
+        type: "string",
+        enum: ["swap_exercise", "reduce_intensity", "skip_session"],
+      },
+      exerciseName: {
+        type: "string",
+        description: "For swap_exercise only: exact name of the exercise being replaced, as it appears in the session.",
+      },
+      newExercise: {
+        type: "string",
+        description: "For swap_exercise only: exact name of the replacement exercise.",
+      },
+      reason: {
+        type: "string",
+        description: "Short reason for the change, shown to the client in their session notes.",
+      },
+    },
+    required: ["date", "action", "reason"],
+  },
+};
+
+// ============================================================
 // getHistory — load conversation messages
 // ============================================================
 
 export async function getHistory(userId: string): Promise<{
   conversationId: string | null;
-  messages: { id: string; role: string; content: string; createdAt: Date }[];
+  messages: { id: string; role: string; content: string; createdAt: Date; action?: string | null }[];
 }> {
   const conversation = await prisma.chatConversation.findUnique({
     where: { userId },
@@ -281,6 +337,7 @@ export async function getHistory(userId: string): Promise<{
           role: true,
           content: true,
           createdAt: true,
+          metadata: true,
         },
       },
     },
@@ -292,7 +349,13 @@ export async function getHistory(userId: string): Promise<{
 
   return {
     conversationId: conversation.id,
-    messages: conversation.messages,
+    messages: conversation.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      createdAt: m.createdAt,
+      action: (m.metadata as { action?: string | null } | null)?.action ?? null,
+    })),
   };
 }
 
@@ -305,7 +368,7 @@ export async function sendMessage(
   userMessage: string
 ): Promise<{
   userMessage: { id: string; role: string; content: string; createdAt: Date };
-  assistantMessage: { id: string; role: string; content: string; createdAt: Date };
+  assistantMessage: { id: string; role: string; content: string; createdAt: Date; action?: string | null };
 }> {
   // 1. Rate limit check
   if (!checkUserRateLimit(userId)) {
@@ -355,23 +418,61 @@ export async function sendMessage(
 
   // 6. Gather athlete context for system prompt
   const athleteContext = await gatherAthleteContext(userId);
-  const systemPrompt = buildChatSystemPrompt(athleteContext);
+  const canAdjustPlan = athleteContext.planTier === "PRIVATE_COACHING";
+  const systemPrompt = buildChatSystemPrompt(athleteContext, canAdjustPlan);
 
   // 7. Build Claude messages array
-  const claudeMessages = recentMessages.map((m) => ({
+  const claudeMessages: Array<{ role: "user" | "assistant"; content: unknown }> = recentMessages.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
   }));
 
-  // 8. Call Claude
+  // 8. Call Claude (with one bounded tool-use round trip for Private Coaching)
   const startTime = Date.now();
   try {
-    const response = await anthropic.messages.create({
+    let response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 300,
       system: systemPrompt,
-      messages: claudeMessages,
+      messages: claudeMessages as never,
+      ...(canAdjustPlan ? { tools: [SESSION_ADJUSTMENT_TOOL] as never } : {}),
     });
+
+    let actionDescription: string | undefined;
+
+    if (response.stop_reason === "tool_use") {
+      const toolUseBlock = response.content.find(
+        (b): b is Extract<typeof b, { type: "tool_use" }> => b.type === "tool_use"
+      );
+
+      if (toolUseBlock) {
+        const input = toolUseBlock.input as Partial<JerryAdjustmentParams>;
+        const result =
+          input.date && input.action && input.reason
+            ? await executeJerryAdjustment(userId, input as JerryAdjustmentParams)
+            : { ok: false, message: "Missing required fields for that adjustment." };
+
+        if (result.ok && result.description) {
+          actionDescription = result.description;
+        }
+
+        logger.info({ userId, tool: toolUseBlock.name, input, ok: result.ok }, "Jerry tool call executed");
+
+        response = await anthropic.messages.create({
+          model: MODEL,
+          max_tokens: 300,
+          system: systemPrompt,
+          messages: [
+            ...claudeMessages,
+            { role: "assistant", content: response.content },
+            {
+              role: "user",
+              content: [{ type: "tool_result", tool_use_id: toolUseBlock.id, content: result.message }],
+            },
+          ] as never,
+        });
+      }
+    }
 
     const latency = Date.now() - startTime;
 
@@ -398,7 +499,7 @@ export async function sendMessage(
         conversationId: conversation.id,
         role: "assistant",
         content: assistantContent,
-        metadata: { latency, tokens: response.usage } as unknown as Prisma.InputJsonValue,
+        metadata: { latency, tokens: response.usage, action: actionDescription ?? null } as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -425,6 +526,7 @@ export async function sendMessage(
         role: "assistant",
         content: assistantContent,
         createdAt: assistantMsg.createdAt,
+        action: actionDescription ?? null,
       },
     };
   } catch (err) {

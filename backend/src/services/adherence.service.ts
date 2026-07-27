@@ -1,5 +1,9 @@
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
+import { applyEscalationAdjustment } from "./workout.service.js";
+import { createEscalation, getCurrentEscalationLevel } from "./escalation.service.js";
+
+const ESCALATION_TRIGGER_REASONS = ["3_missed_workouts", "low_weekly_adherence"];
 
 // ============================================================
 // Helper: get Monday of the week for a given date
@@ -52,8 +56,15 @@ export async function updateAdherence(
   // Get consecutive missed count
   const consecutiveMissed = await getConsecutiveMissed(userId);
 
-  // Check if escalation should trigger
-  const escalationTriggered = await checkEscalationThreshold(userId);
+  // Check if escalation should trigger: 3+ missed in rolling 7 days, or this
+  // week's adherence has dropped under 50% with a full week already scheduled
+  const thresholdMissed = await checkEscalationThreshold(userId);
+  const lowWeeklyAdherence = scheduledCount > 0 && adherenceRate < 0.5;
+  const escalationTriggered = thresholdMissed || lowWeeklyAdherence;
+
+  if (escalationTriggered) {
+    await triggerEscalationIfNeeded(userId, profile.id, thresholdMissed ? "3_missed_workouts" : "low_weekly_adherence");
+  }
 
   await prisma.adherenceRecord.upsert({
     where: {
@@ -85,6 +96,34 @@ export async function updateAdherence(
     { userId, weekStart: weekStart.toISOString(), adherenceRate, completedCount, scheduledCount },
     "Adherence record updated"
   );
+}
+
+// ============================================================
+// triggerEscalationIfNeeded — one adjustment + event per pattern per week
+// ============================================================
+
+async function triggerEscalationIfNeeded(
+  userId: string,
+  profileId: string,
+  triggerReason: string
+): Promise<void> {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Don't re-fire the same adjustment every time updateAdherence runs while
+  // the pattern is still active — only escalate once per rolling week.
+  const alreadyEscalated = await prisma.escalationEvent.count({
+    where: {
+      userId,
+      triggerReason: { in: ESCALATION_TRIGGER_REASONS },
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
+  if (alreadyEscalated > 0) return;
+
+  const level = await getCurrentEscalationLevel(userId);
+  await createEscalation(userId, triggerReason, level);
+  await applyEscalationAdjustment(profileId);
 }
 
 // ============================================================

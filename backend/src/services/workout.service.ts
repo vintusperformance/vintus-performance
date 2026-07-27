@@ -11,6 +11,7 @@ import {
   type WarmupExercise,
   type CooldownExercise,
 } from "../data/exercise-library.js";
+import { getSwapOptions, isValidSwap } from "../data/exercise-swaps.js";
 
 /**
  * Workout Service — workout generation, adaptive adjustments, and completion tracking.
@@ -1541,6 +1542,364 @@ export async function adjustForTravelWeek(
     { profileId, planId: plan.id, affectedIds, keptSessions: sessionsToKeep.length },
     "Adjusted for travel week"
   );
+}
+
+// ============================================================
+// Escalation Adjustment: sustained missed-workout pattern
+// ============================================================
+
+/**
+ * Applied when a client crosses the missed-workout escalation threshold
+ * (3+ missed/skipped in a rolling 7 days, or <50% weekly adherence) — a
+ * conservative volume trim to the rest of this week's remaining sessions,
+ * not a full plan regeneration. An EscalationEvent is created alongside this
+ * so it surfaces in the coach's existing unresolved-escalations queue for
+ * review; the trim itself ships immediately so the client's week doesn't
+ * sit stale while that review happens.
+ */
+export async function applyEscalationAdjustment(profileId: string): Promise<string[]> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { id: profileId } });
+  if (!profile) return [];
+
+  const plan = await prisma.workoutPlan.findFirst({
+    where: { athleteProfileId: profileId, isActive: true },
+    include: { sessions: true },
+  });
+  if (!plan) return [];
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const remaining = plan.sessions.filter(
+    (s) => new Date(s.scheduledDate) >= today && s.status === "SCHEDULED"
+  );
+
+  const affectedIds: string[] = [];
+  for (const s of remaining) {
+    const existingContent = s.content as Record<string, unknown>;
+    const existingMain = (existingContent.main as MainExercise[]) ?? [];
+    const reducedMain = scaleVolume(existingMain, 0.80);
+    const currentTSS = (existingContent.estimatedTSS as number) ?? s.prescribedTSS ?? 50;
+
+    await prisma.workoutSession.update({
+      where: { id: s.id },
+      data: {
+        description: `${s.description ?? ""} (Volume reduced 20% — missed-workout pattern detected)`.trim(),
+        prescribedTSS: Math.round(currentTSS * 0.80),
+        content: {
+          ...existingContent,
+          main: reducedMain,
+          estimatedTSS: Math.round(currentTSS * 0.80),
+        } as unknown as Prisma.InputJsonValue,
+      },
+    });
+    affectedIds.push(s.id);
+  }
+
+  await prisma.adjustmentLog.create({
+    data: {
+      workoutPlanId: plan.id,
+      triggerEvent: "escalation_pattern",
+      triggerData: { profileId, affectedCount: affectedIds.length } as unknown as Prisma.InputJsonValue,
+      adjustmentType: "reduce_volume",
+      description: `Missed-workout pattern detected. Reduced remaining ${affectedIds.length} session(s) this week by 20% volume.`,
+      affectedSessions: affectedIds,
+    },
+  });
+
+  logger.info({ profileId, planId: plan.id, affectedIds }, "Applied escalation volume adjustment");
+
+  return affectedIds;
+}
+
+// ============================================================
+// Bounded Self-Edit: Exercise Swap (Private Coaching only)
+// ============================================================
+
+function buildInjuryBlob(profile: {
+  injuryHistory: string | null;
+  riskFlags: string[];
+  specificInjuries: unknown;
+}): string {
+  const parts: string[] = [];
+  if (profile.injuryHistory) parts.push(profile.injuryHistory);
+  if (profile.riskFlags?.length) parts.push(profile.riskFlags.join(" "));
+  const injuries = profile.specificInjuries as Array<{ area?: string }> | null;
+  if (Array.isArray(injuries)) {
+    for (const i of injuries) {
+      if (i.area) parts.push(i.area);
+    }
+  }
+  return parts.join(" ").toLowerCase();
+}
+
+async function loadSwapContext(userId: string, sessionId: string) {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId },
+    select: { planTier: true },
+  });
+
+  if (subscription?.planTier !== "PRIVATE_COACHING") {
+    const err = new Error("Exercise swaps are available on Private Coaching plans") as Error & { statusCode?: number };
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const session = await prisma.workoutSession.findFirst({
+    where: { id: sessionId, workoutPlan: { athleteProfileId: profile.id } },
+  });
+
+  if (!session) {
+    const err = new Error("Workout session not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (session.status !== "SCHEDULED") {
+    const err = new Error("Can only swap exercises on a scheduled session") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  return { profile, session };
+}
+
+export async function getSwapAlternatives(
+  userId: string,
+  sessionId: string,
+  exerciseIndex: number
+): Promise<{ exercise: string; options: string[] }> {
+  const { profile, session } = await loadSwapContext(userId, sessionId);
+
+  const content = session.content as unknown as SessionContent;
+  const current = content.main?.[exerciseIndex];
+  if (!current) {
+    const err = new Error("Exercise not found in this session") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const injuryBlob = buildInjuryBlob(profile);
+  const options = getSwapOptions(current.exercise, profile.equipmentAccess, injuryBlob);
+
+  return { exercise: current.exercise, options };
+}
+
+export async function applyExerciseSwap(
+  userId: string,
+  sessionId: string,
+  exerciseIndex: number,
+  newExercise: string
+): Promise<unknown> {
+  const { profile, session } = await loadSwapContext(userId, sessionId);
+
+  const content = session.content as unknown as SessionContent;
+  const current = content.main?.[exerciseIndex];
+  if (!current) {
+    const err = new Error("Exercise not found in this session") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const injuryBlob = buildInjuryBlob(profile);
+  const allowedOptions = getSwapOptions(current.exercise, profile.equipmentAccess, injuryBlob);
+
+  // Revalidate server-side — never trust the option the client claims it was shown.
+  if (!isValidSwap(current.exercise, newExercise) || !allowedOptions.includes(newExercise)) {
+    const err = new Error("That alternative isn't available for this exercise") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const previousExercise = current.exercise;
+  const updatedMain = content.main.map((ex, i) =>
+    i === exerciseIndex ? { ...ex, exercise: newExercise } : ex
+  );
+  const updatedContent = { ...content, main: updatedMain };
+
+  const updated = await prisma.workoutSession.update({
+    where: { id: sessionId },
+    data: { content: updatedContent as unknown as Prisma.InputJsonValue },
+  });
+
+  await prisma.adjustmentLog.create({
+    data: {
+      workoutPlanId: session.workoutPlanId,
+      triggerEvent: "client_swap",
+      triggerData: { sessionId, exerciseIndex, from: previousExercise, to: newExercise } as unknown as Prisma.InputJsonValue,
+      adjustmentType: "swap_session",
+      description: `Client swapped "${previousExercise}" for "${newExercise}" on "${session.title}".`,
+      affectedSessions: [sessionId],
+    },
+  });
+
+  logger.info({ userId, sessionId, exerciseIndex, previousExercise, newExercise }, "Client exercise swap applied");
+
+  return updated;
+}
+
+// ============================================================
+// Jerry (chat) session adjustment — Private Coaching only
+// ============================================================
+
+export interface JerryAdjustmentParams {
+  date: string; // YYYY-MM-DD
+  action: "swap_exercise" | "reduce_intensity" | "skip_session";
+  exerciseName?: string;
+  newExercise?: string;
+  reason: string;
+}
+
+export interface JerryAdjustmentResult {
+  ok: boolean;
+  message: string; // fed back to Claude as the tool_result
+  description?: string; // short client-facing change note, if successful
+}
+
+/**
+ * Executes a bounded plan change requested through the chat tool. Every path
+ * here is deliberately narrow: only sessions in [today, today+7] can be
+ * touched, exercise swaps still have to pass the same pre-approved
+ * movement-pattern groups as the self-serve swap UI, and intensity can only
+ * come down (never up) by a fixed, small amount. Jerry has latitude to
+ * decide *when* to use this, not *how far* any single use can reach.
+ */
+export async function executeJerryAdjustment(
+  userId: string,
+  params: JerryAdjustmentParams
+): Promise<JerryAdjustmentResult> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) return { ok: false, message: "No athlete profile found for this client." };
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(params.date)) {
+    return { ok: false, message: "Date must be in YYYY-MM-DD format." };
+  }
+
+  const targetDate = new Date(params.date + "T00:00:00.000Z");
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 7);
+
+  if (targetDate < today || targetDate > maxDate) {
+    return { ok: false, message: "Can only adjust sessions between today and 7 days out." };
+  }
+
+  const tomorrow = new Date(targetDate);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const session = await prisma.workoutSession.findFirst({
+    where: {
+      workoutPlan: { athleteProfileId: profile.id, isActive: true },
+      scheduledDate: { gte: targetDate, lt: tomorrow },
+    },
+  });
+
+  if (!session) {
+    return { ok: false, message: `No scheduled session found on ${params.date}.` };
+  }
+
+  if (session.status !== "SCHEDULED") {
+    return { ok: false, message: `That session is already marked ${session.status.toLowerCase()} — nothing to adjust.` };
+  }
+
+  const content = session.content as unknown as SessionContent;
+
+  if (params.action === "skip_session") {
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: { status: "SKIPPED", athleteNotes: params.reason },
+    });
+    await prisma.adjustmentLog.create({
+      data: {
+        workoutPlanId: session.workoutPlanId,
+        triggerEvent: "jerry_chat",
+        triggerData: { sessionId: session.id, action: params.action, reason: params.reason } as unknown as Prisma.InputJsonValue,
+        adjustmentType: "skip_no_replan",
+        description: `Jerry skipped "${session.title}" (${params.date}) via chat: ${params.reason}`,
+        affectedSessions: [session.id],
+      },
+    });
+    return { ok: true, message: "Session skipped.", description: `Skipped "${session.title}" on ${params.date}` };
+  }
+
+  if (params.action === "reduce_intensity") {
+    const existingMain = content.main ?? [];
+    const reducedMain = scaleVolume(existingMain, 0.85);
+    const currentTSS = content.estimatedTSS ?? session.prescribedTSS ?? 50;
+
+    await prisma.workoutSession.update({
+      where: { id: session.id },
+      data: {
+        description: `${session.description ?? ""} (Reduced 15% via chat — ${params.reason})`.trim(),
+        prescribedTSS: Math.round(currentTSS * 0.85),
+        content: { ...content, main: reducedMain, estimatedTSS: Math.round(currentTSS * 0.85) } as unknown as Prisma.InputJsonValue,
+      },
+    });
+    await prisma.adjustmentLog.create({
+      data: {
+        workoutPlanId: session.workoutPlanId,
+        triggerEvent: "jerry_chat",
+        triggerData: { sessionId: session.id, action: params.action, reason: params.reason } as unknown as Prisma.InputJsonValue,
+        adjustmentType: "reduce_intensity",
+        description: `Jerry reduced intensity 15% on "${session.title}" (${params.date}) via chat: ${params.reason}`,
+        affectedSessions: [session.id],
+      },
+    });
+    return { ok: true, message: "Intensity reduced 15% for that session.", description: `Reduced intensity on "${session.title}" (${params.date})` };
+  }
+
+  // swap_exercise
+  if (!params.exerciseName || !params.newExercise) {
+    return { ok: false, message: "swap_exercise requires both exerciseName and newExercise." };
+  }
+
+  const index = (content.main ?? []).findIndex(
+    (ex) => ex.exercise.toLowerCase() === params.exerciseName!.toLowerCase()
+  );
+  if (index === -1) {
+    return { ok: false, message: `Couldn't find "${params.exerciseName}" in that session.` };
+  }
+
+  const actualName = content.main[index].exercise;
+  const injuryBlob = buildInjuryBlob(profile);
+  const allowedOptions = getSwapOptions(actualName, profile.equipmentAccess, injuryBlob);
+
+  if (!isValidSwap(actualName, params.newExercise) || !allowedOptions.includes(params.newExercise)) {
+    const suggestion = allowedOptions.length
+      ? ` Approved alternatives for "${actualName}": ${allowedOptions.join(", ")}.`
+      : ` No pre-approved alternative exists for "${actualName}" — this one needs a human coach's judgment.`;
+    return { ok: false, message: `"${params.newExercise}" isn't a pre-approved substitute for "${actualName}".${suggestion}` };
+  }
+
+  const updatedMain = content.main.map((ex, i) => (i === index ? { ...ex, exercise: params.newExercise! } : ex));
+  await prisma.workoutSession.update({
+    where: { id: session.id },
+    data: { content: { ...content, main: updatedMain } as unknown as Prisma.InputJsonValue },
+  });
+  await prisma.adjustmentLog.create({
+    data: {
+      workoutPlanId: session.workoutPlanId,
+      triggerEvent: "jerry_chat",
+      triggerData: { sessionId: session.id, from: actualName, to: params.newExercise, reason: params.reason } as unknown as Prisma.InputJsonValue,
+      adjustmentType: "swap_session",
+      description: `Jerry swapped "${actualName}" for "${params.newExercise}" on "${session.title}" (${params.date}) via chat: ${params.reason}`,
+      affectedSessions: [session.id],
+    },
+  });
+
+  return {
+    ok: true,
+    message: `Swapped "${actualName}" for "${params.newExercise}".`,
+    description: `Swapped "${actualName}" → "${params.newExercise}" on ${params.date}`,
+  };
 }
 
 // ============================================================

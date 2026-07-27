@@ -29,6 +29,7 @@
   }
 
   var sessionData = null;
+  var canSwap = false;
   loadWorkout();
 
   async function loadWorkout() {
@@ -41,6 +42,7 @@
       }
 
       sessionData = res.data;
+      canSwap = res.data.planTier === 'PRIVATE_COACHING' && res.data.status === 'SCHEDULED';
       renderWorkout(res.data);
     } catch (err) {
       showError(err.message || 'Failed to load workout.');
@@ -110,7 +112,7 @@
         var mainList = document.getElementById('mainList');
         mainPhase.style.display = 'block';
 
-        content.main.forEach(function (ex) {
+        content.main.forEach(function (ex, idx) {
           var card = document.createElement('div');
           card.className = 'exercise-card';
 
@@ -128,12 +130,28 @@
             detailsHtml += '<div class="exercise-detail"><span class="exercise-detail-label">Intensity</span><span class="exercise-detail-value">' + escapeHtml(ex.intensity) + '</span></div>';
           }
 
+          var swapBtnHtml = canSwap
+            ? '<button type="button" class="exercise-swap-btn" data-swap-index="' + idx + '" aria-label="Swap exercise">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
+              '</button>'
+            : '';
+
           card.innerHTML =
-            '<div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' +
+            '<div class="exercise-name-row"><div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' + swapBtnHtml + '</div>' +
             '<div class="exercise-details">' + detailsHtml + '</div>' +
             (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '');
           mainList.appendChild(card);
         });
+
+        if (canSwap) {
+          mainList.querySelectorAll('.exercise-swap-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var index = parseInt(btn.getAttribute('data-swap-index'), 10);
+              var name = btn.closest('.exercise-card').querySelector('.exercise-name').textContent;
+              openSwapSheet(index, name);
+            });
+          });
+        }
       }
 
       // Cooldown
@@ -229,6 +247,69 @@
       alert(err.message || 'Failed to skip session.');
       skipModalSubmit.disabled = false;
       skipModalSubmit.textContent = 'Skip Session';
+    }
+  });
+
+  // ── Swap Exercise Sheet ──
+  var swapModal = document.getElementById('swapModal');
+  var swapModalClose = document.getElementById('swapModalClose');
+  var swapCurrentName = document.getElementById('swapCurrentName');
+  var swapOptionsList = document.getElementById('swapOptionsList');
+
+  function openSwapSheet(index, currentName) {
+    swapCurrentName.textContent = currentName;
+    swapOptionsList.innerHTML = '<div class="swap-loading">Loading alternatives...</div>';
+    swapModal.classList.add('active');
+
+    apiGet('/api/v1/workout/' + encodeURIComponent(sessionId) + '/main/' + index + '/alternatives')
+      .then(function (res) {
+        var options = (res.success && res.data && res.data.options) || [];
+        if (options.length === 0) {
+          swapOptionsList.innerHTML = '<div class="swap-empty">No pre-approved alternative for this one yet — ask Jerry if you\'d like to change it.</div>';
+          return;
+        }
+        swapOptionsList.innerHTML = '';
+        options.forEach(function (opt) {
+          var pill = document.createElement('button');
+          pill.type = 'button';
+          pill.className = 'swap-option-pill';
+          pill.textContent = opt;
+          pill.addEventListener('click', function () { applySwap(index, opt); });
+          swapOptionsList.appendChild(pill);
+        });
+      })
+      .catch(function () {
+        swapOptionsList.innerHTML = '<div class="swap-empty">Unable to load alternatives. Try again.</div>';
+      });
+  }
+
+  function applySwap(index, newExercise) {
+    swapOptionsList.querySelectorAll('.swap-option-pill').forEach(function (p) { p.disabled = true; });
+
+    apiPost('/api/v1/workout/' + encodeURIComponent(sessionId) + '/main/' + index + '/swap', { exercise: newExercise })
+      .then(function (res) {
+        if (res.success) {
+          var nameEls = document.querySelectorAll('#mainList .exercise-name');
+          if (nameEls[index]) nameEls[index].textContent = newExercise;
+          swapModal.classList.remove('active');
+        } else {
+          alert('Failed to swap exercise: ' + (res.error || 'Unknown error'));
+          swapOptionsList.querySelectorAll('.swap-option-pill').forEach(function (p) { p.disabled = false; });
+        }
+      })
+      .catch(function (err) {
+        alert(err.message || 'Failed to swap exercise.');
+        swapOptionsList.querySelectorAll('.swap-option-pill').forEach(function (p) { p.disabled = false; });
+      });
+  }
+
+  swapModalClose.addEventListener('click', function () {
+    swapModal.classList.remove('active');
+  });
+
+  swapModal.addEventListener('click', function (e) {
+    if (e.target === swapModal) {
+      swapModal.classList.remove('active');
     }
   });
 

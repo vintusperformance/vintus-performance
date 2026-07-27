@@ -3,11 +3,16 @@ import type { Request, Response, NextFunction } from "express";
 import type { Prisma } from "@prisma/client";
 import { authenticate } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
-import { completeSessionSchema, skipSessionSchema, rescheduleSessionSchema } from "./schemas/workout.schemas.js";
+import { completeSessionSchema, skipSessionSchema, rescheduleSessionSchema, swapExerciseSchema } from "./schemas/workout.schemas.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { updateAdherence } from "../services/adherence.service.js";
-import { adjustForMissedStrengthDay, adjustForMissedEnduranceDay } from "../services/workout.service.js";
+import {
+  adjustForMissedStrengthDay,
+  adjustForMissedEnduranceDay,
+  getSwapAlternatives,
+  applyExerciseSwap,
+} from "../services/workout.service.js";
 import { getWeekView } from "../services/dashboard.service.js";
 
 const router = Router();
@@ -326,6 +331,53 @@ router.post(
       const weekData = await getWeekView(userId, 0);
 
       res.status(200).json({ success: true, data: weekData });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /workout/:sessionId/main/:index/alternatives — pre-approved swap options
+router.get(
+  "/:sessionId/main/:index/alternatives",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const sessionId = req.params.sessionId as string;
+      const index = parseInt(req.params.index as string, 10);
+
+      if (isNaN(index) || index < 0) {
+        res.status(400).json({ success: false, error: "Invalid exercise index" });
+        return;
+      }
+
+      const data = await getSwapAlternatives(userId, sessionId, index);
+
+      res.status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /workout/:sessionId/main/:index/swap — apply a pre-approved swap
+router.post(
+  "/:sessionId/main/:index/swap",
+  validate(swapExerciseSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const sessionId = req.params.sessionId as string;
+      const index = parseInt(req.params.index as string, 10);
+
+      if (isNaN(index) || index < 0) {
+        res.status(400).json({ success: false, error: "Invalid exercise index" });
+        return;
+      }
+
+      const updated = await applyExerciseSwap(userId, sessionId, index, req.body.exercise);
+
+      res.status(200).json({ success: true, data: updated });
     } catch (err) {
       next(err);
     }

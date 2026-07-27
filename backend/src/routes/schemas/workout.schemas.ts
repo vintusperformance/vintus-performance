@@ -19,6 +19,11 @@ export const rescheduleSessionSchema = z.object({
   newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD format"),
 });
 
+export const swapExerciseSchema = z.object({
+  exercise: z.string().min(1).max(120),
+});
+
 export type CompleteSession = z.infer<typeof completeSessionSchema>;
 export type SkipSession = z.infer<typeof skipSessionSchema>;
 export type RescheduleSession = z.infer<typeof rescheduleSessionSchema>;
+export type SwapExercise = z.infer<typeof swapExerciseSchema>;

@@ -481,6 +481,50 @@ model Lead {
 }
 
 // ============================================================
+// PAID SESSIONS — one-off bookable training/coaching calls
+// (distinct from Subscription/PlanTier — no client account required)
+// ============================================================
+
+model SessionBooking {
+  id                String   @id @default(cuid())
+
+  sessionType       PaidSessionType
+  headcount         Int      @default(1)
+  totalAmountCents  Int            // server-computed, never trust client input
+
+  firstName         String
+  lastName          String?
+  email             String
+  phone             String?
+  meetingPreference String         // phone | facetime | google-meet | zoom | other (free text)
+  coachingContext   String?        // "how can I help you" — what to coach them on
+
+  scheduledDate     String         // YYYY-MM-DD
+  scheduledTime     String         // e.g. "14:00" (24h, America/New_York)
+
+  status            SessionBookingStatus @default(PENDING_PAYMENT)
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  confirmationSentAt      DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+enum PaidSessionType {
+  THIRTY_MIN        // $85/person, 1-6 people
+  SIXTY_MIN_1ON1    // $150 flat, 1 person
+  SIXTY_MIN_1ON2    // $110/person, 1-2 people
+  SIXTY_MIN_GROUP   // $65/person, 3-6 people
+}
+
+enum SessionBookingStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELED
+}
+
+// ============================================================
 // CHAT — AI Coach Conversations
 // ============================================================
 

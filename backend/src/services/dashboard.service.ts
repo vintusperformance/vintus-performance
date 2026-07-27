@@ -204,17 +204,23 @@ export async function getWorkoutDetail(
     throw err;
   }
 
-  const session = await prisma.workoutSession.findFirst({
-    where: {
-      id: sessionId,
-      workoutPlan: { athleteProfileId: profile.id },
-    },
-    include: {
-      workoutPlan: {
-        select: { name: true, weekNumber: true, blockType: true },
+  const [session, subscription] = await Promise.all([
+    prisma.workoutSession.findFirst({
+      where: {
+        id: sessionId,
+        workoutPlan: { athleteProfileId: profile.id },
       },
-    },
-  });
+      include: {
+        workoutPlan: {
+          select: { name: true, weekNumber: true, blockType: true },
+        },
+      },
+    }),
+    prisma.subscription.findUnique({
+      where: { userId },
+      select: { planTier: true },
+    }),
+  ]);
 
   if (!session) {
     const err = new Error("Workout session not found") as Error & { statusCode?: number };
@@ -222,7 +228,7 @@ export async function getWorkoutDetail(
     throw err;
   }
 
-  return session;
+  return { ...session, planTier: subscription?.planTier ?? null };
 }
 
 // ============================================================
