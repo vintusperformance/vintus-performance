@@ -372,10 +372,22 @@ export async function sendMessage(
 
     const latency = Date.now() - startTime;
 
-    const assistantContent =
-      response.content[0].type === "text"
-        ? response.content[0].text.trim()
-        : "";
+    // Search all blocks for the first text block rather than assuming
+    // content[0] is text. Previously an empty/non-text first block silently
+    // saved "" as Jerry's reply — a blank bubble the client sees as Jerry
+    // going silent, with no error and nothing in the logs to explain why.
+    const textBlock = response.content.find(
+      (b): b is Extract<typeof b, { type: "text" }> => b.type === "text"
+    );
+    const assistantContent = textBlock?.text.trim() ?? "";
+
+    if (!assistantContent) {
+      const blockTypes = response.content.map((b) => b.type).join(",") || "none";
+      throw new Error(
+        `Claude chat returned no usable text. blockTypes=${blockTypes}, ` +
+          `stop_reason=${response.stop_reason}, output_tokens=${response.usage?.output_tokens ?? "unknown"}`
+      );
+    }
 
     // 9. Save assistant message
     const assistantMsg = await prisma.chatMessage.create({
