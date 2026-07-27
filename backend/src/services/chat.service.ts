@@ -113,13 +113,16 @@ async function gatherAthleteContext(userId: string): Promise<AthleteContext> {
     }),
     prisma.workoutSession.findFirst({
       where: {
-        workoutPlan: { athleteProfileId: profile.id },
+        // Must match the dashboard's active-plan filter — without it, Jerry can
+        // reference a session from a superseded plan (e.g. after a regeneration)
+        // that the client no longer sees, describing a workout that isn't there.
+        workoutPlan: { athleteProfileId: profile.id, isActive: true },
         scheduledDate: { gte: today, lt: tomorrow },
       },
     }),
     prisma.workoutSession.findMany({
       where: {
-        workoutPlan: { athleteProfileId: profile.id },
+        workoutPlan: { athleteProfileId: profile.id, isActive: true },
         scheduledDate: { gte: weekStart, lt: tomorrow },
       },
     }),
