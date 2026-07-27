@@ -1519,6 +1519,16 @@
   letter-spacing: 0.5px;
 }
 
+.chat-bubble-action {
+  font-size: 0.7rem;
+  color: #4ade80;
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(74, 222, 128, 0.2);
+  font-family: var(--font-heading);
+  letter-spacing: 0.3px;
+}
+
 .chat-bubble--user .chat-bubble-time { text-align: right; }
 .chat-bubble--assistant .chat-bubble-time { text-align: left; }
 

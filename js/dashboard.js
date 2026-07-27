@@ -131,6 +131,10 @@
         // Show manage subscription button for private coaching
         if (currentTier === 'PRIVATE_COACHING') {
           document.getElementById('manageSubBtn').style.display = 'inline-flex';
+        } else {
+          // Coach chat + plan editing are a Private Coaching feature — other
+          // tiers have no ongoing coach relationship to mediate a change through.
+          chatOpenBtn.style.display = 'none';
         }
       }
 
@@ -1039,7 +1043,7 @@
       if (res.success && res.data && res.data.messages && res.data.messages.length > 0) {
         chatMessages.innerHTML = '';
         res.data.messages.forEach(function(msg) {
-          appendBubble(msg.role, msg.content, msg.createdAt);
+          appendBubble(msg.role, msg.content, msg.createdAt, msg.action);
         });
         scrollChatToBottom();
       } else {
@@ -1131,7 +1135,7 @@
         await chatSleep(remainingDelay);
 
         hideChatTyping();
-        appendBubble('assistant', responseText, responseTime);
+        appendBubble('assistant', responseText, responseTime, res.data.assistantMessage.action);
         scrollChatToBottom();
       } else {
         clearTimeout(typingTimer);
@@ -1162,7 +1166,7 @@
     return new Promise(function(resolve) { setTimeout(resolve, ms); });
   }
 
-  function appendBubble(role, content, timestamp) {
+  function appendBubble(role, content, timestamp, action) {
     var wrapper = document.createElement('div');
     wrapper.className = 'chat-bubble chat-bubble--' + role;
 
@@ -1170,6 +1174,7 @@
     var formattedContent = escapedContent.replace(/\n/g, '<br>');
 
     wrapper.innerHTML = formattedContent +
+      (action ? '<div class="chat-bubble-action">Updated: ' + escapeHtml(action) + '</div>' : '') +
       '<div class="chat-bubble-time">' + formatChatTime(timestamp) + '</div>';
 
     chatMessages.appendChild(wrapper);
