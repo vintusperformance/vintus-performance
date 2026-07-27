@@ -322,6 +322,26 @@
     border-color: var(--white);
 }
 
+.plan-decision {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.plan-decision__call-link {
+    color: var(--gray);
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color var(--transition-normal);
+}
+
+.plan-decision__call-link:hover {
+    color: var(--silver);
+}
+
 /* ── Footer note ── */
 
 .results-footer-note {

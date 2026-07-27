@@ -76,7 +76,12 @@ export const deviceSelectionSchema = z.object({
   provider: z.enum(["STRAVA", "GARMIN", "APPLE_HEALTH", "WHOOP", "OURA", "FITBIT"]),
 });
 
+export const waiverAcceptSchema = z.object({
+  accepted: z.literal(true, { errorMap: () => ({ message: "Waiver must be accepted to continue" }) }),
+});
+
 export type VerifySession = z.infer<typeof verifySessionSchema>;
 export type SetPassword = z.infer<typeof setPasswordSchema>;
 export type RoutineQuestionnaire = z.infer<typeof routineQuestionnaireSchema>;
 export type DeviceSelection = z.infer<typeof deviceSelectionSchema>;
+export type WaiverAccept = z.infer<typeof waiverAcceptSchema>;

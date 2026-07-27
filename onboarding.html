@@ -30,6 +30,8 @@
             <div class="onboard-step-dot" data-step="3"></div>
             <div class="onboard-step-line"></div>
             <div class="onboard-step-dot" data-step="4"></div>
+            <div class="onboard-step-line"></div>
+            <div class="onboard-step-dot" data-step="5"></div>
         </div>
 
         <div class="onboard-error" id="onboardError"></div>
@@ -454,8 +456,37 @@
             <button class="onboard-btn" id="step3Btn">Complete Setup</button>
         </div>
 
-        <!-- Step 4: Success -->
-        <div class="onboard-step" data-step="4" id="step4">
+        <!-- Step 4: Waiver (Private Coaching only, shown when required) -->
+        <div class="onboard-step" data-step="4" id="step4Waiver">
+            <h2>One Last Thing</h2>
+            <p>Private Coaching involves ongoing, hands-on programming — please read and accept this before we begin.</p>
+
+            <div class="onboard-waiver-box" id="waiverBox">
+                <h3>Assumption of Risk, Release of Liability, and Informed Consent</h3>
+                <p><strong>Nature of the Program.</strong> Vintus provides remote strength, conditioning, and nutrition coaching combining AI-assisted programming with human coach review, plus ongoing messaging support. This is a fitness and lifestyle coaching service — it is not medical care, physical therapy, or a substitute for the advice of a physician.</p>
+                <p><strong>Assumption of Risk.</strong> Physical exercise carries inherent risks, including musculoskeletal injury, cardiovascular events, and aggravation of pre-existing conditions. You voluntarily assume these risks, known and unknown, to the fullest extent permitted by applicable law.</p>
+                <p><strong>Medical Clearance and Health Representations.</strong> You represent that you have no undisclosed condition that would make participation unsafe, that you are participating voluntarily, that you will stop and seek medical attention for any warning sign rather than push through it, and that the information you provide is accurate and complete — your program is built around what you disclose.</p>
+                <p><strong>AI-Assisted Coaching Disclosure.</strong> Some or all of your program and coaching messages, including from "Jerry," are generated or drafted with AI assistance and may be reviewed by a human coach. This is not a substitute for professional medical, psychological, or dietetic advice, and any direction to consult a licensed professional should be followed rather than treated as a medical opinion.</p>
+                <p><strong>No Guarantee of Results.</strong> Vintus does not guarantee any specific outcome. Results depend on factors outside Vintus's control, including adherence, genetics, sleep, stress, and disclosed and undisclosed health conditions.</p>
+                <p><strong>Release and Waiver of Liability.</strong> To the fullest extent permitted by applicable law, you release Vintus Performance LLC, its owners, employees, contractors, and coaching staff from liability for loss, damage, or injury arising from participation in the Program, except to the extent caused by gross negligence or willful misconduct.</p>
+                <p><strong>Indemnification.</strong> You agree to indemnify Vintus against loss arising from your breach of the representations above, or from injury you cause to another person while participating in the Program.</p>
+                <p><strong>Voluntary Participation.</strong> Participation in any specific workout or recommendation is voluntary. You may decline, modify, or stop any exercise at any time.</p>
+                <p><strong>Entire Agreement.</strong> This Agreement, together with the Vintus Performance Terms of Service and Privacy Policy, governs this subject matter and does not alter billing, refund, or cancellation terms.</p>
+                <p><strong>Acknowledgment.</strong> By accepting below, you confirm you have read this Agreement, understand it releases legal rights including the right to sue, are accepting voluntarily, and are at least 18 years of age (or the parent/guardian of a client who is not, accepting on their behalf).</p>
+                <p class="onboard-waiver-endmark">— End of Agreement —</p>
+            </div>
+
+            <label class="onboard-waiver-checkbox" id="waiverCheckboxLabel">
+                <input type="checkbox" id="waiverCheckbox" disabled>
+                <span>I have read and agree to the terms above.</span>
+            </label>
+            <p class="onboard-waiver-hint" id="waiverHint">Scroll to the end to continue.</p>
+
+            <button class="onboard-btn" id="step4WaiverBtn" disabled>Accept & Continue</button>
+        </div>
+
+        <!-- Step 5: Success -->
+        <div class="onboard-step" data-step="5" id="step5">
             <div class="onboard-success">
                 <div class="onboard-success-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>

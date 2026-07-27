@@ -5,6 +5,7 @@ import Twilio from "twilio";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
+import { setClientStatus } from "../services/admin.service.js";
 
 const router = Router();
 
@@ -42,6 +43,44 @@ function normalizePhone(phone: string): string {
  */
 function sanitizeForKeyword(body: string): string {
   return body.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Handle an inbound text from the coach's own number (COACH_PHONE) as a
+ * command rather than client consent language. Currently supports APPROVE,
+ * which activates the most recently requested pending-approval client —
+ * the same action as clicking Approve in the admin dashboard. If more than
+ * one client is pending at once, this only ever resolves the newest request;
+ * anything older needs the dashboard.
+ */
+async function handleCoachCommand(sanitized: string): Promise<string> {
+  if (sanitized !== "approve") {
+    return "Reply APPROVE to activate the most recently requested client, or use the admin dashboard for anything else.";
+  }
+
+  const lastRequest = await prisma.messageLog.findFirst({
+    where: { category: "COACH_APPROVAL_REQUEST" },
+    orderBy: { sentAt: "desc" },
+  });
+
+  if (!lastRequest) {
+    return "No pending approval found.";
+  }
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId: lastRequest.userId },
+    include: { user: { include: { athleteProfile: true } } },
+  });
+
+  if (!subscription || subscription.status !== "PENDING_APPROVAL") {
+    return "That client has already been handled — nothing pending.";
+  }
+
+  await setClientStatus(lastRequest.userId, "approve");
+
+  const name = subscription.user.athleteProfile?.firstName ?? subscription.user.email;
+  logger.info({ userId: lastRequest.userId }, "Client approved via SMS");
+  return `Approved ${name}. They're activated.`;
 }
 
 /**
@@ -88,6 +127,16 @@ router.post("/sms", async (req: Request, res: Response) => {
 
     // Normalize the inbound phone number and find user by both formats
     const normalizedFrom = normalizePhone(from);
+
+    // Messages from the coach's own number are commands, not client consent
+    // keywords — handle them separately and never fall through to STOP/HELP logic.
+    if (env.COACH_PHONE && normalizedFrom === normalizePhone(env.COACH_PHONE)) {
+      const reply = await handleCoachCommand(sanitized);
+      res.type("text/xml").send(
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${reply}</Message></Response>`
+      );
+      return;
+    }
     const profile = await prisma.athleteProfile.findFirst({
       where: {
         OR: [

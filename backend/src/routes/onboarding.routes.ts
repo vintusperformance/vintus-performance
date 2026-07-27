@@ -7,6 +7,7 @@ import {
   setPasswordSchema,
   routineQuestionnaireSchema,
   deviceSelectionSchema,
+  waiverAcceptSchema,
 } from "./schemas/onboarding.schemas.js";
 import * as onboardingService from "../services/onboarding.service.js";
 import { env } from "../config/env.js";
@@ -92,6 +93,26 @@ router.post(
         userId,
         req.body.provider
       );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /onboarding/waiver — requires auth — body: { accepted: true }
+router.post(
+  "/waiver",
+  authenticate,
+  validate(waiverAcceptSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const result = await onboardingService.recordWaiverAcceptance(userId);
 
       res.status(200).json({
         success: true,
