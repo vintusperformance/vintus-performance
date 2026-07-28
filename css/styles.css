@@ -24,20 +24,24 @@
     --gray-dark: #444444;
     --gray-light: #b0b0b0;
 
-    /* Accent - Silver Gradient */
-    --accent: linear-gradient(135deg, #c0c0c0 0%, #e5e5e5 50%, #a0a0a0 100%);
+    /* Accent - Silver Gradient (matches the chrome sheen in the VP mark) */
+    --accent: linear-gradient(135deg, #8a8a8a 0%, #e8e8e8 22%, #ffffff 45%, #cfcfcf 68%, #8f8f8f 100%);
+    --metal-dim: linear-gradient(135deg, #707070 0%, #a3a3a3 22%, #c9c9c9 45%, #adadad 68%, #757575 100%);
     --accent-solid: #c0c0c0;
     --accent-hover: #e5e5e5;
 
     /* Borders */
     --border-color: rgba(192, 192, 192, 0.15);
-    --border-color-hover: rgba(192, 192, 192, 0.3);
+    --border-color-hover: rgba(192, 192, 192, 0.35);
+    --border-gradient: linear-gradient(135deg, rgba(192, 192, 192, 0.35), rgba(192, 192, 192, 0.06) 40%, rgba(192, 192, 192, 0.02));
 
     /* Shadows */
     --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 30px rgba(192, 192, 192, 0.1);
+    --shadow-glow: 0 0 40px rgba(192, 192, 192, 0.16);
+    --shadow-elevated: 0 30px 60px -20px rgba(0, 0, 0, 0.75), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    --shadow-metal: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 -1px 0 rgba(0, 0, 0, 0.3) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
 
     /* Transitions */
     --transition-fast: 0.2s ease;
@@ -69,7 +73,16 @@ html {
 
 body {
     font-family: var(--font-body);
-    background: #000 !important;
+    /* Ambient depth instead of flat black — soft silver glows anchored at two
+       corners plus a very fine dot grid, all subtle enough to read as texture
+       rather than decoration. Layered under the true black base so every page
+       keeps its real background color, just with more presence. */
+    background:
+        radial-gradient(ellipse 900px 600px at 15% -10%, rgba(192, 192, 192, 0.05), transparent 60%),
+        radial-gradient(ellipse 700px 500px at 100% 20%, rgba(192, 192, 192, 0.035), transparent 55%),
+        radial-gradient(ellipse 800px 700px at 50% 100%, rgba(192, 192, 192, 0.03), transparent 60%),
+        radial-gradient(circle, rgba(192, 192, 192, 0.05) 1px, transparent 1px) 0 0/28px 28px,
+        #000 !important;
     background-color: #000 !important;
     color: var(--off-white);
     line-height: 1.6;
@@ -234,7 +247,8 @@ nav.scrolled {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     padding: 1rem 5%;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid transparent;
+    box-shadow: 0 1px 0 0 rgba(192, 192, 192, 0.18), 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .logo {
@@ -344,7 +358,8 @@ nav.scrolled .logo-img {
 
 .nav-cta:hover {
     color: var(--black);
-    border-color: var(--silver);
+    border-color: transparent;
+    box-shadow: var(--shadow-metal);
 }
 
 .nav-cta:hover::before {
@@ -449,7 +464,7 @@ nav.scrolled .logo-img {
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
-    background: var(--silver);
+    background: var(--accent);
     color: var(--black);
     padding: 1.1rem 2.2rem;
     text-decoration: none;
@@ -458,9 +473,10 @@ nav.scrolled .logo-img {
     letter-spacing: 1px;
     text-transform: uppercase;
     transition: all var(--transition-normal);
-    border: 2px solid var(--silver);
+    border: 2px solid transparent;
     position: relative;
     overflow: hidden;
+    box-shadow: var(--shadow-metal);
 }
 
 .btn-primary::before {
@@ -470,16 +486,15 @@ nav.scrolled .logo-img {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
     transform: translateX(-100%);
     transition: transform 0.6s ease;
 }
 
 .btn-primary:hover {
-    background: var(--white);
-    border-color: var(--white);
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(192, 192, 192, 0.2);
+    box-shadow: var(--shadow-metal), 0 14px 34px rgba(192, 192, 192, 0.25);
+    filter: brightness(1.08);
 }
 
 .btn-primary:hover::before {
@@ -525,8 +540,10 @@ nav.scrolled .logo-img {
 }
 
 .btn-outline:hover {
-    background: var(--silver);
+    background: var(--accent);
+    border-color: transparent;
     color: var(--black);
+    box-shadow: var(--shadow-metal);
 }
 
 /* =====================================================
@@ -637,10 +654,15 @@ nav.scrolled .logo-img {
 }
 
 .carousel-text h1 .highlight {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .carousel-text .hero-tagline {
@@ -827,10 +849,15 @@ nav.scrolled .logo-img {
 }
 
 .hero-form-header h1 .highlight {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .hero-form-header .hero-tagline {
@@ -1214,10 +1241,15 @@ nav.scrolled .logo-img {
 }
 
 .hero-quiz-results .hero-quiz-header h2 span {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .hero-quiz-ai-content {
@@ -1415,10 +1447,15 @@ nav.scrolled .logo-img {
 }
 
 .hero h1 .highlight {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .hero-tagline {
@@ -1496,10 +1533,15 @@ nav.scrolled .logo-img {
 }
 
 .stat-number span {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .stat-label {
@@ -1533,6 +1575,7 @@ nav.scrolled .logo-img {
     padding: 2.5rem;
     position: relative;
     transition: all var(--transition-normal);
+    box-shadow: var(--shadow-sm);
 }
 
 .card::before {
@@ -1551,7 +1594,7 @@ nav.scrolled .logo-img {
 .card:hover {
     border-color: var(--border-color-hover);
     transform: translateY(-5px);
-    box-shadow: var(--shadow-glow);
+    box-shadow: var(--shadow-elevated), var(--shadow-glow);
 }
 
 .card:hover::before {
@@ -1566,6 +1609,7 @@ nav.scrolled .logo-img {
     overflow: hidden;
     transition: all var(--transition-normal);
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
 }
 
 .service-card::before {
@@ -1584,7 +1628,7 @@ nav.scrolled .logo-img {
 .service-card:hover {
     transform: translateY(-8px);
     border-color: var(--border-color-hover);
-    box-shadow: var(--shadow-glow);
+    box-shadow: var(--shadow-elevated), var(--shadow-glow);
 }
 
 .service-card:hover::before {
@@ -1683,9 +1727,10 @@ nav.scrolled .logo-img {
 }
 
 .service-cta:hover {
-    background: var(--silver);
-    border-color: var(--silver);
+    background: var(--accent);
+    border-color: transparent;
     color: var(--black);
+    box-shadow: var(--shadow-metal);
 }
 
 /* =====================================================
@@ -1711,10 +1756,15 @@ section {
 }
 
 .section-header h2 .accent {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 /* Statement Section */
@@ -1751,10 +1801,15 @@ section {
 }
 
 .statement h2 .accent {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 /* Statement with Background Image */
@@ -1904,7 +1959,7 @@ section {
 
 .form-submit {
     width: 100%;
-    background: var(--silver);
+    background: var(--accent);
     color: var(--black);
     padding: 1.2rem;
     border: none;
@@ -1915,11 +1970,12 @@ section {
     text-transform: uppercase;
     cursor: pointer;
     transition: all var(--transition-normal);
+    box-shadow: var(--shadow-metal);
 }
 
 .form-submit:hover {
-    background: var(--white);
-    box-shadow: 0 10px 30px rgba(192, 192, 192, 0.2);
+    box-shadow: var(--shadow-metal), 0 14px 34px rgba(192, 192, 192, 0.25);
+    filter: brightness(1.08);
 }
 
 /* =====================================================
@@ -2586,6 +2642,25 @@ footer {
     100% { background-position: -200% center; }
 }
 
+/* Gloss sweep: a slow specular highlight passing through large metallic
+   headline text, then resting — not a continuous shimmer loop. */
+@keyframes glossSweep {
+    0%, 20% { background-position: 95% 0, 0 0; }
+    65%, 100% { background-position: 5% 0, 0 0; }
+}
+
+.gloss-text {
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
+}
+
 .preloader-bar {
     width: 80%;
     max-width: 400px;
@@ -3139,7 +3214,7 @@ footer {
 .calc-submit {
     width: 100%;
     padding: 1rem;
-    background: var(--silver);
+    background: var(--accent);
     border: none;
     color: var(--black);
     font-weight: 600;
@@ -3148,10 +3223,12 @@ footer {
     text-transform: uppercase;
     cursor: pointer;
     transition: all var(--transition-normal);
+    box-shadow: var(--shadow-metal);
 }
 
 .calc-submit:hover {
-    background: var(--white);
+    filter: brightness(1.08);
+    box-shadow: var(--shadow-metal), 0 14px 34px rgba(192, 192, 192, 0.2);
 }
 
 .calc-result {
