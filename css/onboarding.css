@@ -197,6 +197,83 @@
 }
 
 .onboard-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.onboard-btn:disabled:hover {
+    background: var(--silver);
+    border-color: var(--silver);
+}
+
+/* ── Waiver step ── */
+
+.onboard-waiver-box {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    max-height: 340px;
+    overflow-y: auto;
+    margin-bottom: 1.25rem;
+}
+
+.onboard-waiver-box h3 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--off-white);
+    margin-bottom: 1rem;
+}
+
+.onboard-waiver-box p {
+    color: var(--gray);
+    font-size: 0.88rem;
+    line-height: 1.7;
+    margin-bottom: 0.9rem;
+}
+
+.onboard-waiver-box p strong {
+    color: var(--off-white);
+}
+
+.onboard-waiver-endmark {
+    text-align: center;
+    color: var(--gray-dark);
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    margin-bottom: 0 !important;
+}
+
+.onboard-waiver-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    color: var(--off-white);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.onboard-waiver-checkbox input[type="checkbox"] {
+    margin-top: 0.2rem;
+}
+
+.onboard-waiver-checkbox input[type="checkbox"]:disabled + span {
+    color: var(--gray-dark);
+}
+
+.onboard-waiver-hint {
+    color: var(--gray-dark);
+    font-size: 0.78rem;
+    margin-top: 0.5rem;
+}
+
+.onboard-waiver-hint.hidden {
+    display: none;
+}
+
+.onboard-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;

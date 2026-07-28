@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "MessageCategory" ADD VALUE 'COACH_APPROVAL_REQUEST';

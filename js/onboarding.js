@@ -10,6 +10,7 @@
   var currentStep = 1;
   var userId = null;
   var currentTier = null;
+  var waiverRequired = false;
 
   var errorEl = document.getElementById('onboardError');
   var params = new URLSearchParams(window.location.search);
@@ -69,6 +70,7 @@
 
       userId = verifyRes.data.userId;
       currentTier = verifyRes.data.tier || null;
+      waiverRequired = !!verifyRes.data.waiverRequired;
 
       // Set password
       var pwRes = await apiPost('/api/v1/onboarding/set-password', { userId: userId, sessionId: sessionId, password: pw });
@@ -257,7 +259,7 @@
             msgEl.textContent = 'Your personalized plan has been generated. Your coach will review your profile and activate your account shortly.';
           }
         }
-        goToStep(4);
+        goToStep(waiverRequired ? 4 : 5);
       } else {
         showError('Failed to save routine. Please try again.');
         step3Btn.disabled = false;
@@ -269,6 +271,57 @@
       step3Btn.textContent = 'Complete Setup';
     }
   });
+
+  // ── Step 4: Waiver (Private Coaching, when required) ──
+  var waiverBox = document.getElementById('waiverBox');
+  var waiverCheckbox = document.getElementById('waiverCheckbox');
+  var waiverHint = document.getElementById('waiverHint');
+  var step4WaiverBtn = document.getElementById('step4WaiverBtn');
+
+  function checkWaiverScrolled() {
+    // A hidden element (display:none, e.g. before this step is active) reports
+    // 0 for both scrollHeight and clientHeight, which would otherwise satisfy
+    // this check by accident and silently defeat the scroll-gate.
+    if (waiverBox.offsetParent === null) return;
+    var scrolledToBottom = waiverBox.scrollTop + waiverBox.clientHeight >= waiverBox.scrollHeight - 8;
+    if (scrolledToBottom) {
+      waiverCheckbox.disabled = false;
+      waiverHint.classList.add('hidden');
+    }
+  }
+
+  if (waiverBox) {
+    waiverBox.addEventListener('scroll', checkWaiverScrolled);
+  }
+
+  if (waiverCheckbox) {
+    waiverCheckbox.addEventListener('change', function () {
+      step4WaiverBtn.disabled = !waiverCheckbox.checked;
+    });
+  }
+
+  if (step4WaiverBtn) {
+    step4WaiverBtn.addEventListener('click', async function () {
+      hideError();
+      step4WaiverBtn.disabled = true;
+      step4WaiverBtn.textContent = 'Saving...';
+
+      try {
+        var res = await apiPost('/api/v1/onboarding/waiver', { accepted: true });
+        if (res.success) {
+          goToStep(5);
+        } else {
+          showError('Failed to record acceptance. Please try again.');
+          step4WaiverBtn.disabled = false;
+          step4WaiverBtn.textContent = 'Accept & Continue';
+        }
+      } catch (err) {
+        showError(err.message || 'Failed to record acceptance.');
+        step4WaiverBtn.disabled = false;
+        step4WaiverBtn.textContent = 'Accept & Continue';
+      }
+    });
+  }
 
   // ── Step Navigation ──
   function goToStep(step) {
@@ -290,8 +343,15 @@
     hideError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Auto-redirect to dashboard after reaching step 4
-    if (step === 4) {
+    // Now that the waiver step is actually visible, check whether its content
+    // already fits without scrolling (short content shouldn't permanently
+    // block the checkbox waiting for a scroll event that will never fire).
+    if (step === 4 && typeof checkWaiverScrolled === 'function') {
+      setTimeout(checkWaiverScrolled, 50);
+    }
+
+    // Auto-redirect to dashboard after reaching the final success step
+    if (step === 5) {
       var redirectNote = document.createElement('p');
       redirectNote.style.cssText = 'color:var(--gray);font-size:0.85rem;margin-top:1rem;text-align:center;';
       redirectNote.textContent = 'Redirecting to your dashboard...';

@@ -10,12 +10,14 @@ interface FeatureFlags {
   messagingEnabled: boolean;
   cronEnabled: boolean;
   autoMessagingEnabled: boolean;
+  waiverEnabled: boolean;
 }
 
 const flags: FeatureFlags = {
   messagingEnabled: process.env.MESSAGING_ENABLED === "true",
   cronEnabled: process.env.CRON_ENABLED === "true",
   autoMessagingEnabled: process.env.AUTO_MESSAGING_ENABLED === "true",
+  waiverEnabled: process.env.WAIVER_ENABLED === "true",
 };
 
 export function getFlags(): FeatureFlags {
@@ -47,4 +49,12 @@ export function isCronEnabled(): boolean {
  */
 export function isAutoMessagingEnabled(): boolean {
   return flags.autoMessagingEnabled;
+}
+
+/**
+ * Check if the Private Coaching liability waiver step is required during
+ * onboarding. Off by default — see WAIVER_ENABLED in env.ts.
+ */
+export function isWaiverEnabled(): boolean {
+  return flags.waiverEnabled;
 }

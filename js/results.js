@@ -166,12 +166,6 @@
     btn.addEventListener('click', async function () {
       var tier = this.getAttribute('data-tier');
 
-      // Private Coaching → book a consultation call (pass tier context)
-      if (tier === 'PRIVATE_COACHING') {
-        window.location.href = '/book?tier=PRIVATE_COACHING';
-        return;
-      }
-
       // For users with a profileId → Stripe Checkout
       if (profileId) {
         btn.disabled = true;

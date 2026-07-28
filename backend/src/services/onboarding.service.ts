@@ -7,9 +7,15 @@ import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { generateInitialPlan } from "./workout.service.js";
 import { notifyNewClient } from "../lib/gmail-notify.js";
+import { isWaiverEnabled } from "../lib/feature-flags.js";
+import { sendSMS } from "../lib/twilio.js";
 import type { RoutineQuestionnaire } from "../routes/schemas/onboarding.schemas.js";
 
 const SALT_ROUNDS = 12;
+
+// Bump this whenever the waiver text at legal/private-coaching-waiver-DRAFT.md
+// changes, so acceptance records stay tied to the exact version agreed to.
+export const CURRENT_WAIVER_VERSION = "2026-07-27-nj-researched";
 
 // ============================================================
 // JWT helpers (same logic as auth.service — kept local to avoid circular deps)
@@ -50,7 +56,7 @@ function getTokenExpiry(): Date {
 
 export async function verifyCheckoutSession(
   stripeSessionId: string
-): Promise<{ userId: string; tier: string; email: string }> {
+): Promise<{ userId: string; tier: string; email: string; waiverRequired: boolean }> {
   const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
 
   if (session.status !== "complete") {
@@ -73,9 +79,36 @@ export async function verifyCheckoutSession(
     session.customer_email ??
     "";
 
-  logger.info({ userId, tier, stripeSessionId }, "Checkout session verified");
+  const waiverRequired = tier === "PRIVATE_COACHING" && isWaiverEnabled();
 
-  return { userId, tier, email };
+  logger.info({ userId, tier, stripeSessionId, waiverRequired }, "Checkout session verified");
+
+  return { userId, tier, email, waiverRequired };
+}
+
+// ============================================================
+// recordWaiverAcceptance
+// ============================================================
+
+export async function recordWaiverAcceptance(userId: string): Promise<{ waiverAcceptedAt: Date }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const waiverAcceptedAt = new Date();
+
+  await prisma.athleteProfile.update({
+    where: { id: profile.id },
+    data: { waiverAcceptedAt, waiverVersion: CURRENT_WAIVER_VERSION },
+  });
+
+  logger.info({ userId, waiverVersion: CURRENT_WAIVER_VERSION }, "Waiver accepted");
+
+  return { waiverAcceptedAt };
 }
 
 // ============================================================
@@ -266,6 +299,28 @@ export async function submitRoutineQuestionnaire(
       planTier: userWithSub.subscription.planTier,
       status: userWithSub.subscription.status,
     }).catch((err) => logger.error({ err, userId }, "Admin notification failed after onboarding"));
+
+    // Give the coach a faster path to approve than opening the admin dashboard —
+    // reply APPROVE to the most recent request (see sms-webhook.routes.ts).
+    if (userWithSub.subscription.status === "PENDING_APPROVAL" && env.COACH_PHONE) {
+      const tierLabel = userWithSub.subscription.planTier.replace(/_/g, " ");
+      const message = `Vintus: ${name} finished onboarding (${tierLabel}) and is awaiting approval. Reply APPROVE to activate.`;
+
+      sendSMS(env.COACH_PHONE, message)
+        .then((sid) =>
+          prisma.messageLog.create({
+            data: {
+              userId,
+              channel: "SMS",
+              category: "COACH_APPROVAL_REQUEST",
+              content: message,
+              templateId: "coach-approval-request",
+              externalId: sid,
+            },
+          })
+        )
+        .catch((err) => logger.error({ err, userId }, "Coach approval SMS failed"));
+    }
   }
 
   return plan;
@@ -313,6 +368,7 @@ export async function getOnboardingStatus(userId: string): Promise<{
   deviceConnected: boolean;
   routineCompleted: boolean;
   planGenerated: boolean;
+  waiverAccepted: boolean;
 }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -345,5 +401,7 @@ export async function getOnboardingStatus(userId: string): Promise<{
   // Plan is generated if at least one WorkoutPlan exists
   const planGenerated = (user.athleteProfile?.workoutPlans?.length ?? 0) > 0;
 
-  return { passwordSet, deviceConnected, routineCompleted, planGenerated };
+  const waiverAccepted = user.athleteProfile?.waiverAcceptedAt != null;
+
+  return { passwordSet, deviceConnected, routineCompleted, planGenerated, waiverAccepted };
 }
