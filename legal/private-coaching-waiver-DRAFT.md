@@ -21,11 +21,14 @@
 >   that isn't a settled legal fact; if Vintus ever adds a physical location or
 >   in-person group sessions, revisit this.
 >
-> Given that, `[STATE]` below is filled in as New Jersey. What's still open:
-> refund/cancellation terms stay exclusively in the site Terms of Service (not
-> duplicated here), and the minor/parental-consent question in Section 12 — Vintus
-> doesn't currently have a policy on serving minors, so that section still assumes
-> adults only until a decision is made.
+> Given that, `[STATE]` below is filled in as New Jersey. Payment, cancellation, and
+> refund terms are now stated directly in Section 10 below (Anthony's decision: no
+> refunds for any billing period already paid; canceling in Settings stops future
+> billing only) — this is a business term, not a legal-research question, and it's
+> folded into this single acceptance checkbox rather than a separate one. What's
+> still open: the minor/parental-consent question in Section 13 — Vintus doesn't
+> currently have a policy on serving minors, so that section still assumes adults
+> only until a decision is made.
 >
 > **Acceptance flow (built):** `onboarding.html` presents this as a scrollable
 > full-text block the client must scroll to the bottom of before a checkbox
@@ -155,15 +158,32 @@ If any provision of this Agreement is held invalid or unenforceable, that provis
 shall be limited or eliminated to the minimum extent necessary, and the remaining
 provisions shall remain in full force and effect.
 
-## 10. Entire Agreement
+## 10. Payment, Cancellation, and Refunds
+
+Private Coaching is billed as a recurring monthly subscription. By enrolling, you
+authorize Vintus to charge your payment method automatically each month until you
+cancel.
+
+a. You may cancel at any time from your account Settings page. Canceling stops all
+   future billing — no further charges will be made after the cancellation takes
+   effect.
+b. **All payments are final.** Vintus does not provide refunds, in whole or in part,
+   for the current or any prior billing period, regardless of your reason for
+   canceling, how much of the Program you used, or your level of adherence during
+   that period.
+c. This no-refund policy applies uniformly to every billing cycle and is not waived
+   or varied by anything a coach, Jerry, or Vintus staff may say informally — only a
+   written change to this Agreement changes it.
+
+## 11. Entire Agreement
 
 This Agreement, together with the Vintus Performance Terms of Service and Privacy
 Policy, constitutes the entire agreement between you and Vintus regarding the subject
 matter here and supersedes any prior oral or written understanding on this specific
-subject. It does not alter or override billing, refund, or cancellation terms, which
-are governed exclusively by the Terms of Service.
+subject. Section 10 above governs payment, cancellation, and refunds for the Program;
+the Terms of Service govern for other Vintus offerings.
 
-## 11. Governing Law
+## 12. Governing Law
 
 This Agreement is governed by the laws of the State of New Jersey, without regard to
 conflict-of-law principles. [OPEN — an arbitration clause and class-action waiver
@@ -171,12 +191,14 @@ could be added here for consistency with the site's Terms of Service, if desired
 that's a business preference, not a legal requirement, so it's left out of this
 draft rather than assumed.]
 
-## 12. Acknowledgment
+## 13. Acknowledgment
 
 By checking "I have read and agree to the terms above," you acknowledge that:
 
 - You have read this entire Agreement, or had the opportunity to do so;
 - You understand it is a release of legal rights, including the right to sue;
+- You understand and agree that all Private Coaching payments are final and
+  non-refundable, as stated in Section 10;
 - You are signing it voluntarily; and
 - You are at least 18 years of age, or are the parent/legal guardian of a client who
   is not, and are accepting these terms on that client's behalf.

@@ -15,7 +15,7 @@ const SALT_ROUNDS = 12;
 
 // Bump this whenever the waiver text at legal/private-coaching-waiver-DRAFT.md
 // changes, so acceptance records stay tied to the exact version agreed to.
-export const CURRENT_WAIVER_VERSION = "2026-07-27-nj-researched";
+export const CURRENT_WAIVER_VERSION = "2026-07-28-refund-terms";
 
 // ============================================================
 // JWT helpers (same logic as auth.service — kept local to avoid circular deps)
