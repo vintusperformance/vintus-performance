@@ -26,6 +26,7 @@
 
     /* Accent - Silver Gradient (matches the chrome sheen in the VP mark) */
     --accent: linear-gradient(135deg, #8a8a8a 0%, #e8e8e8 22%, #ffffff 45%, #cfcfcf 68%, #8f8f8f 100%);
+    --metal-dim: linear-gradient(135deg, #707070 0%, #a3a3a3 22%, #c9c9c9 45%, #adadad 68%, #757575 100%);
     --accent-solid: #c0c0c0;
     --accent-hover: #e5e5e5;
 
@@ -653,10 +654,15 @@ nav.scrolled .logo-img {
 }
 
 .carousel-text h1 .highlight {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .carousel-text .hero-tagline {
@@ -843,10 +849,15 @@ nav.scrolled .logo-img {
 }
 
 .hero-form-header h1 .highlight {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .hero-form-header .hero-tagline {
@@ -1230,10 +1241,15 @@ nav.scrolled .logo-img {
 }
 
 .hero-quiz-results .hero-quiz-header h2 span {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .hero-quiz-ai-content {
@@ -1431,10 +1447,15 @@ nav.scrolled .logo-img {
 }
 
 .hero h1 .highlight {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .hero-tagline {
@@ -1512,10 +1533,15 @@ nav.scrolled .logo-img {
 }
 
 .stat-number span {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .stat-label {
@@ -1730,10 +1756,15 @@ section {
 }
 
 .section-header h2 .accent {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 /* Statement Section */
@@ -1770,10 +1801,15 @@ section {
 }
 
 .statement h2 .accent {
-    background: var(--accent);
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 /* Statement with Background Image */
@@ -2604,6 +2640,25 @@ footer {
 @keyframes shimmerText {
     0% { background-position: 200% center; }
     100% { background-position: -200% center; }
+}
+
+/* Gloss sweep: a slow specular highlight passing through large metallic
+   headline text, then resting — not a continuous shimmer loop. */
+@keyframes glossSweep {
+    0%, 20% { background-position: 95% 0, 0 0; }
+    65%, 100% { background-position: 5% 0, 0 0; }
+}
+
+.gloss-text {
+    background-image:
+        linear-gradient(100deg, transparent 44%, rgba(255, 255, 255, 0.95) 50%, transparent 56%),
+        var(--metal-dim);
+    background-size: 250% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: glossSweep 6s ease-in-out infinite;
 }
 
 .preloader-bar {
