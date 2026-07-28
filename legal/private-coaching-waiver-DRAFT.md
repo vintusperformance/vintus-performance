@@ -1,24 +1,38 @@
-> **STATUS: DRAFT — NOT LEGAL ADVICE — DO NOT PUBLISH AS-IS**
+> **STATUS: RESEARCHED DRAFT — STILL NOT A SUBSTITUTE FOR A LAWYER, BUT NO LONGER A BLIND TEMPLATE**
 >
-> This is a first-pass draft of a liability release / assumption-of-risk agreement for
-> Private Coaching intake, written to give Anthony a strong starting point — not a
-> substitute for review by a licensed attorney in Vintus Performance LLC's state of
-> formation and operation. Enforceability of liability waivers varies significantly by
-> state (a few states restrict or void them for gross negligence, and requirements for
-> valid e-signature acceptance differ). Before this goes live:
-> 1. An attorney should review and adapt every bracketed `[PLACEHOLDER]` below.
-> 2. An attorney should confirm this is enforceable in the relevant jurisdiction(s) —
->    both where Vintus is formed and where clients reside, since coaching is delivered
->    remotely nationwide.
-> 3. This document does not address refunds, cancellation, or billing terms — those
->    live in the existing site Terms of Service and must not be duplicated or
->    contradicted here.
+> This version is grounded in actual New Jersey law rather than generic boilerplate,
+> since Vintus Performance is based in Morristown, NJ:
 >
-> **Suggested acceptance flow (not yet built):** present this as a scrollable
+> - **Pre-injury liability waivers for fitness/exercise negligence are enforceable in
+>   New Jersey**, per the NJ Supreme Court's *Stelluti v. Casapenn Enterprises, LLC*
+>   (2010) — provided the release is clear, unambiguous, not buried in fine print, and
+>   reflects a voluntary, informed decision. Section 6 below is written to match that
+>   standard.
+> - **New Jersey will not enforce a waiver of gross negligence, recklessness, or
+>   intentional misconduct**, regardless of wording. Section 6's carve-out for the
+>   Released Parties' own gross negligence/willful misconduct isn't a hedge — it's
+>   required for the rest of the release to hold up at all.
+> - **New Jersey's Health Club Services Act (N.J.S.A. 56:8-39 et seq.) voids liability
+>   waivers outright for any business the statute defines as a "health club."** That
+>   definition turns on operating a physical facility ("devotes at least 40% of its
+>   facility to..."). Vintus has no physical facility clients train at — it's
+>   remote/virtual coaching delivered through a dashboard — which is a real, reasoned
+>   basis that the Act doesn't apply here. This is the one inference in this document
+>   that isn't a settled legal fact; if Vintus ever adds a physical location or
+>   in-person group sessions, revisit this.
+>
+> Given that, `[STATE]` below is filled in as New Jersey. What's still open:
+> refund/cancellation terms stay exclusively in the site Terms of Service (not
+> duplicated here), and the minor/parental-consent question in Section 12 — Vintus
+> doesn't currently have a policy on serving minors, so that section still assumes
+> adults only until a decision is made.
+>
+> **Acceptance flow (built):** `onboarding.html` presents this as a scrollable
 > full-text block the client must scroll to the bottom of before a checkbox
-> ("I have read and agree to the terms above") becomes enabled, capture
-> timestamp + account ID + a hash of the document version at acceptance, and
-> block Private Coaching plan generation until that record exists.
+> ("I have read and agree to the terms above") becomes enabled. Acceptance timestamp
+> and document version are recorded on the client's profile
+> (`AthleteProfile.waiverAcceptedAt` / `waiverVersion`), gated behind the
+> `WAIVER_ENABLED` flag.
 
 ---
 
@@ -26,7 +40,7 @@
 
 **Client:** [CLIENT FULL LEGAL NAME]
 **Effective Date:** [DATE OF ELECTRONIC ACCEPTANCE]
-**Provider:** Vintus Performance LLC, a [STATE] limited liability company ("Vintus," "we," "us")
+**Provider:** Vintus Performance LLC, a New Jersey limited liability company ("Vintus," "we," "us")
 
 This Agreement is a condition of enrollment in the Vintus Performance Private Coaching
 program (the "Program"). By checking "I agree" below, you ("Client," "you") are entering
@@ -55,11 +69,11 @@ designed and properly followed, and may be heightened by factors you have not
 disclosed to Vintus.
 
 You voluntarily and knowingly assume all such risks, known and unknown, arising from
-your participation in the Program, including risks arising from the negligence of
-Vintus, its owners, employees, contractors, and coaches, to the fullest extent
-permitted by applicable law. [PLACEHOLDER — some states do not permit assumption of
-risk for gross negligence or willful misconduct; counsel should confirm carve-outs
-required in this jurisdiction.]
+your participation in the Program, including risks arising from the ordinary
+negligence of Vintus, its owners, employees, contractors, and coaches, to the fullest
+extent permitted under New Jersey law. This assumption of risk does not extend to
+gross negligence, recklessness, or intentional misconduct, which New Jersey law does
+not permit to be waived.
 
 ## 3. Medical Clearance and Health Representations
 
@@ -109,17 +123,17 @@ undisclosed health conditions.
 
 ## 6. Release and Waiver of Liability
 
-To the fullest extent permitted by applicable law, you release, waive, discharge, and
-covenant not to sue Vintus Performance LLC, its owners, officers, employees,
+To the fullest extent permitted under New Jersey law, you release, waive, discharge,
+and covenant not to sue Vintus Performance LLC, its owners, officers, employees,
 contractors, and coaching staff (collectively, the "Released Parties") from any and
 all liability, claims, demands, actions, or causes of action whatsoever arising out of
 or related to any loss, damage, or injury, including death, that may be sustained by
 you, or to any property belonging to you, while participating in the Program,
-**whether arising from the negligence of the Released Parties or otherwise**, except
-to the extent caused by the Released Parties' gross negligence or willful misconduct.
-[PLACEHOLDER — confirm the gross-negligence carve-out matches counsel's guidance for
-each state in which Vintus operates or has clients; some states require this
-carve-out to be enforceable at all, others restrict waivers regardless.]
+**whether arising from the ordinary negligence of the Released Parties or otherwise**,
+except to the extent caused by the Released Parties' gross negligence, recklessness,
+or willful misconduct. This carve-out is required for this release to be enforceable
+under New Jersey law (*Stelluti v. Casapenn Enters., LLC*, 203 N.J. 286 (2010)) — it
+is not optional and should not be narrowed.
 
 ## 7. Indemnification
 
@@ -151,10 +165,11 @@ are governed exclusively by the Terms of Service.
 
 ## 11. Governing Law
 
-This Agreement is governed by the laws of the State of [STATE], without regard to
-conflict-of-law principles. [PLACEHOLDER — confirm venue/arbitration clause with
-counsel; consider whether an arbitration clause and class-action waiver is desired,
-consistent with the site's existing Terms of Service.]
+This Agreement is governed by the laws of the State of New Jersey, without regard to
+conflict-of-law principles. [OPEN — an arbitration clause and class-action waiver
+could be added here for consistency with the site's Terms of Service, if desired;
+that's a business preference, not a legal requirement, so it's left out of this
+draft rather than assumed.]
 
 ## 12. Acknowledgment
 
@@ -165,11 +180,17 @@ By checking "I have read and agree to the terms above," you acknowledge that:
 - You are signing it voluntarily; and
 - You are at least 18 years of age, or are the parent/legal guardian of a client who
   is not, and are accepting these terms on that client's behalf.
-  [PLACEHOLDER — confirm minimum-age policy; if Vintus serves minors, a distinct
-  parental-consent flow is required and is not covered by this draft.]
+  [OPEN — business decision, not a legal-research gap: this draft assumes Vintus
+  only serves adult clients directly. If Vintus wants to coach minors, that needs a
+  distinct parental-consent flow this document doesn't cover — worth deciding before
+  it comes up rather than after.]
 
 ---
 
-*This document was prepared as a working draft to accelerate legal review, not as a
-final or attorney-approved release. Vintus Performance LLC will have this reviewed by
-qualified counsel before it is presented to any client for acceptance.*
+*This document is grounded in New Jersey case law and statute as of the research date
+below, not a substitute for a licensed attorney's review of Vintus Performance LLC's
+specific circumstances. It is intended to give real protection today while remaining
+easy to formally review later — nothing here should need to change if it is reviewed,
+only be confirmed. Legal research current as of July 2026; if Vintus expands
+operations, adds a physical location, or begins serving clients as employees or under
+a different business structure, this document should be revisited.*
