@@ -35,7 +35,12 @@ framework.
 
 ## 2. Platform Priority
 
-**LinkedIn and Instagram, launch immediately. TikTok and YouTube, not yet.**
+**Instagram leads at launch. LinkedIn is queued but on hold — Anthony's personal
+profile needs polishing first, and Buffer isn't connected to LinkedIn yet (3-channel
+plan limit already used by Instagram/TikTok/YouTube). Revisit LinkedIn once the
+profile is ready; draft copy can be prepared in the meantime whenever there's
+downtime. TikTok and YouTube stay held per the original reasoning below even though
+both are already connected in Buffer.**
 
 - **LinkedIn — primary.** This is the ICP's native habitat, and it's the one
   platform where a zero-follower founder account can still get distribution
