@@ -73,12 +73,13 @@ fitness account, it's wrong.
 
 ## Standing Rules
 
-1. **Never invent policy.** Private Coaching refund policy is decided and documented:
-   all payments are final; canceling in Settings stops future billing only, with no
-   refund for the current or any prior billing period. It's stated in the client
-   waiver (`legal/private-coaching-waiver-DRAFT.md` §10), `onboarding.html`, and
-   `terms.html`. One-time plans and Paid Sessions have **no** refund policy set — if
-   asked, say it will be flagged for Anthony, do not improvise terms.
+1. **Never invent policy.** Refund policy is decided and documented: **all sales are
+   final**, across Private Coaching, one-time Training/Nutrition Plans, and Paid
+   Sessions — no refunds, in whole or in part, for any reason. Canceling Private
+   Coaching in Settings stops future billing only; it does not refund the current or
+   any prior billing period. Stated in the client waiver
+   (`legal/private-coaching-waiver-DRAFT.md` §10), `onboarding.html`, `terms.html`,
+   `faq.html`, and `faq-knowledge.ts`.
 2. **Never fabricate proof.** No testimonials, transformation stats, client counts,
    or results that aren't real. This includes "3 spots left" style scarcity unless
    the number is actually true.
