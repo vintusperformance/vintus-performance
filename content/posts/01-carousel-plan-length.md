@@ -62,13 +62,13 @@
 **Visual:** Clean brand close, logo mark or wordmark, single CTA line.
 
 > We don't guess — and you shouldn't either.
-> Start with the assessment at vintusperformance.org. It tells you which one is actually yours.
+> Pick your length. The assessment at vintusperformance.org is what your program gets built from.
 
 ---
 
 ## Caption
 
-Picking a training plan length by vibes is how people end up quitting week two of a 90-day block they never needed.
+Picking a plan length by feel is how people quit week two of a 90-day block they never needed.
 
 Here's the actual logic:
 
@@ -76,8 +76,8 @@ Here's the actual logic:
 → Chasing one specific goal with a real deadline? **60 days.**
 → Rebuilding capacity from the ground up? **90 days.**
 
-Each one is built for a different problem — not a different level of commitment. The assessment at vintusperformance.org matches you to the right one before you spend a dollar on the wrong one.
+Each one is built for a different problem — not a different level of commitment. Once you know which problem is yours, the assessment at vintusperformance.org is where your program gets built.
 
-Not a diet. A precision system.
+Stay disciplined. Stay dominant.
 
 #PerformanceCoaching #TrainingPlan #StayDisciplined
