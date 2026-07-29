@@ -436,6 +436,28 @@ router.get(
 );
 
 // ============================================================
+// UPCOMING CALLS
+// ============================================================
+
+// GET /admin/upcoming-calls — booked paid sessions + consultations, with
+// intake/survey context attached where a matching profile exists
+router.get(
+  "/upcoming-calls",
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const calls = await adminService.getUpcomingCalls();
+
+      res.status(200).json({
+        success: true,
+        data: calls,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ============================================================
 // SYSTEM
 // ============================================================
 

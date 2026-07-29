@@ -11,7 +11,7 @@
   }
 
   /* ── State ── */
-  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false };
+  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false };
   var clientsPage = 1;
   var clientsTotalPages = 1;
   var escalationsPage = 1;
@@ -145,6 +145,7 @@
     else if (name === 'messaging') loadMessaging();
     else if (name === 'adherence') loadAdherence();
     else if (name === 'escalations') loadEscalations();
+    else if (name === 'upcomingCalls') loadUpcomingCalls();
   }
 
   /* ── Refresh Button ── */
@@ -1663,6 +1664,79 @@
 
     } catch (err) {
       document.getElementById('escalationsList').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+    }
+  }
+
+  /* ============================================================
+     UPCOMING CALLS TAB
+     ============================================================ */
+
+  function fmtCallDate(dateStr, timeStr) {
+    var parts = (dateStr || '').split('-');
+    if (parts.length !== 3) return esc(dateStr) + ' ' + esc(timeStr);
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    var dayLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    var timeParts = (timeStr || '').split(':');
+    var hour = parseInt(timeParts[0], 10) || 0;
+    var minute = timeParts[1] || '00';
+    var ampm = hour >= 12 ? 'PM' : 'AM';
+    var hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return dayLabel + ' at ' + hour12 + ':' + minute + ' ' + ampm;
+  }
+
+  async function loadUpcomingCalls() {
+    var listEl = document.getElementById('upcomingCallsList');
+    try {
+      var res = await apiGet('/api/v1/admin/upcoming-calls');
+      var calls = res.data.calls;
+
+      if (!calls || !calls.length) {
+        listEl.innerHTML = '<div class="admin-empty">No upcoming calls</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < calls.length; i++) {
+        var call = calls[i];
+        var badgeBaseStyle = 'display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:600;margin-left:0.4rem;vertical-align:middle;';
+        var kindBadge = call.kind === 'PAID_SESSION'
+          ? '<span style="' + badgeBaseStyle + 'background:rgba(34,197,94,0.15);color:#22c55e;">Paid</span>'
+          : '<span style="' + badgeBaseStyle + 'background:rgba(156,163,175,0.15);color:#9ca3af;">Free Consult</span>';
+
+        var intakeHtml = '';
+        if (call.intake) {
+          var intake = call.intake;
+          intakeHtml = '<div class="admin-esc-resolution" style="margin-top:0.6rem;">' +
+            '<strong>Survey on file:</strong><br>' +
+            (intake.aiSummary ? esc(intake.aiSummary) + '<br>' : '') +
+            'Goal: ' + esc(intake.primaryGoal) + ' &middot; Experience: ' + esc(intake.experienceLevel) +
+            ' &middot; Trains ' + esc(String(intake.trainingDaysPerWeek)) + 'x/week &middot; Equipment: ' + esc(intake.equipmentAccess) +
+            (intake.injuryHistory ? '<br>Injury history: ' + esc(intake.injuryHistory) : '') +
+            (intake.riskFlags && intake.riskFlags.length ? '<br><span style="color:#f87171;">Risk flags: ' + esc(intake.riskFlags.join(', ')) + '</span>' : '') +
+            '</div>';
+        } else {
+          intakeHtml = '<div class="admin-esc-meta" style="margin-top:0.6rem;"><span>No survey on file for this email yet</span></div>';
+        }
+
+        html += '<div class="admin-esc-card">' +
+          '<div class="admin-esc-card-header">' +
+          '<span class="admin-esc-client">' + esc(call.name) + ' ' + kindBadge + '</span>' +
+          '<span class="admin-esc-date">' + esc(fmtCallDate(call.date, call.time)) + '</span>' +
+          '</div>' +
+          '<div class="admin-esc-meta">' +
+          '<span>' + esc(call.label) + '</span>' +
+          '<span>' + esc(call.email) + '</span>' +
+          (call.phone ? '<span>' + esc(call.phone) + '</span>' : '') +
+          (call.meetingPreference ? '<span>Via: ' + esc(call.meetingPreference) + '</span>' : '') +
+          '</div>' +
+          (call.notes ? '<div class="admin-esc-reason">' + esc(call.notes) + '</div>' : '') +
+          intakeHtml +
+          '</div>';
+      }
+      listEl.innerHTML = html;
+    } catch (err) {
+      listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
     }
   }
 

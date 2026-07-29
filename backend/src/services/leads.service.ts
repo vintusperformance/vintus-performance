@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { sendEmail } from "../lib/resend.js";
 import { env } from "../config/env.js";
 import type { ContactInput, ConsultationInput } from "../routes/schemas/leads.schemas.js";
+import { getClassScheduleBlockedTimes, isClassScheduleBlocked } from "../data/booking-rules.js";
 
 /** Save a contact form submission and email admin */
 export async function createContactLead(data: ContactInput) {
@@ -42,6 +43,12 @@ export async function createContactLead(data: ContactInput) {
 
 /** Save a consultation booking request, email admin + client confirmation */
 export async function createConsultationLead(data: ConsultationInput) {
+  if (isClassScheduleBlocked(data.preferredDate, data.preferredTime)) {
+    const err = new Error("That time isn't available — please pick another.") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
   const lead = await prisma.lead.create({
     data: {
       type: "CONSULTATION",
@@ -144,6 +151,20 @@ export async function getAvailableSlots(month: number, year: number) {
       bookedSlots[booking.scheduledDate] = [];
     }
     bookedSlots[booking.scheduledDate].push(booking.scheduledTime);
+  }
+
+  // Class-schedule blackout (Tue/Thu mornings, through the semester) —
+  // treated as "booked" so the existing calendar UI greys them out
+  // with no frontend changes needed.
+  const cursor = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  while (cursor < end) {
+    const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+    const blocked = getClassScheduleBlockedTimes(dateStr);
+    if (blocked.length > 0) {
+      bookedSlots[dateStr] = [...(bookedSlots[dateStr] ?? []), ...blocked];
+    }
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return { bookedSlots };

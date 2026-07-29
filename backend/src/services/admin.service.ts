@@ -6,6 +6,7 @@ import { env } from "../config/env.js";
 import { stripe } from "../config/stripe.js";
 import { sendSMS } from "../lib/twilio.js";
 import { sendEmail } from "../lib/resend.js";
+import { PAID_SESSION_CATALOG } from "../data/paid-sessions.js";
 
 /**
  * Admin Service — client management, analytics, system health, and workout overrides.
@@ -1436,4 +1437,121 @@ async function getConsecutiveMissedForAdmin(userId: string): Promise<number> {
     }
   }
   return streak;
+}
+
+// ============================================================
+// UPCOMING CALLS — paid sessions + free consultations, with any
+// matching intake/survey data attached so Anthony walks in prepared
+// ============================================================
+
+function timeToMinutes(time: string): number {
+  const [hourStr, minuteStr] = time.split(":");
+  return (parseInt(hourStr ?? "0", 10) || 0) * 60 + (parseInt(minuteStr ?? "0", 10) || 0);
+}
+
+interface UpcomingCall {
+  kind: "PAID_SESSION" | "CONSULTATION";
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  date: string;
+  time: string;
+  label: string;
+  meetingPreference: string | null;
+  notes: string | null;
+  intake: {
+    aiSummary: string | null;
+    personaType: string | null;
+    primaryGoal: string;
+    experienceLevel: string;
+    trainingDaysPerWeek: number;
+    equipmentAccess: string;
+    injuryHistory: string | null;
+    riskFlags: string[];
+  } | null;
+}
+
+export async function getUpcomingCalls(): Promise<{ calls: UpcomingCall[] }> {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  const [sessionBookings, consultationLeads] = await Promise.all([
+    prisma.sessionBooking.findMany({
+      where: { status: "PAID", scheduledDate: { gte: todayStr } },
+    }),
+    prisma.lead.findMany({
+      where: {
+        type: "CONSULTATION",
+        status: { in: ["NEW", "CONFIRMED"] },
+        preferredDate: { gte: todayStr },
+      },
+    }),
+  ]);
+
+  const emails = [
+    ...new Set([
+      ...sessionBookings.map((b) => b.email),
+      ...consultationLeads.map((l) => l.email),
+    ]),
+  ];
+
+  const users = emails.length
+    ? await prisma.user.findMany({
+        where: { email: { in: emails } },
+        include: { athleteProfile: true },
+      })
+    : [];
+  const profileByEmail = new Map(users.map((u) => [u.email, u.athleteProfile]));
+
+  function summarizeIntake(email: string): UpcomingCall["intake"] {
+    const profile = profileByEmail.get(email);
+    if (!profile) return null;
+    return {
+      aiSummary: profile.aiSummary,
+      personaType: profile.personaType,
+      primaryGoal: profile.primaryGoal,
+      experienceLevel: profile.experienceLevel,
+      trainingDaysPerWeek: profile.trainingDaysPerWeek,
+      equipmentAccess: profile.equipmentAccess,
+      injuryHistory: profile.injuryHistory,
+      riskFlags: profile.riskFlags,
+    };
+  }
+
+  const calls: UpcomingCall[] = [
+    ...sessionBookings.map((b) => ({
+      kind: "PAID_SESSION" as const,
+      id: b.id,
+      name: `${b.firstName}${b.lastName ? " " + b.lastName : ""}`,
+      email: b.email,
+      phone: b.phone,
+      date: b.scheduledDate,
+      time: b.scheduledTime,
+      label: PAID_SESSION_CATALOG[b.sessionType].label,
+      meetingPreference: b.meetingPreference,
+      notes: b.coachingContext,
+      intake: summarizeIntake(b.email),
+    })),
+    ...consultationLeads.map((l) => ({
+      kind: "CONSULTATION" as const,
+      id: l.id,
+      name: `${l.firstName}${l.lastName ? " " + l.lastName : ""}`,
+      email: l.email,
+      phone: l.phone,
+      date: l.preferredDate as string,
+      time: l.preferredTime as string,
+      label: "Free Consultation",
+      meetingPreference: null,
+      notes: l.notes,
+      intake: summarizeIntake(l.email),
+    })),
+  ];
+
+  calls.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return timeToMinutes(a.time) - timeToMinutes(b.time);
+  });
+
+  return { calls };
 }
