@@ -55,6 +55,17 @@ const envSchema = z.object({
   // Gates the liability waiver step in onboarding. Stays off until the draft at
   // legal/private-coaching-waiver-DRAFT.md has been reviewed by an attorney.
   WAIVER_ENABLED: z.string().default("false").transform((val) => val === "true"),
+
+  // Google Calendar — creates a real event on Anthony's calendar when a paid
+  // session's payment clears. Stays off until the one-time OAuth authorization
+  // (GET /api/v1/admin/google-calendar/auth) has been completed and the
+  // resulting refresh token set below.
+  GOOGLE_CALENDAR_ENABLED: z.string().default("false").transform((val) => val === "true"),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_REDIRECT_URI: z.string().optional(),
+  GOOGLE_REFRESH_TOKEN: z.string().optional(),
+  GOOGLE_CALENDAR_ID: z.string().default("primary"),
 });
 
 export type Env = z.infer<typeof envSchema>;

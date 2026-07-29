@@ -13,6 +13,7 @@ import leadsRoutes from "./leads.routes.js";
 import chatRoutes from "./chat.routes.js";
 import profileRoutes from "./profile.routes.js";
 import sessionBookingRoutes from "./session-booking.routes.js";
+import googleCalendarRoutes from "./google-calendar.routes.js";
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use("/leads", leadsRoutes);
 router.use("/chat", chatRoutes);
 router.use("/profile", profileRoutes);
 router.use("/session-bookings", sessionBookingRoutes);
+router.use("/google-calendar", googleCalendarRoutes);
 
 export default router;

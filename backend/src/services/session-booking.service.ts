@@ -6,6 +6,8 @@ import { logger } from "../lib/logger.js";
 import { sendEmail } from "../lib/resend.js";
 import { env } from "../config/env.js";
 import { PAID_SESSION_CATALOG, computeSessionTotalCents, isValidHeadcount } from "../data/paid-sessions.js";
+import { isClassScheduleBlocked } from "../data/booking-rules.js";
+import { createCalendarEvent } from "../lib/google-calendar.js";
 import type { CreateSessionBookingInput } from "../routes/schemas/session-booking.schemas.js";
 
 // ============================================================
@@ -23,6 +25,12 @@ export async function createSessionBooking(
       `${config.label} requires between ${config.minHeadcount} and ${config.maxHeadcount} people`
     ) as Error & { statusCode?: number };
     err.statusCode = 400;
+    throw err;
+  }
+
+  if (isClassScheduleBlocked(input.scheduledDate, input.scheduledTime)) {
+    const err = new Error("That time isn't available — please pick another.") as Error & { statusCode?: number };
+    err.statusCode = 409;
     throw err;
   }
 
@@ -170,6 +178,22 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
   sendEmail(env.COACH_EMAIL, `Paid Session Booked — ${booking.firstName}`, adminBody).catch((err) =>
     logger.error({ err, bookingId }, "Failed to send paid-session admin notification")
   );
+
+  createCalendarEvent({
+    summary: `${config.label} — ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""}`,
+    description: [
+      `Client: ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""} (${booking.email})`,
+      booking.phone ? `Phone: ${booking.phone}` : "",
+      `Meeting via: ${booking.meetingPreference}`,
+      booking.coachingContext ? `What they want help with: ${booking.coachingContext}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    scheduledDate: booking.scheduledDate,
+    scheduledTime: booking.scheduledTime,
+    durationMinutes: config.durationMinutes,
+    attendeeEmail: booking.email,
+  }).catch((err) => logger.error({ err, bookingId }, "Failed to create Google Calendar event"));
 
   logger.info({ bookingId, sessionType: booking.sessionType }, "Paid session marked PAID, emails queued");
 }
