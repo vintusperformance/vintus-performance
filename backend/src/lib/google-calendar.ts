@@ -25,13 +25,20 @@ export function isGoogleCalendarConfigured(): boolean {
   );
 }
 
-/** One-time setup only — builds the URL Anthony visits to grant calendar access. */
+/**
+ * One-time setup only — builds the URL Anthony visits to grant access.
+ * Requests both Calendar and Sheets scopes together so a single refresh
+ * token covers both integrations — re-run this flow if either is missing.
+ */
 export function getAuthUrl(): string {
   const client = getOAuthClient();
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent", // forces a refresh_token even on repeat authorization
-    scope: ["https://www.googleapis.com/auth/calendar.events"],
+    scope: [
+      "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/spreadsheets",
+    ],
   });
 }
 

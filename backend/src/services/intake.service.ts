@@ -5,6 +5,7 @@ import { logger } from "../lib/logger.js";
 import { processIntake } from "./ai.service.js";
 import { getPlanRecommendations, type PlanRecommendation } from "./plan.service.js";
 import { notifyNewLead } from "../lib/gmail-notify.js";
+import { appendSheetRow } from "../lib/google-sheets.js";
 import type { SimpleIntake, ExpandedIntake } from "../routes/schemas/intake.schemas.js";
 
 /** Normalize a phone number to E.164 format for consistent storage/matching. */
@@ -252,6 +253,20 @@ export async function submitExpandedIntake(data: ExpandedIntake): Promise<Intake
     experienceLevel: data.experienceLevel,
     persona: aiResult.persona,
   }).catch((err) => logger.error({ err }, "Lead notification failed"));
+
+  appendSheetRow("Survey Responses", [
+    new Date().toISOString(),
+    data.firstName,
+    data.lastName,
+    data.email,
+    data.phone ?? "",
+    data.primaryGoal,
+    data.experienceLevel,
+    data.equipmentAccess,
+    String(data.trainingDaysPerWeek),
+    data.injuryHistory ?? "",
+    aiResult.persona,
+  ]);
 
   return {
     userId,

@@ -64,6 +64,7 @@
             <button class="admin-tab" data-tab="adherence">Adherence</button>
             <button class="admin-tab" data-tab="escalations">Escalations</button>
             <button class="admin-tab" data-tab="upcomingCalls">Upcoming Calls</button>
+            <button class="admin-tab" data-tab="crm">CRM</button>
         </div>
 
         <!-- Tab Content -->
@@ -302,6 +303,15 @@
             <!-- Upcoming Calls Tab -->
             <div class="admin-tab-content" id="tabUpcomingCalls">
                 <div id="upcomingCallsList" class="admin-esc-list"></div>
+            </div>
+
+            <!-- CRM Tab -->
+            <div class="admin-tab-content" id="tabCrm">
+                <div class="admin-clients-toolbar">
+                    <input type="text" class="admin-search" id="crmSearch" placeholder="Search by name or email..." autocomplete="off" aria-label="Search CRM entries">
+                </div>
+                <div id="crmList" class="admin-esc-list"></div>
+                <div class="admin-pagination" id="crmPagination"></div>
             </div>
         </div>
     </section>

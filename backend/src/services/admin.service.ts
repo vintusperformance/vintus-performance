@@ -1555,3 +1555,109 @@ export async function getUpcomingCalls(): Promise<{ calls: UpcomingCall[] }> {
 
   return { calls };
 }
+
+// ============================================================
+// CRM — every person who has filled out the survey (assessment)
+// or submitted a contact/consultation lead, in one view.
+// ============================================================
+
+interface CrmEntry {
+  kind: "SURVEY" | "CONSULTATION" | "CONTACT";
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: Date;
+  status: string;
+  primaryGoal: string | null;
+  experienceLevel: string | null;
+  freeConsultUsed: boolean;
+  notes: string | null;
+}
+
+export async function getCrmEntries(options: {
+  search?: string;
+  page: number;
+  limit: number;
+}): Promise<{ entries: CrmEntry[]; total: number; page: number; totalPages: number }> {
+  const { search, page, limit } = options;
+
+  const [surveyUsers, leads] = await Promise.all([
+    prisma.user.findMany({
+      where: { athleteProfile: { isNot: null } },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        subscription: { select: { status: true } },
+        athleteProfile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            phone: true,
+            primaryGoal: true,
+            experienceLevel: true,
+            equipmentAccess: true,
+            injuryHistory: true,
+            biggestChallenge: true,
+          },
+        },
+      },
+    }),
+    prisma.lead.findMany(),
+  ]);
+
+  // A person's free consultation is "used" the moment any CONSULTATION lead
+  // exists for their email — matches the one-time enforcement in leads.service.ts.
+  const consultedEmails = new Set(
+    leads.filter((l) => l.type === "CONSULTATION").map((l) => l.email.toLowerCase())
+  );
+
+  const entries: CrmEntry[] = [
+    ...surveyUsers
+      .filter((u) => u.athleteProfile)
+      .map((u) => ({
+        kind: "SURVEY" as const,
+        id: u.id,
+        name: `${u.athleteProfile!.firstName}${u.athleteProfile!.lastName ? " " + u.athleteProfile!.lastName : ""}`,
+        email: u.email,
+        phone: u.athleteProfile!.phone,
+        createdAt: u.createdAt,
+        status: u.subscription?.status ?? "NO_PURCHASE",
+        primaryGoal: u.athleteProfile!.primaryGoal,
+        experienceLevel: u.athleteProfile!.experienceLevel,
+        freeConsultUsed: consultedEmails.has(u.email.toLowerCase()),
+        notes: u.athleteProfile!.injuryHistory ?? u.athleteProfile!.biggestChallenge ?? null,
+      })),
+    ...leads.map((l) => ({
+      kind: (l.type === "CONSULTATION" ? "CONSULTATION" : "CONTACT") as "CONSULTATION" | "CONTACT",
+      id: l.id,
+      name: `${l.firstName}${l.lastName ? " " + l.lastName : ""}`,
+      email: l.email,
+      phone: l.phone,
+      createdAt: l.createdAt,
+      status: l.status,
+      primaryGoal: l.primaryGoal,
+      experienceLevel: l.experience,
+      freeConsultUsed: l.type === "CONSULTATION",
+      notes: l.notes ?? l.goals ?? null,
+    })),
+  ];
+
+  entries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  const filtered = search
+    ? entries.filter(
+        (e) =>
+          e.name.toLowerCase().includes(search.toLowerCase()) ||
+          e.email.toLowerCase().includes(search.toLowerCase())
+      )
+    : entries;
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page_ = Math.min(Math.max(1, page), totalPages);
+  const paged = filtered.slice((page_ - 1) * limit, page_ * limit);
+
+  return { entries: paged, total, page: page_, totalPages };
+}

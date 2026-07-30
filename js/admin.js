@@ -11,12 +11,14 @@
   }
 
   /* ── State ── */
-  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false };
+  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false };
   var clientsPage = 1;
   var clientsTotalPages = 1;
   var escalationsPage = 1;
   var escalationsTotalPages = 1;
   var escalationFilter = 'all';
+  var crmPage = 1;
+  var crmTotalPages = 1;
   var currentDetailUserId = null;
   var searchTimeout = null;
 
@@ -146,6 +148,7 @@
     else if (name === 'adherence') loadAdherence();
     else if (name === 'escalations') loadEscalations();
     else if (name === 'upcomingCalls') loadUpcomingCalls();
+    else if (name === 'crm') loadCrm();
   }
 
   /* ── Refresh Button ── */
@@ -1735,6 +1738,67 @@
           '</div>';
       }
       listEl.innerHTML = html;
+    } catch (err) {
+      listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+    }
+  }
+
+  /* ============================================================
+     CRM TAB — every survey response + contact/consultation lead
+     ============================================================ */
+
+  var crmSearchInput = document.getElementById('crmSearch');
+  if (crmSearchInput) {
+    crmSearchInput.addEventListener('input', debounce(function () {
+      crmPage = 1;
+      loadCrm();
+    }, 300));
+  }
+
+  function crmKindBadge(kind) {
+    var badgeBaseStyle = 'display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:600;margin-left:0.4rem;vertical-align:middle;';
+    if (kind === 'CONSULTATION') return '<span style="' + badgeBaseStyle + 'background:rgba(156,163,175,0.15);color:#9ca3af;">Free Consult</span>';
+    if (kind === 'CONTACT') return '<span style="' + badgeBaseStyle + 'background:rgba(59,130,246,0.15);color:#3b82f6;">Contact Form</span>';
+    return '<span style="' + badgeBaseStyle + 'background:rgba(168,85,247,0.15);color:#a855f7;">Survey</span>';
+  }
+
+  async function loadCrm() {
+    var listEl = document.getElementById('crmList');
+    var params = '?page=' + crmPage + '&limit=25';
+    var search = crmSearchInput ? crmSearchInput.value.trim() : '';
+    if (search) params += '&search=' + encodeURIComponent(search);
+
+    try {
+      var res = await apiGet('/api/v1/admin/crm' + params);
+      var data = res.data;
+      crmTotalPages = data.totalPages;
+
+      if (!data.entries || !data.entries.length) {
+        listEl.innerHTML = '<div class="admin-empty">No CRM entries found</div>';
+        renderPagination('crmPagination', crmPage, crmTotalPages, function (pg) { crmPage = pg; loadCrm(); });
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < data.entries.length; i++) {
+        var entry = data.entries[i];
+        html += '<div class="admin-esc-card">' +
+          '<div class="admin-esc-card-header">' +
+          '<span class="admin-esc-client">' + esc(entry.name || '—') + crmKindBadge(entry.kind) + '</span>' +
+          '<span class="admin-esc-date">' + fmtDate(entry.createdAt) + '</span>' +
+          '</div>' +
+          '<div class="admin-esc-meta">' +
+          '<span>' + esc(entry.email) + '</span>' +
+          (entry.phone ? '<span>' + esc(entry.phone) + '</span>' : '') +
+          '<span>' + statusBadge(entry.status) + '</span>' +
+          (entry.freeConsultUsed ? '<span style="color:#f59e0b;">Free consult used</span>' : '<span style="color:#22c55e;">Free consult available</span>') +
+          '</div>' +
+          (entry.primaryGoal ? '<div class="admin-esc-meta"><span>Goal: ' + esc(entry.primaryGoal) + '</span>' + (entry.experienceLevel ? '<span>Experience: ' + esc(entry.experienceLevel) + '</span>' : '') + '</div>' : '') +
+          (entry.notes ? '<div class="admin-esc-reason">' + esc(entry.notes) + '</div>' : '') +
+          '</div>';
+      }
+      listEl.innerHTML = html;
+      renderPagination('crmPagination', crmPage, crmTotalPages, function (pg) { crmPage = pg; loadCrm(); });
     } catch (err) {
       listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
     }
