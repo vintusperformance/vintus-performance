@@ -458,6 +458,31 @@ router.get(
 );
 
 // ============================================================
+// CRM
+// ============================================================
+
+// GET /admin/crm — every survey submission + contact/consultation lead
+router.get(
+  "/crm",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
+      const search = (req.query.search as string) || undefined;
+
+      const result = await adminService.getCrmEntries({ page, limit, search });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ============================================================
 // SYSTEM
 // ============================================================
 

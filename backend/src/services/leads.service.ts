@@ -4,6 +4,7 @@ import { sendEmail } from "../lib/resend.js";
 import { env } from "../config/env.js";
 import type { ContactInput, ConsultationInput } from "../routes/schemas/leads.schemas.js";
 import { getClassScheduleBlockedTimes, isClassScheduleBlocked } from "../data/booking-rules.js";
+import { appendSheetRow } from "../lib/google-sheets.js";
 
 /** Save a contact form submission and email admin */
 export async function createContactLead(data: ContactInput) {
@@ -21,6 +22,17 @@ export async function createContactLead(data: ContactInput) {
   });
 
   logger.info({ leadId: lead.id, email: data.email }, "Contact lead created");
+
+  appendSheetRow("Contact Leads", [
+    lead.createdAt.toISOString(),
+    data.firstName,
+    data.lastName ?? "",
+    data.email,
+    data.phone ?? "",
+    data.interest ?? "",
+    data.goals ?? "",
+    data.referral ?? "",
+  ]);
 
   // Email admin notification (fire and forget)
   const adminBody = [
@@ -49,6 +61,24 @@ export async function createConsultationLead(data: ConsultationInput) {
     throw err;
   }
 
+  // The free consultation is one-time-only per person — after that, it's a
+  // paid $85 session. Match case-insensitively so "Name@x.com" and
+  // "name@x.com" can't both claim the free slot.
+  const priorConsult = await prisma.lead.findFirst({
+    where: {
+      type: "CONSULTATION",
+      email: { equals: data.email, mode: "insensitive" },
+    },
+  });
+  if (priorConsult) {
+    const err = new Error(
+      "You've already used your one-time free consultation. Book a paid session instead."
+    ) as Error & { statusCode?: number; code?: string };
+    err.statusCode = 409;
+    err.code = "FREE_CONSULT_USED";
+    throw err;
+  }
+
   const lead = await prisma.lead.create({
     data: {
       type: "CONSULTATION",
@@ -66,6 +96,20 @@ export async function createConsultationLead(data: ConsultationInput) {
   });
 
   logger.info({ leadId: lead.id, email: data.email }, "Consultation lead created");
+
+  appendSheetRow("Consultation Leads", [
+    lead.createdAt.toISOString(),
+    data.firstName,
+    data.lastName ?? "",
+    data.email,
+    data.phone ?? "",
+    data.preferredDate,
+    data.preferredTime,
+    data.tier ?? "",
+    data.primaryGoal ?? "",
+    data.experience ?? "",
+    data.notes ?? "",
+  ]);
 
   // Admin notification
   const adminBody = [

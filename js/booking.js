@@ -52,6 +52,7 @@
         bookingForm: document.getElementById('bookingForm'),
         bookingSubmit: document.getElementById('bookingSubmit'),
         bookingModal: document.getElementById('bookingModal'),
+        freeConsultUsedModal: document.getElementById('freeConsultUsedModal'),
         calendarLoading: document.getElementById('calendarLoading')
     };
 
@@ -176,7 +177,11 @@
                 showSuccessModal();
             } else {
                 var errBody = await response.json().catch(function() { return {}; });
-                showErrorMessage(errBody.error || 'Booking failed. Please try again or email us at vintusperformance@gmail.com');
+                if (errBody.code === 'FREE_CONSULT_USED') {
+                    showFreeConsultUsedModal();
+                } else {
+                    showErrorMessage(errBody.error || 'Booking failed. Please try again or email us at vintusperformance@gmail.com');
+                }
             }
         } catch (error) {
             console.error('Booking error:', error);
@@ -355,6 +360,12 @@
         }
     }
 
+    function showFreeConsultUsedModal() {
+        if (elements.freeConsultUsedModal) {
+            elements.freeConsultUsedModal.classList.add('active');
+        }
+    }
+
     // ====================================
     // Event Handlers
     // ====================================
@@ -469,6 +480,13 @@
             elements.bookingModal.addEventListener('click', (e) => {
                 if (e.target === elements.bookingModal) {
                     elements.bookingModal.classList.remove('active');
+                }
+            });
+        }
+        if (elements.freeConsultUsedModal) {
+            elements.freeConsultUsedModal.addEventListener('click', (e) => {
+                if (e.target === elements.freeConsultUsedModal) {
+                    elements.freeConsultUsedModal.classList.remove('active');
                 }
             });
         }

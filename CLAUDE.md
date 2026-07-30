@@ -147,8 +147,13 @@ Route work to the specialist rather than doing it inline. Each is a subagent in
 - `script-writer` takes direction from `content-strategist` — strategy precedes scripts.
   `short-form-optimizer` sharpens what `script-writer` drafts; it doesn't write from scratch.
 - Anything that sends to a real client or posts publicly is **draft-first**, Anthony approves.
-- `crm-manager` runs on our own Postgres (`Lead`, `User`, `Subscription`). We do not use
-  an external CRM — splitting the data across systems would cost more than it buys.
+- `crm-manager` runs on our own Postgres (`Lead`, `User`, `Subscription`) — that's the
+  system of record and where enforcement logic (e.g. the one-time free consultation
+  rule) lives. A Google Sheet gets a live one-way mirror of every survey response and
+  lead for easy viewing, but it is a read-friendly copy, never the source of truth.
+- The free consultation is **one-time per person**, enforced by email match on
+  `Lead` (type `CONSULTATION`). A repeat request gets a popup and is routed to the
+  $85 30-Minute Meeting instead. See `leads.service.ts` and `book.html`.
 - Don't spawn an agent to answer something already answered in this file.
 
 ### Connectors available in session
