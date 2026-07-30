@@ -23,15 +23,21 @@ export async function createContactLead(data: ContactInput) {
 
   logger.info({ leadId: lead.id, email: data.email }, "Contact lead created");
 
-  appendSheetRow("Contact Leads", [
+  appendSheetRow("Sheet1", [
     lead.createdAt.toISOString(),
     data.firstName,
     data.lastName ?? "",
     data.email,
     data.phone ?? "",
-    data.interest ?? "",
-    data.goals ?? "",
-    data.referral ?? "",
+    "", // Primary Goal — n/a for a contact form
+    "", // Training Days — n/a
+    "", // Experience — n/a
+    "", // Challenge — n/a
+    "Contact Form", // Source
+    data.interest ?? "", // Intent
+    lead.status, // Booking Status
+    "", // Booked Time — n/a
+    [data.goals, data.referral ? `Referral: ${data.referral}` : ""].filter(Boolean).join(" | "),
   ]);
 
   // Email admin notification (fire and forget)
@@ -97,17 +103,20 @@ export async function createConsultationLead(data: ConsultationInput) {
 
   logger.info({ leadId: lead.id, email: data.email }, "Consultation lead created");
 
-  appendSheetRow("Consultation Leads", [
+  appendSheetRow("Sheet1", [
     lead.createdAt.toISOString(),
     data.firstName,
     data.lastName ?? "",
     data.email,
     data.phone ?? "",
-    data.preferredDate,
-    data.preferredTime,
-    data.tier ?? "",
-    data.primaryGoal ?? "",
-    data.experience ?? "",
+    data.primaryGoal ?? "", // Primary Goal
+    "", // Training Days — n/a for a consultation booking
+    data.experience ?? "", // Experience
+    "", // Challenge — n/a
+    "Free Consultation", // Source
+    data.tier ?? "", // Intent
+    lead.status, // Booking Status
+    `${data.preferredDate} ${data.preferredTime}`, // Booked Time
     data.notes ?? "",
   ]);
 

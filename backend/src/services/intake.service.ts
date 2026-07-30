@@ -254,18 +254,21 @@ export async function submitExpandedIntake(data: ExpandedIntake): Promise<Intake
     persona: aiResult.persona,
   }).catch((err) => logger.error({ err }, "Lead notification failed"));
 
-  appendSheetRow("Survey Responses", [
+  appendSheetRow("Sheet1", [
     new Date().toISOString(),
     data.firstName,
     data.lastName,
     data.email,
     data.phone ?? "",
-    data.primaryGoal,
-    data.experienceLevel,
-    data.equipmentAccess,
-    String(data.trainingDaysPerWeek),
-    data.injuryHistory ?? "",
-    aiResult.persona,
+    data.primaryGoal, // Primary Goal
+    String(data.trainingDaysPerWeek), // Training Days
+    data.experienceLevel, // Experience
+    data.biggestChallenge ?? "", // Challenge
+    "Survey", // Source
+    aiResult.persona, // Intent (AI-classified persona)
+    "Survey Submitted", // Booking Status
+    "", // Booked Time — n/a
+    `Equipment: ${data.equipmentAccess}${data.injuryHistory ? ` | Injury: ${data.injuryHistory}` : ""}`,
   ]);
 
   return {

@@ -68,13 +68,13 @@ const envSchema = z.object({
   GOOGLE_CALENDAR_ID: z.string().default("primary"),
 
   // Live CRM mirror — every survey submission and lead gets appended as a row
-  // to a Google Sheet. Reuses the GOOGLE_CLIENT_ID/SECRET/REFRESH_TOKEN above;
-  // the refresh token must have been issued with the spreadsheets scope
-  // included (re-run the OAuth consent after adding this scope in
-  // google-calendar.ts's getAuthUrl). Off by default. Postgres remains the
-  // system of record — this is a read-friendly mirror only.
+  // to a Google Sheet. Authenticates independently via a dedicated service
+  // account (not the Calendar OAuth client) — the sheet must be shared with
+  // that service account's client_email as an Editor. Off by default.
+  // Postgres remains the system of record — this is a read-friendly mirror only.
   GOOGLE_SHEETS_ENABLED: z.string().default("false").transform((val) => val === "true"),
   GOOGLE_SHEETS_SPREADSHEET_ID: z.string().optional(),
+  GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
