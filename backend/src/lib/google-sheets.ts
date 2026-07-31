@@ -57,7 +57,9 @@ export async function appendSheetRow(tabName: string, values: (string | number)[
     await sheets.spreadsheets.values.append({
       spreadsheetId: env.GOOGLE_SHEETS_SPREADSHEET_ID,
       range: `${tabName}!A:Z`,
-      valueInputOption: "USER_ENTERED",
+      // RAW, not USER_ENTERED — phone numbers starting with "+" (e.g. E.164
+      // format) get misparsed as formulas otherwise, producing #ERROR! cells.
+      valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: [values] },
     });
