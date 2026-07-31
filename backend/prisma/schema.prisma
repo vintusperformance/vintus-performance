@@ -481,6 +481,7 @@ model Lead {
   experience     String?  // from quiz data
   notes          String?
   status         String   @default("NEW")
+  meetLink       String?  // Google Meet link for CONSULTATION bookings
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -511,6 +512,7 @@ model SessionBooking {
   stripeCheckoutSessionId String?
   stripePaymentIntentId   String?
   confirmationSentAt      DateTime?
+  meetLink                String?  // Google Meet link, set once the calendar event is created
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

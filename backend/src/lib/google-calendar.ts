@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { env } from "../config/env.js";
 import { logger } from "./logger.js";
@@ -58,14 +59,19 @@ interface CreateEventInput {
   attendeeEmail: string;
 }
 
-/** Creates a real event on Anthony's Google Calendar. Silently no-ops if not configured. */
-export async function createCalendarEvent(input: CreateEventInput): Promise<void> {
+/**
+ * Creates a real event (with a real Google Meet link) on Anthony's Google
+ * Calendar. Silently no-ops (returns null) if not configured — a calendar
+ * failure must never block a booking from completing. Returns the Meet
+ * link on success, or null if not configured / the request failed.
+ */
+export async function createCalendarEvent(input: CreateEventInput): Promise<string | null> {
   if (!isGoogleCalendarConfigured()) {
     logger.info(
       { summary: input.summary },
       "Google Calendar not configured — skipping event creation"
     );
-    return;
+    return null;
   }
 
   const [hourStr, minuteStr] = input.scheduledTime.split(":");
@@ -83,20 +89,34 @@ export async function createCalendarEvent(input: CreateEventInput): Promise<void
     const auth = getOAuthClient();
     const calendar = google.calendar({ version: "v3", auth });
 
-    await calendar.events.insert({
+    const event = await calendar.events.insert({
       calendarId: env.GOOGLE_CALENDAR_ID,
+      conferenceDataVersion: 1,
       requestBody: {
         summary: input.summary,
         description: input.description,
         start: { dateTime: startDateTime, timeZone: TIMEZONE },
         end: { dateTime: endDateTime, timeZone: TIMEZONE },
         attendees: [{ email: input.attendeeEmail }],
+        conferenceData: {
+          createRequest: {
+            requestId: randomUUID(),
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        },
       },
     });
 
-    logger.info({ summary: input.summary, attendeeEmail: input.attendeeEmail }, "Google Calendar event created");
+    const meetLink = event.data.hangoutLink ?? null;
+
+    logger.info(
+      { summary: input.summary, attendeeEmail: input.attendeeEmail, meetLink },
+      "Google Calendar event created"
+    );
+    return meetLink;
   } catch (err) {
     // A calendar-sync failure should never block a paid booking from completing.
     logger.error({ err, summary: input.summary }, "Failed to create Google Calendar event");
+    return null;
   }
 }

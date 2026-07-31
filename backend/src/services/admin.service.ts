@@ -1459,6 +1459,7 @@ interface UpcomingCall {
   time: string;
   label: string;
   meetingPreference: string | null;
+  meetLink: string | null;
   notes: string | null;
   intake: {
     aiSummary: string | null;
@@ -1530,6 +1531,7 @@ export async function getUpcomingCalls(): Promise<{ calls: UpcomingCall[] }> {
       time: b.scheduledTime,
       label: PAID_SESSION_CATALOG[b.sessionType].label,
       meetingPreference: b.meetingPreference,
+      meetLink: b.meetLink,
       notes: b.coachingContext,
       intake: summarizeIntake(b.email),
     })),
@@ -1543,6 +1545,7 @@ export async function getUpcomingCalls(): Promise<{ calls: UpcomingCall[] }> {
       time: l.preferredTime as string,
       label: "Free Consultation",
       meetingPreference: null,
+      meetLink: l.meetLink,
       notes: l.notes,
       intake: summarizeIntake(l.email),
     })),

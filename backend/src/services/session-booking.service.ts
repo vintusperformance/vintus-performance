@@ -147,14 +147,35 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
 
   const config = PAID_SESSION_CATALOG[booking.sessionType];
 
+  const meetLink = await createCalendarEvent({
+    summary: `${config.label} — ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""}`,
+    description: [
+      `Client: ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""} (${booking.email})`,
+      booking.phone ? `Phone: ${booking.phone}` : "",
+      `Meeting via: ${booking.meetingPreference}`,
+      booking.coachingContext ? `What they want help with: ${booking.coachingContext}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    scheduledDate: booking.scheduledDate,
+    scheduledTime: booking.scheduledTime,
+    durationMinutes: config.durationMinutes,
+    attendeeEmail: booking.email,
+  });
+
+  if (meetLink) {
+    await prisma.sessionBooking.update({ where: { id: bookingId }, data: { meetLink } });
+  }
+
   // Client confirmation — meeting details + how to reach Anthony directly.
-  const contactLines = [`<br><strong>Email:</strong> ${env.RESEND_FROM_EMAIL}`];
+  const contactLines = [`<br><strong>Email:</strong> ${env.COACH_EMAIL}`];
   if (env.COACH_PHONE) contactLines.push(`<br><strong>Phone:</strong> ${env.COACH_PHONE}`);
 
   const clientBody = [
     `Hi ${booking.firstName},`,
     `<br><br>You're confirmed for your <strong>${config.label}</strong> on <strong>${booking.scheduledDate}</strong> at <strong>${booking.scheduledTime}</strong> (America/New_York).`,
     `<br><br><strong>How we'll connect:</strong> ${booking.meetingPreference}`,
+    meetLink ? `<br><strong>Google Meet link:</strong> <a href="${meetLink}">${meetLink}</a>` : "",
     ...contactLines,
     `<br><br>Reach out any time before the session with questions — looking forward to it.`,
   ].join("");
@@ -171,6 +192,7 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
     booking.phone ? `<br><strong>Phone:</strong> ${booking.phone}` : "",
     `<br><strong>When:</strong> ${booking.scheduledDate} at ${booking.scheduledTime}`,
     `<br><strong>Meeting via:</strong> ${booking.meetingPreference}`,
+    meetLink ? `<br><strong>Google Meet:</strong> <a href="${meetLink}">${meetLink}</a>` : "",
     booking.coachingContext ? `<br><br><strong>What they want help with:</strong><br>${booking.coachingContext}` : "",
     `<br><br><strong>Charged:</strong> $${(booking.totalAmountCents / 100).toFixed(2)}`,
   ].join("");
@@ -178,22 +200,6 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
   sendEmail(env.COACH_EMAIL, `Paid Session Booked — ${booking.firstName}`, adminBody).catch((err) =>
     logger.error({ err, bookingId }, "Failed to send paid-session admin notification")
   );
-
-  createCalendarEvent({
-    summary: `${config.label} — ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""}`,
-    description: [
-      `Client: ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""} (${booking.email})`,
-      booking.phone ? `Phone: ${booking.phone}` : "",
-      `Meeting via: ${booking.meetingPreference}`,
-      booking.coachingContext ? `What they want help with: ${booking.coachingContext}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    scheduledDate: booking.scheduledDate,
-    scheduledTime: booking.scheduledTime,
-    durationMinutes: config.durationMinutes,
-    attendeeEmail: booking.email,
-  }).catch((err) => logger.error({ err, bookingId }, "Failed to create Google Calendar event"));
 
   logger.info({ bookingId, sessionType: booking.sessionType }, "Paid session marked PAID, emails queued");
 }
