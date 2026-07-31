@@ -51,7 +51,7 @@ export async function createContactLead(data: ContactInput) {
   ].join("");
 
   sendEmail(
-    env.RESEND_FROM_EMAIL,
+    env.COACH_EMAIL,
     `New Contact Form — ${data.firstName}`,
     adminBody
   ).catch((err) => logger.error({ err }, "Failed to send contact admin email"));
@@ -134,7 +134,7 @@ export async function createConsultationLead(data: ConsultationInput) {
   ].join("");
 
   sendEmail(
-    env.RESEND_FROM_EMAIL,
+    env.COACH_EMAIL,
     `New Consultation Request — ${data.firstName}`,
     adminBody
   ).catch((err) => logger.error({ err }, "Failed to send consultation admin email"));
