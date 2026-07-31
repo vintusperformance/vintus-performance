@@ -50,6 +50,53 @@ contradicts this file, fix both.
 
 ---
 
+## Positioning
+
+**Settled direction (Anthony's call, informed by outside strategy input — not open for
+re-litigation, only execution):** content has been reading as "disciplined hybrid
+athlete" — a strong personal brand, but not the same audience as the $997/mo
+executive client the offer is priced for. Those are different people, and closing
+that gap is a content and messaging problem, not a website problem.
+
+**The one sentence Vintus should be known for:**
+"We build performance systems for people whose careers don't allow average health."
+
+**This is not fitness coaching — it's a managed performance system.** Fitness is the
+vehicle, never the destination. Executives don't want abs; they want energy, focus,
+confidence, longevity, and the ability to outperform. Every piece of content should
+frame training/nutrition as serving career performance, not the reverse.
+
+**Content should qualify the audience, not maximize reach.** A college student
+scrolling past is correct, not a miss — premium positioning repels as much as it
+attracts. Test: after 30 videos, someone should think "he's the guy who helps busy
+professionals become elite without sacrificing their careers," not just "disciplined
+hybrid athlete."
+
+**Content pillars** (`content-strategist` plans against these, not generic fitness
+topics):
+1. **Executive Performance (40%)** — training/health as a lever for high-output careers.
+2. **Systems (25%)** — decision-removal content: planning, discipline-as-system, decision fatigue.
+3. **Hybrid Performance (20%)** — Ironman/running/lifting, authentic to Anthony, but
+   framed as "what this teaches busy professionals" — never "here's my workout."
+4. **Leadership Through Health (15%)** — health as a leadership/standards signal,
+   broader than fitness.
+
+**Bio and positioning copy should self-select the audience** — e.g. "Executive
+Performance Coach — health systems for entrepreneurs and high achievers." Someone
+outside that audience reading it and moving on is the intended outcome.
+
+**Product philosophy: "Anthony owns the strategy, the client owns the execution."**
+The $997/mo price buys outsourced decisions, not a workout PDF — specific times,
+specific meals, specific locations, built around the client's *actual calendar*, not
+generic prescriptions. Don't overpromise rigid control of every minute; the goal is
+removing daily "what should I do today" friction, not managing someone's whole life.
+This is the same direction as the wearables/calendar integrations already listed
+under "Not yet buildable" below — schedule-, travel-, sleep-, and stress-aware
+coaching is what makes "managed performance system" literally true rather than a
+tagline, once those integrations are unblocked.
+
+---
+
 ## Brand Voice
 
 Premium, calm, disciplined, confident. A seasoned D1 strength coach speaking in
@@ -143,6 +190,10 @@ Route work to the specialist rather than doing it inline. Each is a subagent in
 | Competitors, tooling, wearables, "what's next?" | `rd-agent` |
 
 **Orchestration rules:**
+- `content-strategist` and `script-writer` output must reflect the **Positioning**
+  section above — Executive Performance / Systems / Hybrid Performance / Leadership
+  Through Health, not generic fitness content. Flag drift back to Anthony rather
+  than reverting to old pillars.
 - Any client-facing copy any agent produces gets a `brand-director` pass before it ships.
 - `script-writer` takes direction from `content-strategist` — strategy precedes scripts.
   `short-form-optimizer` sharpens what `script-writer` drafts; it doesn't write from scratch.
