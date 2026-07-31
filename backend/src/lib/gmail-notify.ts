@@ -1,64 +1,19 @@
-import nodemailer from "nodemailer";
+import { env } from "../config/env.js";
+import { sendEmail } from "./resend.js";
 import { logger } from "./logger.js";
 
 /**
- * Gmail SMTP notification service.
- * Uses Gmail App Password (requires 2FA on the Gmail account).
- *
- * Required env vars:
- *   GMAIL_USER        — your Gmail address (e.g., coach@gmail.com)
- *   GMAIL_APP_PASSWORD — 16-char app password from Google Account → Security → App passwords
- *   ADMIN_NOTIFY_EMAIL — where admin notifications go (can be same as GMAIL_USER)
+ * Admin/system notification helpers. Sends via the same Resend
+ * infrastructure used everywhere else in the app (not a separate Gmail SMTP
+ * account) — one email provider, one place to look when something doesn't
+ * send.
  */
 
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-const ADMIN_NOTIFY_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || GMAIL_USER;
-
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransporter(): nodemailer.Transporter | null {
-  if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
-    logger.warn("Gmail SMTP not configured (GMAIL_USER / GMAIL_APP_PASSWORD missing)");
-    return null;
-  }
-
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASSWORD,
-      },
-    });
-  }
-
-  return transporter;
-}
-
-/**
- * Send an admin notification email via Gmail SMTP.
- */
-export async function notifyAdmin(
-  subject: string,
-  body: string
-): Promise<void> {
-  const t = getTransporter();
-  if (!t || !ADMIN_NOTIFY_EMAIL) {
-    logger.info({ subject }, "Admin notification skipped (Gmail not configured)");
-    return;
-  }
-
-  try {
-    await t.sendMail({
-      from: `"Vintus Performance" <${GMAIL_USER}>`,
-      to: ADMIN_NOTIFY_EMAIL,
-      subject,
-      html: body,
-    });
-    logger.info({ subject, to: ADMIN_NOTIFY_EMAIL }, "Admin notification email sent");
-  } catch (err) {
-    logger.error({ err, subject }, "Failed to send admin notification email");
+/** Send an admin notification email. */
+export async function notifyAdmin(subject: string, body: string): Promise<void> {
+  const messageId = await sendEmail(env.COACH_EMAIL, subject, body);
+  if (!messageId) {
+    logger.warn({ subject }, "Admin notification email failed to send");
   }
 }
 
@@ -69,45 +24,21 @@ export async function sendPasswordResetEmail(
   to: string,
   resetLink: string
 ): Promise<void> {
-  const t = getTransporter();
-  if (!t) {
-    logger.info({ to }, "Password reset email skipped (Gmail not configured)");
-    return;
-  }
-
   const subject = "Reset Your Vintus Performance Password";
   const body = `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;background:#0a0a0a;color:#e5e5e5;border-radius:8px;">
-      <h2 style="color:#fff;margin-bottom:20px;">Password Reset Request</h2>
-      <p style="color:#a3a3a3;line-height:1.6;">
-        We received a request to reset the password for your Vintus Performance account.
-        Click the button below to set a new password. This link expires in 1 hour.
-      </p>
-      <div style="text-align:center;margin:30px 0;">
-        <a href="${resetLink}" style="display:inline-block;padding:12px 32px;background:#fff;color:#0a0a0a;text-decoration:none;font-weight:700;border-radius:6px;font-size:16px;">
-          Reset Password
-        </a>
-      </div>
-      <p style="color:#737373;font-size:13px;line-height:1.5;">
-        If you didn't request this, you can safely ignore this email. Your password will remain unchanged.
-      </p>
-      <hr style="border:none;border-top:1px solid #262626;margin:20px 0;" />
-      <p style="color:#525252;font-size:12px;">Vintus Performance</p>
-    </div>
+    <p>We received a request to reset the password for your Vintus Performance account.</p>
+    <p style="text-align:center;margin:24px 0;">
+      <a href="${resetLink}" style="display:inline-block;padding:12px 32px;background:#fff;color:#0a0a0a;text-decoration:none;font-weight:700;border-radius:6px;">Reset Password</a>
+    </p>
+    <p style="font-size:13px;color:#a3a3a3;">This link expires in 1 hour. If you didn't request this, you can safely ignore this email — your password will remain unchanged.</p>
   `;
 
-  try {
-    await t.sendMail({
-      from: `"Vintus Performance" <${GMAIL_USER}>`,
-      to,
-      subject,
-      html: body,
-    });
-    logger.info({ to }, "Password reset email sent");
-  } catch (err) {
-    logger.error({ err, to }, "Failed to send password reset email");
-    throw err;
+  const messageId = await sendEmail(to, subject, body);
+  if (!messageId) {
+    logger.error({ to }, "Password reset email failed to send");
+    throw new Error("Failed to send password reset email");
   }
+  logger.info({ to }, "Password reset email sent");
 }
 
 /**
@@ -132,21 +63,19 @@ export async function notifyNewClient(data: {
   const needsApproval = data.status === "PENDING_APPROVAL";
 
   const subject = needsApproval
-    ? `🔔 New Client Needs Approval: ${data.name}`
-    : `✅ New Client Activated: ${data.name}`;
+    ? `New Client Needs Approval: ${data.name}`
+    : `New Client Activated: ${data.name}`;
 
-  const body = `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;">
-      <h2 style="color:#333;margin-bottom:20px;">${needsApproval ? "New Client — Approval Required" : "New Client — Auto-Activated"}</h2>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:8px 0;color:#666;width:120px;">Name</td><td style="padding:8px 0;font-weight:600;">${data.name}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;">${data.email}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;">Plan</td><td style="padding:8px 0;">${tier}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;">Status</td><td style="padding:8px 0;color:${needsApproval ? "#f59e0b" : "#22c55e"};font-weight:600;">${needsApproval ? "Pending Approval" : "Active"}</td></tr>
-      </table>
-      ${needsApproval ? '<p style="margin-top:20px;color:#666;">Log into the <a href="' + (process.env.FRONTEND_URL || "") + '/admin.html" style="color:#333;font-weight:600;">Admin Dashboard</a> to review and approve this client.</p>' : ""}
-    </div>
-  `;
+  const body = [
+    `<strong>${needsApproval ? "New Client — Approval Required" : "New Client — Auto-Activated"}</strong>`,
+    `<br><br><strong>Name:</strong> ${data.name}`,
+    `<br><strong>Email:</strong> ${data.email}`,
+    `<br><strong>Plan:</strong> ${tier}`,
+    `<br><strong>Status:</strong> ${needsApproval ? "Pending Approval" : "Active"}`,
+    needsApproval
+      ? `<br><br>Log into the <a href="${env.FRONTEND_URL}/admin.html">Admin Dashboard</a> to review and approve this client.`
+      : "",
+  ].join("");
 
   await notifyAdmin(subject, body);
 }
@@ -180,23 +109,16 @@ export async function notifyNewLead(data: {
 
   const subject = `New Lead: ${data.name} — ${goalDisplay[data.primaryGoal] || data.primaryGoal}`;
 
-  const body = `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px;">
-      <h2 style="color:#333;margin-bottom:20px;">New Assessment Completed</h2>
-      <p style="color:#666;margin-bottom:16px;">A potential client just completed the assessment form. They have NOT paid yet — follow up if they don't convert.</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:8px 0;color:#666;width:120px;">Name</td><td style="padding:8px 0;font-weight:600;">${data.name}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;"><a href="mailto:${data.email}" style="color:#2563eb;">${data.email}</a></td></tr>
-        ${data.phone ? `<tr><td style="padding:8px 0;color:#666;">Phone</td><td style="padding:8px 0;"><a href="tel:${data.phone}" style="color:#2563eb;">${data.phone}</a></td></tr>` : ""}
-        <tr><td style="padding:8px 0;color:#666;">Goal</td><td style="padding:8px 0;">${goalDisplay[data.primaryGoal] || data.primaryGoal}</td></tr>
-        <tr><td style="padding:8px 0;color:#666;">Experience</td><td style="padding:8px 0;">${expDisplay[data.experienceLevel] || data.experienceLevel}</td></tr>
-        ${data.persona ? `<tr><td style="padding:8px 0;color:#666;">AI Persona</td><td style="padding:8px 0;font-style:italic;">${data.persona}</td></tr>` : ""}
-      </table>
-      <p style="margin-top:20px;padding:12px;background:#fef3c7;border-radius:6px;color:#92400e;font-size:14px;">
-        This lead has NOT purchased yet. If they don't check out within 24 hours, consider reaching out directly.
-      </p>
-    </div>
-  `;
+  const body = [
+    `<strong>New Assessment Completed</strong>`,
+    `<br>A potential client just completed the assessment form. They have NOT paid yet — follow up if they don't convert.`,
+    `<br><br><strong>Name:</strong> ${data.name}`,
+    `<br><strong>Email:</strong> ${data.email}`,
+    data.phone ? `<br><strong>Phone:</strong> ${data.phone}` : "",
+    `<br><strong>Goal:</strong> ${goalDisplay[data.primaryGoal] || data.primaryGoal}`,
+    `<br><strong>Experience:</strong> ${expDisplay[data.experienceLevel] || data.experienceLevel}`,
+    data.persona ? `<br><strong>AI Persona:</strong> ${data.persona}` : "",
+  ].join("");
 
   await notifyAdmin(subject, body);
 }
