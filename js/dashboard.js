@@ -121,6 +121,14 @@
         return true;
       }
 
+      // No subscription at all (e.g. completed the assessment but never
+      // purchased) — nothing to show here, send them to pick a plan instead
+      // of rendering an empty dashboard.
+      if (d.athlete && !d.athlete.planTier) {
+        window.location.href = '/features';
+        return true;
+      }
+
       // Header badges
       if (d.athlete && d.athlete.planTier) {
         currentTier = d.athlete.planTier;
