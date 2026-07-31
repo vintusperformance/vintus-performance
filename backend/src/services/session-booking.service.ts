@@ -8,6 +8,7 @@ import { env } from "../config/env.js";
 import { PAID_SESSION_CATALOG, computeSessionTotalCents, isValidHeadcount } from "../data/paid-sessions.js";
 import { isClassScheduleBlocked } from "../data/booking-rules.js";
 import { createCalendarEvent } from "../lib/google-calendar.js";
+import { appendSheetRow } from "../lib/google-sheets.js";
 import type { CreateSessionBookingInput } from "../routes/schemas/session-booking.schemas.js";
 
 // ============================================================
@@ -166,6 +167,23 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
   if (meetLink) {
     await prisma.sessionBooking.update({ where: { id: bookingId }, data: { meetLink } });
   }
+
+  appendSheetRow("Sheet1", [
+    new Date().toISOString(),
+    booking.firstName,
+    booking.lastName ?? "",
+    booking.email,
+    booking.phone ?? "",
+    "", // Primary Goal — n/a for a paid session
+    "", // Training Days — n/a
+    "", // Experience — n/a
+    "", // Challenge — n/a
+    config.label, // Source
+    booking.meetingPreference, // Intent
+    "PAID", // Booking Status — booking var predates the status update above
+    `${booking.scheduledDate} ${booking.scheduledTime}`, // Booked Time
+    [booking.coachingContext, meetLink ? `Meet: ${meetLink}` : ""].filter(Boolean).join(" | "),
+  ]);
 
   // Client confirmation — meeting details + how to reach Anthony directly.
   const contactLines = [`<br><strong>Email:</strong> ${env.COACH_EMAIL}`];
