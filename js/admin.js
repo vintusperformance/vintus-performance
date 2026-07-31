@@ -1733,6 +1733,7 @@
           (call.phone ? '<span>' + esc(call.phone) + '</span>' : '') +
           (call.meetingPreference ? '<span>Via: ' + esc(call.meetingPreference) + '</span>' : '') +
           '</div>' +
+          (call.meetLink ? '<div class="admin-esc-meta"><span><a href="' + esc(call.meetLink) + '" target="_blank" rel="noopener noreferrer">' + esc(call.meetLink) + '</a></span></div>' : '') +
           (call.notes ? '<div class="admin-esc-reason">' + esc(call.notes) + '</div>' : '') +
           intakeHtml +
           '</div>';

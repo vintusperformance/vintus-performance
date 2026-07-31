@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import type { ContactInput, ConsultationInput } from "../routes/schemas/leads.schemas.js";
 import { getClassScheduleBlockedTimes, isClassScheduleBlocked } from "../data/booking-rules.js";
 import { appendSheetRow } from "../lib/google-sheets.js";
+import { createCalendarEvent } from "../lib/google-calendar.js";
 
 /** Save a contact form submission and email admin */
 export async function createContactLead(data: ContactInput) {
@@ -103,6 +104,28 @@ export async function createConsultationLead(data: ConsultationInput) {
 
   logger.info({ leadId: lead.id, email: data.email }, "Consultation lead created");
 
+  // Free consultations have no payment gate to wait on, so the calendar
+  // event (and real Google Meet link) is created immediately — the client
+  // gets a genuinely confirmed time, not a "we'll get back to you" promise.
+  const meetLink = await createCalendarEvent({
+    summary: `Free Consultation — ${data.firstName}${data.lastName ? " " + data.lastName : ""}`,
+    description: [
+      `Free 30-minute discovery call.`,
+      data.tier ? `Plan interest: ${data.tier}` : "",
+      data.primaryGoal ? `Goal: ${data.primaryGoal}` : "",
+      data.experience ? `Experience: ${data.experience}` : "",
+      data.notes ? `Notes: ${data.notes}` : "",
+    ].filter(Boolean).join("\n"),
+    scheduledDate: data.preferredDate,
+    scheduledTime: data.preferredTime,
+    durationMinutes: 30,
+    attendeeEmail: data.email,
+  });
+
+  if (meetLink) {
+    await prisma.lead.update({ where: { id: lead.id }, data: { meetLink } });
+  }
+
   appendSheetRow("Sheet1", [
     lead.createdAt.toISOString(),
     data.firstName,
@@ -117,7 +140,7 @@ export async function createConsultationLead(data: ConsultationInput) {
     data.tier ?? "", // Intent
     lead.status, // Booking Status
     `${data.preferredDate} ${data.preferredTime}`, // Booked Time
-    data.notes ?? "",
+    [data.notes, meetLink ? `Meet: ${meetLink}` : ""].filter(Boolean).join(" | "),
   ]);
 
   // Admin notification
@@ -125,8 +148,9 @@ export async function createConsultationLead(data: ConsultationInput) {
     `New consultation request from <strong>${data.firstName}${data.lastName ? " " + data.lastName : ""}</strong>.`,
     `<br><br><strong>Email:</strong> ${data.email}`,
     data.phone ? `<br><strong>Phone:</strong> ${data.phone}` : "",
-    `<br><strong>Preferred Date:</strong> ${data.preferredDate}`,
-    `<br><strong>Preferred Time:</strong> ${data.preferredTime}`,
+    `<br><strong>Date:</strong> ${data.preferredDate}`,
+    `<br><strong>Time:</strong> ${data.preferredTime}`,
+    meetLink ? `<br><strong>Google Meet:</strong> <a href="${meetLink}">${meetLink}</a>` : "",
     data.tier ? `<br><strong>Plan Interest:</strong> ${data.tier}` : "",
     data.primaryGoal ? `<br><strong>Goal:</strong> ${data.primaryGoal}` : "",
     data.experience ? `<br><strong>Experience:</strong> ${data.experience}` : "",
@@ -142,8 +166,11 @@ export async function createConsultationLead(data: ConsultationInput) {
   // Client confirmation
   const clientBody = [
     `Hi ${data.firstName},`,
-    `<br><br>We've received your consultation request for <strong>${data.preferredDate}</strong> at <strong>${data.preferredTime}</strong>.`,
-    `<br><br>Our team will confirm your appointment within 24 hours. If you need to make changes, reply to this email or contact us directly.`,
+    `<br><br>Your free consultation is confirmed for <strong>${data.preferredDate}</strong> at <strong>${data.preferredTime}</strong>.`,
+    meetLink
+      ? `<br><br><strong>Join here:</strong> <a href="${meetLink}">${meetLink}</a>`
+      : `<br><br>Our team will follow up shortly with your call details.`,
+    `<br><br>If you need to make changes, reply to this email or contact us directly.`,
     `<br><br>Looking forward to helping you reach your goals!`,
   ].join("");
 
