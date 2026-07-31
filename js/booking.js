@@ -175,6 +175,9 @@
 
             if (response.ok) {
                 showSuccessModal();
+                state.isLoading = false;
+                showLoading(false);
+                return true;
             } else {
                 var errBody = await response.json().catch(function() { return {}; });
                 if (errBody.code === 'FREE_CONSULT_USED') {
@@ -467,11 +470,18 @@
                 submitLoading.style.display = 'inline-flex';
                 elements.bookingSubmit.disabled = true;
 
-                await submitBooking(formData);
+                const bookingSucceeded = await submitBooking(formData);
 
                 // Reset loading state
-                submitText.style.display = 'inline';
                 submitLoading.style.display = 'none';
+                if (bookingSucceeded) {
+                    submitText.textContent = "You're Booked";
+                    submitText.style.display = 'inline';
+                    // Leave disabled — already submitted, nothing left to confirm
+                } else {
+                    submitText.style.display = 'inline';
+                    elements.bookingSubmit.disabled = false;
+                }
             });
         }
 
