@@ -65,6 +65,7 @@
             <button class="admin-tab" data-tab="escalations">Escalations</button>
             <button class="admin-tab" data-tab="upcomingCalls">Upcoming Calls</button>
             <button class="admin-tab" data-tab="crm">CRM</button>
+            <button class="admin-tab" data-tab="exerciseVideos">Exercise Videos <span id="videoReviewBadge" class="admin-pending-badge" style="display:none;"></span></button>
         </div>
 
         <!-- Tab Content -->
@@ -313,6 +314,32 @@
                 <div id="crmList" class="admin-esc-list"></div>
                 <div class="admin-pagination" id="crmPagination"></div>
             </div>
+
+            <!-- Exercise Videos Tab -->
+            <div class="admin-tab-content" id="tabExerciseVideos">
+                <div class="admin-card">
+                    <h3 class="admin-card-title">Generate a "Show Me How" Demo</h3>
+                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;margin-bottom:1rem;">One video is generated per exercise and reused for every client. Nothing here is visible to clients until you approve it below.</p>
+                    <div class="admin-form-row" style="align-items:flex-end;">
+                        <div class="admin-form-group" style="flex:1;">
+                            <label for="videoExerciseSelect">Exercise</label>
+                            <select class="admin-select" id="videoExerciseSelect" style="width:100%;"></select>
+                        </div>
+                        <button class="admin-btn-primary" id="videoGenerateBtn" type="button">Generate</button>
+                        <button class="admin-btn-secondary" id="videoPollBtn" type="button">Check Pending</button>
+                    </div>
+                    <div id="videoGenerateStatus" style="margin-top:0.75rem;"></div>
+                </div>
+                <div class="admin-esc-toolbar">
+                    <button class="admin-filter-btn video-filter-btn admin-filter-btn--active" data-video-filter="all">All</button>
+                    <button class="admin-filter-btn video-filter-btn" data-video-filter="NEEDS_REVIEW">Needs Review</button>
+                    <button class="admin-filter-btn video-filter-btn" data-video-filter="APPROVED">Approved</button>
+                    <button class="admin-filter-btn video-filter-btn" data-video-filter="GENERATING">Generating</button>
+                    <button class="admin-filter-btn video-filter-btn" data-video-filter="REJECTED">Rejected</button>
+                    <button class="admin-filter-btn video-filter-btn" data-video-filter="FAILED">Failed</button>
+                </div>
+                <div id="exerciseVideosList" class="admin-esc-list"></div>
+            </div>
         </div>
     </section>
 
@@ -422,6 +449,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=2"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/admin.js?v=1"></script>
+    <script src="js/admin.js?v=2"></script>
 </body>
 </html>

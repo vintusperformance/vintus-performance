@@ -11,7 +11,7 @@
   }
 
   /* ── State ── */
-  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false };
+  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false, exerciseVideos: false };
   var clientsPage = 1;
   var clientsTotalPages = 1;
   var escalationsPage = 1;
@@ -19,6 +19,7 @@
   var escalationFilter = 'all';
   var crmPage = 1;
   var crmTotalPages = 1;
+  var videoFilter = 'all';
   var currentDetailUserId = null;
   var searchTimeout = null;
 
@@ -149,6 +150,7 @@
     else if (name === 'escalations') loadEscalations();
     else if (name === 'upcomingCalls') loadUpcomingCalls();
     else if (name === 'crm') loadCrm();
+    else if (name === 'exerciseVideos') loadExerciseVideos();
   }
 
   /* ── Refresh Button ── */
@@ -1581,7 +1583,7 @@
      ESCALATIONS TAB
      ============================================================ */
 
-  var escFilterBtns = document.querySelectorAll('.admin-filter-btn');
+  var escFilterBtns = document.querySelectorAll('#tabEscalations .admin-filter-btn');
   escFilterBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       escFilterBtns.forEach(function (b) { b.classList.remove('admin-filter-btn--active'); });
@@ -1800,6 +1802,185 @@
       }
       listEl.innerHTML = html;
       renderPagination('crmPagination', crmPage, crmTotalPages, function (pg) { crmPage = pg; loadCrm(); });
+    } catch (err) {
+      listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+    }
+  }
+
+  /* ============================================================
+     EXERCISE VIDEOS TAB — generate/approve/reject "show me how" demos
+     ============================================================ */
+
+  var videoFilterBtns = document.querySelectorAll('.video-filter-btn');
+  videoFilterBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      videoFilterBtns.forEach(function (b) { b.classList.remove('admin-filter-btn--active'); });
+      btn.classList.add('admin-filter-btn--active');
+      videoFilter = btn.getAttribute('data-video-filter');
+      loadExerciseVideos();
+    });
+  });
+
+  var videoGenerateBtn = document.getElementById('videoGenerateBtn');
+  if (videoGenerateBtn) {
+    videoGenerateBtn.addEventListener('click', async function () {
+      var select = document.getElementById('videoExerciseSelect');
+      var statusEl = document.getElementById('videoGenerateStatus');
+      var exerciseName = select ? select.value : '';
+      if (!exerciseName) return;
+
+      videoGenerateBtn.disabled = true;
+      statusEl.innerHTML = '<div class="admin-empty">Submitting to Runway…</div>';
+      try {
+        await apiPost('/api/v1/admin/exercise-videos/' + encodeURIComponent(exerciseName) + '/generate', {});
+        statusEl.innerHTML = '<div class="admin-alert admin-alert--success">Generation started for "' + esc(exerciseName) + '". Use "Check Pending" in a minute or two to see if it\'s ready for review.</div>';
+        loadExerciseVideos();
+      } catch (err) {
+        statusEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+      } finally {
+        videoGenerateBtn.disabled = false;
+      }
+    });
+  }
+
+  var videoPollBtn = document.getElementById('videoPollBtn');
+  if (videoPollBtn) {
+    videoPollBtn.addEventListener('click', async function () {
+      var statusEl = document.getElementById('videoGenerateStatus');
+      videoPollBtn.disabled = true;
+      statusEl.innerHTML = '<div class="admin-empty">Checking Runway for updates…</div>';
+      try {
+        var res = await apiPost('/api/v1/admin/exercise-videos/poll', {});
+        var updated = res.data || [];
+        statusEl.innerHTML = updated.length
+          ? '<div class="admin-alert admin-alert--success">' + updated.length + ' video(s) updated.</div>'
+          : '<div class="admin-empty">No pending generations finished yet.</div>';
+        loadExerciseVideos();
+      } catch (err) {
+        statusEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+      } finally {
+        videoPollBtn.disabled = false;
+      }
+    });
+  }
+
+  function videoStatusBadge(status) {
+    var badgeBaseStyle = 'display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:600;margin-left:0.4rem;vertical-align:middle;';
+    var map = {
+      GENERATING: 'background:rgba(245,158,11,0.15);color:#f59e0b;',
+      NEEDS_REVIEW: 'background:rgba(59,130,246,0.15);color:#3b82f6;',
+      APPROVED: 'background:rgba(34,197,94,0.15);color:#22c55e;',
+      REJECTED: 'background:rgba(156,163,175,0.15);color:#9ca3af;',
+      FAILED: 'background:rgba(248,113,113,0.15);color:#f87171;'
+    };
+    return '<span style="' + badgeBaseStyle + (map[status] || '') + '">' + esc(status.replace(/_/g, ' ')) + '</span>';
+  }
+
+  async function loadExerciseVideos() {
+    var listEl = document.getElementById('exerciseVideosList');
+    var select = document.getElementById('videoExerciseSelect');
+
+    try {
+      if (select && !select.options.length) {
+        var starterRes = await apiGet('/api/v1/admin/exercise-videos/starter-list');
+        var exercises = starterRes.data.exercises || [];
+        select.innerHTML = exercises.map(function (name) {
+          return '<option value="' + esc(name) + '">' + esc(name) + '</option>';
+        }).join('');
+      }
+
+      var params = videoFilter !== 'all' ? '?status=' + encodeURIComponent(videoFilter) : '';
+      var res = await apiGet('/api/v1/admin/exercise-videos' + params);
+      var videos = res.data || [];
+
+      var badge = document.getElementById('videoReviewBadge');
+      if (badge) {
+        var needsReview = videos.filter(function (v) { return v.status === 'NEEDS_REVIEW'; }).length;
+        if (videoFilter === 'all' && needsReview > 0) {
+          badge.textContent = needsReview;
+          badge.style.display = '';
+        } else if (videoFilter === 'all') {
+          badge.style.display = 'none';
+        }
+      }
+
+      if (!videos.length) {
+        listEl.innerHTML = '<div class="admin-empty">No exercise videos yet — generate one above</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < videos.length; i++) {
+        var v = videos[i];
+        html += '<div class="admin-esc-card">' +
+          '<div class="admin-esc-card-header">' +
+          '<span class="admin-esc-client">' + esc(v.exerciseName) + videoStatusBadge(v.status) + '</span>' +
+          '<span class="admin-esc-date">' + fmtDateTime(v.updatedAt) + '</span>' +
+          '</div>';
+
+        if (v.videoUrl) {
+          html += '<div style="margin:0.6rem 0;"><video src="' + esc(v.videoUrl) + '" controls preload="metadata" style="max-width:320px;border-radius:6px;display:block;"></video></div>';
+        }
+
+        if (v.status === 'FAILED' && v.rejectionNote) {
+          html += '<div class="admin-esc-reason">Failure reason: ' + esc(v.rejectionNote) + '</div>';
+        }
+        if (v.status === 'REJECTED' && v.rejectionNote) {
+          html += '<div class="admin-esc-reason">Rejected: ' + esc(v.rejectionNote) + '</div>';
+        }
+
+        html += '<div class="admin-esc-meta" style="gap:0.5rem;">';
+        if (v.status === 'NEEDS_REVIEW') {
+          html += '<button class="admin-btn-primary video-approve-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Approve</button>';
+          html += '<button class="admin-btn-secondary video-reject-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Reject</button>';
+        }
+        if (v.status === 'REJECTED' || v.status === 'FAILED') {
+          html += '<button class="admin-btn-secondary video-regenerate-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Regenerate</button>';
+        }
+        html += '</div></div>';
+      }
+      listEl.innerHTML = html;
+
+      listEl.querySelectorAll('.video-approve-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          btn.disabled = true;
+          try {
+            await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/approve', {});
+            loadExerciseVideos();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      listEl.querySelectorAll('.video-reject-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          var note = prompt('Why is this rejected? (helps whoever regenerates it)');
+          if (!note) return;
+          btn.disabled = true;
+          try {
+            await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/reject', { note: note });
+            loadExerciseVideos();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      listEl.querySelectorAll('.video-regenerate-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          btn.disabled = true;
+          try {
+            await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/regenerate', {});
+            loadExerciseVideos();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
     } catch (err) {
       listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
     }

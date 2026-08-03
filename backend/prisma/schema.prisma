@@ -558,3 +558,33 @@ model ChatMessage {
   metadata        Json?
   createdAt       DateTime @default(now())
 }
+
+// ============================================================
+// EXERCISE DEMO VIDEOS — generated once per exercise, human-approved,
+// then reused for every client forever. Never shown to a client unless
+// status is APPROVED — an unreviewed AI video could show subtly wrong
+// form, which is a real safety risk, not just a quality issue.
+// ============================================================
+
+model ExerciseVideo {
+  id             String              @id @default(cuid())
+  exerciseName   String              @unique // must match exercise-swaps.ts naming exactly
+  prompt         String              // exact prompt sent to the video model, for reproducibility
+  runwayTaskId   String?             // for polling generation status — generation is async
+  videoUrl       String?
+  status         ExerciseVideoStatus @default(GENERATING)
+  generatedAt    DateTime            @default(now())
+  approvedAt     DateTime?
+  rejectionNote  String?             // why a regeneration was requested, if any
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum ExerciseVideoStatus {
+  GENERATING   // task submitted to Runway, not yet complete
+  NEEDS_REVIEW // video generated, awaiting admin approval
+  APPROVED     // visible to clients
+  REJECTED     // failed review — needs regeneration
+  FAILED       // generation itself failed
+}

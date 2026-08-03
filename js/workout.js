@@ -30,15 +30,22 @@
 
   var sessionData = null;
   var canSwap = false;
+  var approvedVideoMap = {};
   loadWorkout();
 
   async function loadWorkout() {
     try {
+      var videoMapPromise = apiGet('/api/v1/workout/exercise-videos').catch(function () { return null; });
       var res = await apiGet('/api/v1/dashboard/workout/' + sessionId);
 
       if (!res.success || !res.data) {
         showError('Unable to load this workout. It may have been removed or rescheduled.');
         return;
+      }
+
+      var videoRes = await videoMapPromise;
+      if (videoRes && videoRes.success && videoRes.data) {
+        approvedVideoMap = videoRes.data;
       }
 
       sessionData = res.data;
@@ -102,6 +109,8 @@
               (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '') +
             '</div>' +
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
+          var warmupVideoBtn = addVideoButton(ex.exercise);
+          if (warmupVideoBtn) card.appendChild(warmupVideoBtn);
           card.appendChild(addCompleteToggle(card));
           warmupList.appendChild(card);
         });
@@ -141,6 +150,8 @@
             '<div class="exercise-name-row"><div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' + swapBtnHtml + '</div>' +
             '<div class="exercise-details">' + detailsHtml + '</div>' +
             (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '');
+          var mainVideoBtn = addVideoButton(ex.exercise);
+          if (mainVideoBtn) card.querySelector('.exercise-name-row').appendChild(mainVideoBtn);
           card.querySelector('.exercise-name-row').appendChild(addCompleteToggle(card));
           mainList.appendChild(card);
         });
@@ -168,6 +179,8 @@
           card.innerHTML =
             '<div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' +
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
+          var cooldownVideoBtn = addVideoButton(ex.exercise);
+          if (cooldownVideoBtn) card.appendChild(cooldownVideoBtn);
           card.appendChild(addCompleteToggle(card));
           cooldownList.appendChild(card);
         });
@@ -451,6 +464,48 @@
     btn.addEventListener('click', function () {
       var isChecked = card.classList.toggle('exercise-checked');
       btn.classList.toggle('checked', isChecked);
+    });
+    return btn;
+  }
+
+  // ── Show Me How (exercise demo video) ──
+  var PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
+  var videoModal = document.getElementById('videoModal');
+  var videoModalClose = document.getElementById('videoModalClose');
+  var videoModalTitle = document.getElementById('videoModalTitle');
+  var videoModalPlayer = document.getElementById('videoModalPlayer');
+
+  function openVideoModal(exerciseName, videoUrl) {
+    videoModalTitle.textContent = exerciseName;
+    videoModalPlayer.src = videoUrl;
+    videoModal.classList.add('active');
+    videoModalPlayer.play().catch(function () {});
+  }
+
+  function closeVideoModal() {
+    videoModal.classList.remove('active');
+    videoModalPlayer.pause();
+    videoModalPlayer.removeAttribute('src');
+    videoModalPlayer.load();
+  }
+
+  videoModalClose.addEventListener('click', closeVideoModal);
+  videoModal.addEventListener('click', function (e) {
+    if (e.target === videoModal) closeVideoModal();
+  });
+
+  // Returns a "Show me how" button if an approved demo exists for this
+  // exercise, or null if not — callers should skip appending in that case.
+  function addVideoButton(exerciseName) {
+    var videoUrl = approvedVideoMap[exerciseName];
+    if (!videoUrl) return null;
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'exercise-video-btn';
+    btn.innerHTML = PLAY_ICON + '<span>Show me how</span>';
+    btn.addEventListener('click', function () {
+      openVideoModal(exerciseName, videoUrl);
     });
     return btn;
   }

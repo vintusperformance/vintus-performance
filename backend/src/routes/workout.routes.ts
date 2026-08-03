@@ -14,11 +14,26 @@ import {
   applyExerciseSwap,
 } from "../services/workout.service.js";
 import { getWeekView } from "../services/dashboard.service.js";
+import { getApprovedVideoMap } from "../services/exercise-video.service.js";
 
 const router = Router();
 
 // All workout routes require authentication
 router.use(authenticate);
+
+// GET /workout/exercise-videos — approved "show me how" demo clips, keyed by
+// exercise name. Same map for every client — nothing here is per-user.
+router.get(
+  "/exercise-videos",
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const videos = await getApprovedVideoMap();
+      res.status(200).json({ success: true, data: videos });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // POST /workout/:sessionId/complete — mark session completed
 router.post(

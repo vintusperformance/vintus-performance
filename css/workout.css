@@ -203,6 +203,35 @@
     color: var(--black);
 }
 
+.exercise-video-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--gray);
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.exercise-video-btn svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.exercise-video-btn:hover {
+    color: var(--silver);
+    border-color: var(--border-color-hover);
+}
+
 .exercise-card.exercise-checked {
     opacity: 0.5;
 }
