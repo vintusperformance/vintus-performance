@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=2">
-    <link rel="stylesheet" href="css/workout.css?v=3">
+    <link rel="stylesheet" href="css/workout.css?v=4">
     <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
 </head>
 <body class="workout-page">
@@ -136,6 +136,17 @@
         </div>
     </div>
 
+    <!-- Show Me How Modal -->
+    <div class="workout-modal-overlay" id="videoModal">
+        <div class="workout-modal">
+            <button class="workout-modal-close" id="videoModalClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <h3 id="videoModalTitle">Show Me How</h3>
+            <video id="videoModalPlayer" controls playsinline style="width:100%;border-radius:8px;margin-top:0.5rem;"></video>
+        </div>
+    </div>
+
     <!-- Completion Modal -->
     <div class="workout-modal-overlay" id="completeModal">
         <div class="workout-modal">
@@ -198,6 +209,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=2"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/workout.js?v=3"></script>
+    <script src="js/workout.js?v=4"></script>
 </body>
 </html>

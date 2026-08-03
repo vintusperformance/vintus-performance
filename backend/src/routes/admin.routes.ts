@@ -12,11 +12,14 @@ import {
   changeTierSchema,
   extendSubscriptionSchema,
   resolveEscalationSchema,
+  rejectExerciseVideoSchema,
 } from "./schemas/admin.schemas.js";
 import { dailyReviewForClient } from "../services/cron.service.js";
 import { getFlags, setFlag } from "../lib/feature-flags.js";
 import { getHistory as getChatHistory } from "../services/chat.service.js";
 import * as adminService from "../services/admin.service.js";
+import * as exerciseVideoService from "../services/exercise-video.service.js";
+import { ExerciseVideoStatus } from "@prisma/client";
 
 const router = Router();
 
@@ -561,6 +564,112 @@ router.put(
         success: true,
         data: updated,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ============================================================
+// EXERCISE VIDEOS ("show me how" demo clips — generate/approve/reject)
+// ============================================================
+
+// GET /admin/exercise-videos — all rows, optional ?status= filter
+router.get(
+  "/exercise-videos",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const statusParam = req.query.status as string | undefined;
+      const status =
+        statusParam && statusParam in ExerciseVideoStatus
+          ? (statusParam as ExerciseVideoStatus)
+          : undefined;
+
+      const videos = await exerciseVideoService.listExerciseVideos(status);
+      res.status(200).json({ success: true, data: videos });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /admin/exercise-videos/starter-list — exercise names with prompt metadata ready
+router.get(
+  "/exercise-videos/starter-list",
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const exercises = exerciseVideoService.listStarterExercises();
+      res.status(200).json({ success: true, data: { exercises } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /admin/exercise-videos/poll — check Runway for any GENERATING rows
+router.post(
+  "/exercise-videos/poll",
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const updated = await exerciseVideoService.pollPendingGenerations();
+      res.status(200).json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /admin/exercise-videos/:exerciseName/generate — kick off generation
+router.post(
+  "/exercise-videos/:exerciseName/generate",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const exerciseName = decodeURIComponent(req.params.exerciseName as string);
+      const video = await exerciseVideoService.generateExerciseVideo(exerciseName);
+      res.status(200).json({ success: true, data: video });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /admin/exercise-videos/:id/approve — make visible to clients
+router.post(
+  "/exercise-videos/:id/approve",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const video = await exerciseVideoService.approveExerciseVideo(req.params.id as string);
+      res.status(200).json({ success: true, data: video });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /admin/exercise-videos/:id/reject — reject with a note, never shown to clients
+router.post(
+  "/exercise-videos/:id/reject",
+  validate(rejectExerciseVideoSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const video = await exerciseVideoService.rejectExerciseVideo(
+        req.params.id as string,
+        req.body.note
+      );
+      res.status(200).json({ success: true, data: video });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /admin/exercise-videos/:id/regenerate — re-submit the same prompt
+router.post(
+  "/exercise-videos/:id/regenerate",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const video = await exerciseVideoService.regenerateExerciseVideo(req.params.id as string);
+      res.status(200).json({ success: true, data: video });
     } catch (err) {
       next(err);
     }

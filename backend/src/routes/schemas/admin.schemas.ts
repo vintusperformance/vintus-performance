@@ -66,6 +66,10 @@ export const resolveEscalationSchema = z.object({
   resolution: z.enum(["resumed", "paused_subscription", "churned", "call_completed", "other"]),
 });
 
+export const rejectExerciseVideoSchema = z.object({
+  note: z.string().min(1, "A rejection note is required").max(1000),
+});
+
 export type ClientStatus = z.infer<typeof clientStatusSchema>;
 export type ClientNotes = z.infer<typeof clientNotesSchema>;
 export type CustomMessage = z.infer<typeof customMessageSchema>;

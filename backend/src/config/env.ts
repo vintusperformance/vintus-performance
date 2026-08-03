@@ -75,6 +75,12 @@ const envSchema = z.object({
   GOOGLE_SHEETS_ENABLED: z.string().default("false").transform((val) => val === "true"),
   GOOGLE_SHEETS_SPREADSHEET_ID: z.string().optional(),
   GOOGLE_SHEETS_SERVICE_ACCOUNT_KEY: z.string().optional(),
+
+  // Exercise demo video generation (admin-triggered, never automatic on a
+  // client's workout). Off by default — every generated video also requires
+  // manual approval before a client can ever see it, regardless of this flag.
+  RUNWAY_ENABLED: z.string().default("false").transform((val) => val === "true"),
+  RUNWAY_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
