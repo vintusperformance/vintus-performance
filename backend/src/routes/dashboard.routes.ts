@@ -97,6 +97,31 @@ router.get(
   }
 );
 
+// POST /dashboard/milestone/acknowledge — dismiss a 30-day milestone report
+router.post(
+  "/milestone/acknowledge",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const milestoneDay = parseInt(req.body?.milestoneDay, 10);
+
+      if (isNaN(milestoneDay) || milestoneDay < 30) {
+        res.status(400).json({
+          success: false,
+          error: "milestoneDay must be a number >= 30",
+        });
+        return;
+      }
+
+      await dashboardService.acknowledgeMilestone(userId, milestoneDay);
+
+      res.status(200).json({ success: true, data: {} });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /dashboard/daily-summary?days=14 — graded daily performance data
 router.get(
   "/daily-summary",

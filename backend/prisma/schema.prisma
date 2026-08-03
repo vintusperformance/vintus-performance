@@ -81,6 +81,10 @@ model AthleteProfile {
   messagingDisabled Boolean @default(false)
   adminNotes      String?       // Private admin-only notes — NEVER exposed to client or AI
 
+  // Highest 30-day milestone (30, 60, 90...) whose report has already been
+  // shown/acknowledged, so the dashboard doesn't re-show it every visit.
+  lastMilestoneDay Int @default(0)
+
   // AI classification output
   personaType     String?       // executive-athlete | endurance-competitor | hybrid-builder | recovery-first
   aiSummary       String?       // AI-generated summary paragraph

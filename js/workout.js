@@ -102,6 +102,7 @@
               (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '') +
             '</div>' +
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
+          card.appendChild(addCompleteToggle(card));
           warmupList.appendChild(card);
         });
       }
@@ -124,7 +125,7 @@
             detailsHtml += '<div class="exercise-detail"><span class="exercise-detail-label">Reps</span><span class="exercise-detail-value">' + escapeHtml(String(ex.reps)) + '</span></div>';
           }
           if (ex.rest) {
-            detailsHtml += '<div class="exercise-detail"><span class="exercise-detail-label">Rest</span><span class="exercise-detail-value">' + escapeHtml(ex.rest) + '</span></div>';
+            detailsHtml += '<div class="exercise-detail"><span class="exercise-detail-label">Rest</span><span class="exercise-detail-value">' + escapeHtml(normalizeRest(ex.rest)) + '</span></div>';
           }
           if (ex.intensity) {
             detailsHtml += '<div class="exercise-detail"><span class="exercise-detail-label">Intensity</span><span class="exercise-detail-value">' + escapeHtml(ex.intensity) + '</span></div>';
@@ -140,6 +141,7 @@
             '<div class="exercise-name-row"><div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' + swapBtnHtml + '</div>' +
             '<div class="exercise-details">' + detailsHtml + '</div>' +
             (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '');
+          card.querySelector('.exercise-name-row').appendChild(addCompleteToggle(card));
           mainList.appendChild(card);
         });
 
@@ -166,6 +168,7 @@
           card.innerHTML =
             '<div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' +
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
+          card.appendChild(addCompleteToggle(card));
           cooldownList.appendChild(card);
         });
       }
@@ -419,5 +422,36 @@
     var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // Rounds odd rest values (e.g. "51s", "64s") to the nearest clean interval
+  // for display. Older plans generated before this fix can still have
+  // arbitrary numbers baked into their stored content.
+  var CLEAN_REST_SECONDS = [30, 45, 60, 90, 120];
+  function normalizeRest(rest) {
+    if (!rest) return rest;
+    var match = /^(\d+)\s*s(ec(onds?)?)?$/i.exec(rest.trim());
+    if (!match) return rest;
+    var seconds = parseInt(match[1], 10);
+    var closest = CLEAN_REST_SECONDS[0];
+    CLEAN_REST_SECONDS.forEach(function (candidate) {
+      if (Math.abs(candidate - seconds) < Math.abs(closest - seconds)) closest = candidate;
+    });
+    return closest + 's';
+  }
+
+  var CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  function addCompleteToggle(card, exerciseNameEl) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'exercise-complete-btn';
+    btn.setAttribute('aria-label', 'Mark exercise complete');
+    btn.innerHTML = CHECK_ICON;
+    btn.addEventListener('click', function () {
+      var isChecked = card.classList.toggle('exercise-checked');
+      btn.classList.toggle('checked', isChecked);
+    });
+    return btn;
   }
 })();

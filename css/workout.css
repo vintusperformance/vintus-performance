@@ -173,6 +173,44 @@
     border-color: var(--border-color-hover);
 }
 
+.exercise-complete-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--gray);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.exercise-complete-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.exercise-complete-btn:hover {
+    color: var(--silver);
+    border-color: var(--border-color-hover);
+}
+
+.exercise-complete-btn.checked {
+    background: var(--off-white);
+    border-color: var(--off-white);
+    color: var(--black);
+}
+
+.exercise-card.exercise-checked {
+    opacity: 0.5;
+}
+
+.exercise-card.exercise-checked .exercise-name {
+    text-decoration: line-through;
+}
+
 .swap-current-label {
     color: var(--gray);
     font-size: 0.9rem;
