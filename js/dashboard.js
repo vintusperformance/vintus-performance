@@ -170,6 +170,11 @@
       // Today's workout
       renderTodayWorkout(d);
 
+      // 30-day milestone report, if one's due
+      if (d.milestoneReport) {
+        showMilestoneReport(d.milestoneReport);
+      }
+
       return false;
     } catch (err) {
       document.getElementById('todayWorkout').innerHTML =
@@ -200,6 +205,30 @@
     document.getElementById('metricsRow').style.display = 'none';
     var trendsCard = document.getElementById('trendsChart');
     if (trendsCard) trendsCard.closest('.tp-trends').style.display = 'none';
+  }
+
+  // ============================================================
+  // 30-Day Milestone Report
+  // ============================================================
+
+  function showMilestoneReport(report) {
+    document.getElementById('milestoneModalTitle').textContent = 'Day ' + report.milestoneDay + ' Report';
+    document.getElementById('milestoneModalStats').textContent =
+      report.completedCount + ' of ' + report.scheduledCount + ' sessions completed (' + Math.round(report.adherenceRate * 100) + '%)';
+    document.getElementById('milestoneModalMessage').textContent = report.message;
+    document.getElementById('milestoneModalOverlay').style.display = 'flex';
+
+    function dismiss() {
+      document.getElementById('milestoneModalOverlay').style.display = 'none';
+      apiPost('/api/v1/dashboard/milestone/acknowledge', { milestoneDay: report.milestoneDay }).catch(function () {
+        // Non-critical — worst case it reappears next visit, which is fine.
+      });
+      document.getElementById('milestoneModalDismiss').removeEventListener('click', dismiss);
+      document.getElementById('milestoneModalClose').removeEventListener('click', dismiss);
+    }
+
+    document.getElementById('milestoneModalDismiss').addEventListener('click', dismiss);
+    document.getElementById('milestoneModalClose').addEventListener('click', dismiss);
   }
 
   // ============================================================

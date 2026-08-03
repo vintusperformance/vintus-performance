@@ -293,7 +293,8 @@ Rules:
   - NUTRITION_4WEEK / NUTRITION_8WEEK: lighter training focus, recovery-oriented
 - Each session should have 3-4 warmup exercises, 4-6 main exercises, and 2-3 cooldown exercises.
 - The tone should be direct, confident, and premium — like a high-end coach.
-- Set RPE based on experience: beginners RPE 5-6, intermediate RPE 7, advanced RPE 8, elite RPE 8-9.`;
+- Set RPE based on experience: beginners RPE 5-6, intermediate RPE 7, advanced RPE 8, elite RPE 8-9.
+- "rest" must always be one of these clean values: "30s", "45s", "60s", "90s", "120s", "2-3 min", "3-5 min". Never an arbitrary number like "51s" or "64s" — nobody times a rest period to the second.`;
 
 // ============================================================
 // generateInitialPlan — Claude-powered with rule-based fallback

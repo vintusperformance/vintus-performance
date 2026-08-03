@@ -2,6 +2,23 @@ import { prisma } from "../lib/prisma.js";
 import { getCurrentWeekAdherence } from "./adherence.service.js";
 
 // ============================================================
+// Helper: 30-day milestone report copy — on-brand, not hype
+// ============================================================
+
+function buildMilestoneMessage(completedCount: number, scheduledCount: number, adherenceRate: number): string {
+  if (scheduledCount === 0) {
+    return "No sessions were scheduled this period — let's make sure that changes going forward.";
+  }
+  if (adherenceRate >= 0.8) {
+    return `Excellent consistency this month — ${completedCount} of ${scheduledCount} sessions completed. This is what separates results from intentions.`;
+  }
+  if (adherenceRate >= 0.5) {
+    return `Solid progress — ${completedCount} of ${scheduledCount} sessions completed this month. Consistency compounds; keep building on this.`;
+  }
+  return `${completedCount} of ${scheduledCount} sessions completed this month. Every week is a new opportunity to rebuild the rhythm — let's tighten things up going forward.`;
+}
+
+// ============================================================
 // Helper: get Monday of the week for a given date
 // ============================================================
 
@@ -97,42 +114,81 @@ export async function getOverview(userId: string): Promise<unknown> {
     }),
   ]);
 
-  return {
-    athlete: (() => {
-      const sub = user.subscription;
-      let dayNumber: number | null = null;
-      let totalDays: number | null = null;
-      if (sub?.currentPeriodStart && sub?.currentPeriodEnd) {
-        totalDays = Math.ceil((new Date(sub.currentPeriodEnd).getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000));
-        dayNumber = Math.min(totalDays, Math.max(1, Math.ceil((today.getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000)) + 1));
-      }
-      // Compute plan state
-      let planState: "active" | "expired" | "completed" | "renewal_pending" | "pending_approval" | null = null;
-      if (sub) {
-        if (sub.status === "PENDING_APPROVAL") {
-          planState = "pending_approval";
-        } else if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) < today) {
-          // Period ended
-          const isRecurring = sub.planTier === "PRIVATE_COACHING";
-          planState = isRecurring ? "renewal_pending" : "completed";
-        } else if (sub.status === "ACTIVE") {
-          planState = "active";
-        } else {
-          planState = "expired";
-        }
-      }
+  const sub = user.subscription;
+  let dayNumber: number | null = null;
+  let totalDays: number | null = null;
+  if (sub?.currentPeriodStart && sub?.currentPeriodEnd) {
+    totalDays = Math.ceil((new Date(sub.currentPeriodEnd).getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000));
+    dayNumber = Math.min(totalDays, Math.max(1, Math.ceil((today.getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000)) + 1));
+  }
+  // Compute plan state
+  let planState: "active" | "expired" | "completed" | "renewal_pending" | "pending_approval" | null = null;
+  if (sub) {
+    if (sub.status === "PENDING_APPROVAL") {
+      planState = "pending_approval";
+    } else if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) < today) {
+      // Period ended
+      const isRecurring = sub.planTier === "PRIVATE_COACHING";
+      planState = isRecurring ? "renewal_pending" : "completed";
+    } else if (sub.status === "ACTIVE") {
+      planState = "active";
+    } else {
+      planState = "expired";
+    }
+  }
 
-      return {
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        persona: profile.personaType,
-        planTier: sub?.planTier ?? null,
-        subscriptionStatus: sub?.status ?? null,
-        planState,
-        dayNumber,
-        totalDays,
+  // 30-day milestone report — only computed (and only once) when dayNumber
+  // has actually crossed a new 30-day boundary since the last one shown.
+  let milestoneReport: {
+    milestoneDay: number;
+    scheduledCount: number;
+    completedCount: number;
+    adherenceRate: number;
+    message: string;
+  } | null = null;
+
+  if (sub?.currentPeriodStart && dayNumber && totalDays) {
+    const milestoneDay = Math.min(Math.floor(dayNumber / 30) * 30, totalDays);
+    if (milestoneDay >= 30 && milestoneDay > profile.lastMilestoneDay) {
+      const periodStart = new Date(sub.currentPeriodStart);
+      const windowStart = new Date(periodStart);
+      windowStart.setDate(windowStart.getDate() + (milestoneDay - 30));
+      const windowEnd = new Date(periodStart);
+      windowEnd.setDate(windowEnd.getDate() + milestoneDay);
+
+      const milestoneSessions = await prisma.workoutSession.findMany({
+        where: {
+          workoutPlan: { athleteProfileId: profile.id },
+          scheduledDate: { gte: windowStart, lt: windowEnd },
+          sessionType: { not: "REST" },
+        },
+        select: { status: true },
+      });
+      const scheduledCount = milestoneSessions.length;
+      const completedCount = milestoneSessions.filter((s) => s.status === "COMPLETED").length;
+      const adherenceRate = scheduledCount > 0 ? completedCount / scheduledCount : 0;
+
+      milestoneReport = {
+        milestoneDay,
+        scheduledCount,
+        completedCount,
+        adherenceRate,
+        message: buildMilestoneMessage(completedCount, scheduledCount, adherenceRate),
       };
-    })(),
+    }
+  }
+
+  return {
+    athlete: {
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      persona: profile.personaType,
+      planTier: sub?.planTier ?? null,
+      subscriptionStatus: sub?.status ?? null,
+      planState,
+      dayNumber,
+      totalDays,
+    },
     today: {
       workout: todayWorkout,
       readiness: todayReadiness,
@@ -141,7 +197,21 @@ export async function getOverview(userId: string): Promise<unknown> {
     thisWeek: await getWeekView(userId, 0),
     streak: streakData,
     recentMessages,
+    milestoneReport,
   };
+}
+
+/** Marks a milestone report as seen so it doesn't reappear on future dashboard loads. */
+export async function acknowledgeMilestone(userId: string, milestoneDay: number): Promise<void> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+  if (milestoneDay > profile.lastMilestoneDay) {
+    await prisma.athleteProfile.update({ where: { userId }, data: { lastMilestoneDay: milestoneDay } });
+  }
 }
 
 // ============================================================
