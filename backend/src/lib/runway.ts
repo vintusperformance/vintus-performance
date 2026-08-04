@@ -44,7 +44,13 @@ export async function submitVideoGenerationTask(
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
-        model: "veo3.1_fast",
+        // Full-quality model, not the "_fast" speed tier — the fast tier
+        // was producing partial-ROM reps and wrong movements despite
+        // explicit prompt instructions (confirmed via live rejects on
+        // Overhead Press/Barbell Bench Press). Costs more per generation;
+        // worth it only if it actually fixes accuracy — verify before
+        // switching every exercise over to it.
+        model: "veo3.1",
         promptText: prompt,
         // Runway only accepts 4, 6, or 8 (seconds) here — confirmed via a
         // live 400 validation response, not docs (their docs site 403'd
