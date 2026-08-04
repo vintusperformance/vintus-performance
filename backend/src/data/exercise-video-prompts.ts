@@ -315,8 +315,8 @@ const PROMPT_PREFIX =
 const PROMPT_SUFFIX =
   "Steady camera, no cuts, no text overlays, no on-screen graphics, realistic human " +
   "anatomy and movement, natural gym lighting, plain neutral gray or black athletic " +
-  "clothing with no visible logos or text. Approximately 15 seconds, 3 clean and " +
-  "controlled repetitions.";
+  "clothing with no visible logos or text. 8 seconds, 2 clean and controlled " +
+  "repetitions.";
 
 /**
  * Builds the exact prompt sent to Runway for a given exercise. Deterministic —

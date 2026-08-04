@@ -46,7 +46,10 @@ export async function submitVideoGenerationTask(
       body: JSON.stringify({
         model: "veo3.1_fast",
         promptText: prompt,
-        duration: 15,
+        // Runway only accepts 4, 6, or 8 (seconds) here — confirmed via a
+        // live 400 validation response, not docs (their docs site 403'd
+        // this environment's fetch tooling). 8 is the longest allowed.
+        duration: 8,
         ratio: "1280:720",
       }),
     });
