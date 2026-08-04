@@ -31,6 +31,7 @@
   var sessionData = null;
   var canSwap = false;
   var approvedVideoMap = {};
+  var approvedVideoMapLower = {};
   loadWorkout();
 
   async function loadWorkout() {
@@ -46,6 +47,13 @@
       var videoRes = await videoMapPromise;
       if (videoRes && videoRes.success && videoRes.data) {
         approvedVideoMap = videoRes.data;
+        // Case-insensitive lookup key so a plan's exercise text ("barbell
+        // bench press") still matches an admin-approved video keyed by its
+        // canonical Title Case name ("Barbell Bench Press").
+        approvedVideoMapLower = {};
+        Object.keys(approvedVideoMap).forEach(function (name) {
+          approvedVideoMapLower[name.toLowerCase()] = approvedVideoMap[name];
+        });
       }
 
       sessionData = res.data;
@@ -497,7 +505,7 @@
   // Returns a "Show me how" button if an approved demo exists for this
   // exercise, or null if not — callers should skip appending in that case.
   function addVideoButton(exerciseName) {
-    var videoUrl = approvedVideoMap[exerciseName];
+    var videoUrl = approvedVideoMap[exerciseName] || approvedVideoMapLower[(exerciseName || '').toLowerCase()];
     if (!videoUrl) return null;
 
     var btn = document.createElement('button');
