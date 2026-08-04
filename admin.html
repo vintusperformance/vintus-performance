@@ -319,11 +319,18 @@
             <div class="admin-tab-content" id="tabExerciseVideos">
                 <div class="admin-card">
                     <h3 class="admin-card-title">Generate a "Show Me How" Demo</h3>
-                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;margin-bottom:1rem;">One video is generated per exercise and reused for every client. Nothing here is visible to clients until you approve it below.</p>
+                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;margin-bottom:1rem;">Two videos exist per exercise — one male trainer, one female trainer — generated once and reused for every client. Clients see whichever is the opposite of their own gender. Nothing here is visible to clients until you approve it below.</p>
                     <div class="admin-form-row" style="align-items:flex-end;">
                         <div class="admin-form-group" style="flex:1;">
                             <label for="videoExerciseSelect">Exercise</label>
                             <select class="admin-select" id="videoExerciseSelect" style="width:100%;"></select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="videoGenderSelect">Trainer</label>
+                            <select class="admin-select" id="videoGenderSelect">
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
                         </div>
                         <button class="admin-btn-primary" id="videoGenerateBtn" type="button">Generate</button>
                         <button class="admin-btn-secondary" id="videoPollBtn" type="button">Check Pending</button>

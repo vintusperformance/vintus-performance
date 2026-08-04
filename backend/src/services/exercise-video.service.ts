@@ -10,13 +10,15 @@ import {
   STARTER_EXERCISE_CUES,
   buildVideoPrompt,
   getStarterCue,
+  type TrainerGender,
 } from "../data/exercise-video-prompts.js";
 
 /**
  * Exercise Video Service — admin-triggered generation with a mandatory human
  * approval gate. A video is never shown to a client until an admin explicitly
- * approves it (see exercise-video.routes / client player, which filter to
- * status APPROVED only). Generate-once-then-reuse: one row per exerciseName.
+ * approves it (see workout.routes' /exercise-videos endpoint, which filters
+ * to status APPROVED only). Generate-once-then-reuse: two rows per
+ * exerciseName (one per TrainerGender), never one per client.
  */
 
 export function listStarterExercises() {
@@ -24,20 +26,42 @@ export function listStarterExercises() {
 }
 
 /**
- * Client-facing lookup — every APPROVED video, keyed by exercise name. Never
- * includes GENERATING/NEEDS_REVIEW/REJECTED/FAILED rows; those must never
- * reach a client regardless of what the admin screens show.
+ * Client-facing lookup — one APPROVED video url per exercise name, picking
+ * whichever clip's trainerGender is the *opposite* of the client's own
+ * gender when both exist, falling back to whichever is approved if only one
+ * gender has been generated so far (so the feature doesn't disappear during
+ * partial library rollout). clientGender may be null/undefined (gender is
+ * an optional onboarding field) — falls back to any approved video.
+ * Never includes GENERATING/NEEDS_REVIEW/REJECTED/FAILED rows.
  */
-export async function getApprovedVideoMap(): Promise<Record<string, string>> {
+export async function getApprovedVideoMap(
+  clientGender?: string | null
+): Promise<Record<string, string>> {
   const videos = await prisma.exerciseVideo.findMany({
     where: { status: ExerciseVideoStatus.APPROVED, videoUrl: { not: null } },
-    select: { exerciseName: true, videoUrl: true },
+    select: { exerciseName: true, trainerGender: true, videoUrl: true },
   });
 
+  const opposite = clientGender === "male" ? "female" : clientGender === "female" ? "male" : null;
+
+  // Track which gender is currently chosen per exercise so an opposite-gender
+  // match found later in iteration order can still override an earlier
+  // same-gender fallback pick.
+  const chosenGender: Record<string, string> = {};
   const map: Record<string, string> = {};
+
   for (const v of videos) {
-    if (v.videoUrl) map[v.exerciseName] = v.videoUrl;
+    if (!v.videoUrl) continue;
+    const alreadyOptimal = chosenGender[v.exerciseName] === opposite;
+    if (alreadyOptimal) continue;
+
+    const isOpposite = opposite !== null && v.trainerGender === opposite;
+    if (map[v.exerciseName] === undefined || isOpposite) {
+      map[v.exerciseName] = v.videoUrl;
+      chosenGender[v.exerciseName] = v.trainerGender;
+    }
   }
+
   return map;
 }
 
@@ -49,12 +73,14 @@ export async function listExerciseVideos(status?: ExerciseVideoStatus) {
 }
 
 /**
- * Kicks off generation for one exercise. Errors if the exercise isn't in the
- * starter metadata list (buildVideoPrompt needs cue data) or Runway isn't
- * configured. Creates the row as GENERATING; a caller must poll separately
- * via pollExerciseVideo since generation is async on Runway's side.
+ * Kicks off generation for one exercise + trainer gender (two independent
+ * rows exist per exercise — one male, one female). Errors if the exercise
+ * isn't in the starter metadata list (buildVideoPrompt needs cue data) or
+ * Runway isn't configured. Creates the row as GENERATING; a caller must poll
+ * separately via pollPendingGenerations since generation is async on
+ * Runway's side.
  */
-export async function generateExerciseVideo(exerciseName: string) {
+export async function generateExerciseVideo(exerciseName: string, trainerGender: TrainerGender) {
   if (!isRunwayConfigured()) {
     throw new Error("Runway is not configured — set RUNWAY_ENABLED and RUNWAY_API_KEY");
   }
@@ -66,16 +92,17 @@ export async function generateExerciseVideo(exerciseName: string) {
     );
   }
 
-  const prompt = buildVideoPrompt(cue);
+  const prompt = buildVideoPrompt(cue, trainerGender);
   const taskId = await submitVideoGenerationTask(prompt);
   if (!taskId) {
     throw new Error("Runway task submission failed — check server logs");
   }
 
   const record = await prisma.exerciseVideo.upsert({
-    where: { exerciseName },
+    where: { exerciseName_trainerGender: { exerciseName, trainerGender } },
     create: {
       exerciseName,
+      trainerGender,
       prompt,
       runwayTaskId: taskId,
       status: ExerciseVideoStatus.GENERATING,
@@ -89,7 +116,7 @@ export async function generateExerciseVideo(exerciseName: string) {
     },
   });
 
-  logger.info({ exerciseName, taskId }, "Exercise video generation started");
+  logger.info({ exerciseName, trainerGender, taskId }, "Exercise video generation started");
   return record;
 }
 
@@ -168,6 +195,22 @@ export async function rejectExerciseVideo(id: string, note: string) {
     where: { id },
     data: { status: ExerciseVideoStatus.REJECTED, rejectionNote: note },
   });
+}
+
+/**
+ * Permanently deletes a video row. Only allowed for REJECTED or FAILED —
+ * never lets an admin accidentally delete something a client could
+ * currently be seeing (APPROVED) or that's mid-flight (GENERATING/NEEDS_REVIEW).
+ */
+export async function deleteExerciseVideo(id: string) {
+  const video = await prisma.exerciseVideo.findUnique({ where: { id } });
+  if (!video) throw new Error("Exercise video not found");
+  if (video.status !== ExerciseVideoStatus.REJECTED && video.status !== ExerciseVideoStatus.FAILED) {
+    throw new Error(`Cannot delete a video with status ${video.status} — only REJECTED or FAILED`);
+  }
+
+  await prisma.exerciseVideo.delete({ where: { id } });
+  return { deleted: true };
 }
 
 export async function regenerateExerciseVideo(id: string) {

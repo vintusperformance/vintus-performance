@@ -204,6 +204,7 @@
       typicalSleepQuality: parseInt(document.getElementById('sleepSlider').value, 10),
 
       // Physical Profile
+      gender: optVal('gender'),
       heightInches: heightInches,
       weightLbs: optFloat('weightLbs'),
       bodyFatEstimate: optVal('bodyFatEstimate'),

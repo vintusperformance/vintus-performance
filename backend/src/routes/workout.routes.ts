@@ -22,12 +22,19 @@ const router = Router();
 router.use(authenticate);
 
 // GET /workout/exercise-videos — approved "show me how" demo clips, keyed by
-// exercise name. Same map for every client — nothing here is per-user.
+// exercise name. Not per-user data, but the choice of male vs. female clip
+// per exercise depends on the requesting client's own gender (opposite-sex
+// match), so this does read their profile.
 router.get(
   "/exercise-videos",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const videos = await getApprovedVideoMap();
+      const userId = req.user!.userId;
+      const profile = await prisma.athleteProfile.findUnique({
+        where: { userId },
+        select: { gender: true },
+      });
+      const videos = await getApprovedVideoMap(profile?.gender);
       res.status(200).json({ success: true, data: videos });
     } catch (err) {
       next(err);

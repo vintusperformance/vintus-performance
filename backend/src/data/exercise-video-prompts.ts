@@ -8,16 +8,18 @@
  * "major lift" tier, so start narrow and expand deliberately rather than
  * generating all ~112 uniformly.
  *
- * Note on why there's no gender field here: because a video is generated once
- * per exerciseName and reused for every client (Runway generate-once +
- * human-approve architecture, not per-client generation), there is no
- * per-client personalization — the earlier "ask the client's gender so we can
- * match the demo" requirement from the original ask doesn't apply to this
- * design. The trainer in every video is a fixed, professional, plainly-dressed
- * model — the point is showing the movement, not the person performing it.
+ * Note on gender: two videos are generated per exerciseName — one with a
+ * male trainer, one with a female trainer (paired via ExerciseVideo's
+ * (exerciseName, trainerGender) unique constraint) — both admin-approved,
+ * both reused for every client (still generate-once, not per-client). The
+ * client-facing player picks whichever clip's trainerGender is the
+ * *opposite* of the client's own AthleteProfile.gender. The cue metadata
+ * below is gender-neutral; buildVideoPrompt takes the gender as a parameter
+ * so the same cue produces either version on demand.
  */
 
 export type CameraAngle = "side" | "front" | "three-quarter";
+export type TrainerGender = "male" | "female";
 
 export interface ExerciseVideoCue {
   /** Must match the naming used in exercise-library.ts / exercise-swaps.ts exactly. */
@@ -308,22 +310,19 @@ export const STARTER_EXERCISE_CUES: ExerciseVideoCue[] = [
   },
 ];
 
-const PROMPT_PREFIX =
-  "A professional fitness trainer in athletic wear demonstrates proper exercise " +
-  "form in a clean, well-lit modern gym.";
-
 const PROMPT_SUFFIX =
   "Steady camera, no cuts, no text overlays, no on-screen graphics, realistic human " +
   "anatomy and movement, natural gym lighting, plain neutral gray or black athletic " +
-  "clothing with no visible logos or text. 8 seconds, 2 clean and controlled " +
-  "repetitions.";
+  "clothing with no visible logos or text. Full range of motion on every repetition " +
+  "— no partial reps. 8 seconds, 2 clean and controlled repetitions.";
 
 /**
- * Builds the exact prompt sent to Runway for a given exercise. Deterministic —
- * same cue produces the same prompt string, so it's stored verbatim on
- * ExerciseVideo.prompt for reproducibility (matches the model comment on that field).
+ * Builds the exact prompt sent to Runway for a given exercise + trainer
+ * gender. Deterministic — same cue+gender always produces the same prompt
+ * string, so it's stored verbatim on ExerciseVideo.prompt for reproducibility
+ * (matches the model comment on that field).
  */
-export function buildVideoPrompt(cue: ExerciseVideoCue): string {
+export function buildVideoPrompt(cue: ExerciseVideoCue, trainerGender: TrainerGender): string {
   const angleText =
     cue.cameraAngle === "side"
       ? "Camera holds a steady side-on shot"
@@ -331,8 +330,12 @@ export function buildVideoPrompt(cue: ExerciseVideoCue): string {
         ? "Camera holds a steady front-facing shot"
         : "Camera holds a steady three-quarter angle shot";
 
+  const prefix =
+    `A fit, athletic ${trainerGender} fitness trainer in athletic wear ` +
+    "demonstrates proper exercise form in a clean, well-lit modern gym.";
+
   return [
-    PROMPT_PREFIX,
+    prefix,
     `Exercise: ${cue.exerciseName}.`,
     `Setup: ${cue.equipmentDetail}.`,
     `${angleText} at mid-distance, capturing the full body throughout the movement.`,

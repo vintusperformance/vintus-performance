@@ -1825,15 +1825,17 @@
   if (videoGenerateBtn) {
     videoGenerateBtn.addEventListener('click', async function () {
       var select = document.getElementById('videoExerciseSelect');
+      var genderSelect = document.getElementById('videoGenderSelect');
       var statusEl = document.getElementById('videoGenerateStatus');
       var exerciseName = select ? select.value : '';
+      var trainerGender = genderSelect ? genderSelect.value : 'male';
       if (!exerciseName) return;
 
       videoGenerateBtn.disabled = true;
       statusEl.innerHTML = '<div class="admin-empty">Submitting to Runway…</div>';
       try {
-        await apiPost('/api/v1/admin/exercise-videos/' + encodeURIComponent(exerciseName) + '/generate', {});
-        statusEl.innerHTML = '<div class="admin-alert admin-alert--success">Generation started for "' + esc(exerciseName) + '". Use "Check Pending" in a minute or two to see if it\'s ready for review.</div>';
+        await apiPost('/api/v1/admin/exercise-videos/' + encodeURIComponent(exerciseName) + '/generate', { trainerGender: trainerGender });
+        statusEl.innerHTML = '<div class="admin-alert admin-alert--success">Generation started for "' + esc(exerciseName) + '" (' + esc(trainerGender) + ' trainer). Use "Check Pending" in a minute or two to see if it\'s ready for review.</div>';
         loadExerciseVideos();
       } catch (err) {
         statusEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
@@ -1912,9 +1914,10 @@
       var html = '';
       for (var i = 0; i < videos.length; i++) {
         var v = videos[i];
+        var genderLabel = v.trainerGender === 'female' ? 'Female trainer' : 'Male trainer';
         html += '<div class="admin-esc-card">' +
           '<div class="admin-esc-card-header">' +
-          '<span class="admin-esc-client">' + esc(v.exerciseName) + videoStatusBadge(v.status) + '</span>' +
+          '<span class="admin-esc-client">' + esc(v.exerciseName) + ' — ' + esc(genderLabel) + videoStatusBadge(v.status) + '</span>' +
           '<span class="admin-esc-date">' + fmtDateTime(v.updatedAt) + '</span>' +
           '</div>';
 
@@ -1936,6 +1939,7 @@
         }
         if (v.status === 'REJECTED' || v.status === 'FAILED') {
           html += '<button class="admin-btn-secondary video-regenerate-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Regenerate</button>';
+          html += '<button class="admin-btn-secondary video-delete-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;color:#f87171;border-color:#f87171;">Delete</button>';
         }
         html += '</div></div>';
       }
@@ -1974,6 +1978,20 @@
           btn.disabled = true;
           try {
             await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/regenerate', {});
+            loadExerciseVideos();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      listEl.querySelectorAll('.video-delete-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          if (!confirm('Permanently delete this video? This cannot be undone.')) return;
+          btn.disabled = true;
+          try {
+            await apiDelete('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id'));
             loadExerciseVideos();
           } catch (err) {
             alert(err.message);
