@@ -38,6 +38,7 @@ export const routineQuestionnaireSchema = z.object({
   typicalSleepQuality: z.number().int().min(1).max(10),
 
   // Physical Profile
+  gender: z.enum(["male", "female"]).optional(),
   heightInches: z.number().int().min(36).max(96).optional(),
   weightLbs: z.number().min(50).max(600).optional(),
   bodyFatEstimate: z.enum(["under-15", "15-20", "20-25", "25-30", "30-plus", "unsure"]).optional(),

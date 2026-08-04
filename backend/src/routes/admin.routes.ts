@@ -620,12 +620,18 @@ router.post(
 );
 
 // POST /admin/exercise-videos/:exerciseName/generate — kick off generation
+// for one trainer gender. Body: { trainerGender: "male" | "female" }
 router.post(
   "/exercise-videos/:exerciseName/generate",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const exerciseName = decodeURIComponent(req.params.exerciseName as string);
-      const video = await exerciseVideoService.generateExerciseVideo(exerciseName);
+      const trainerGender = req.body.trainerGender;
+      if (trainerGender !== "male" && trainerGender !== "female") {
+        res.status(400).json({ success: false, error: "trainerGender must be 'male' or 'female'" });
+        return;
+      }
+      const video = await exerciseVideoService.generateExerciseVideo(exerciseName, trainerGender);
       res.status(200).json({ success: true, data: video });
     } catch (err) {
       next(err);
@@ -670,6 +676,19 @@ router.post(
     try {
       const video = await exerciseVideoService.regenerateExerciseVideo(req.params.id as string);
       res.status(200).json({ success: true, data: video });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// DELETE /admin/exercise-videos/:id — permanently remove a REJECTED or FAILED row
+router.delete(
+  "/exercise-videos/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await exerciseVideoService.deleteExerciseVideo(req.params.id as string);
+      res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);
     }

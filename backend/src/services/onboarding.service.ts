@@ -191,6 +191,7 @@ export async function submitRoutineQuestionnaire(
       recoveryPractices: data.recoveryPractices,
 
       // Physical Profile
+      ...(data.gender ? { gender: data.gender } : {}),
       ...(data.heightInches != null ? { heightInches: data.heightInches } : {}),
       ...(data.weightLbs != null ? { weightLbs: data.weightLbs } : {}),
       ...(data.bodyFatEstimate ? { bodyFatEstimate: data.bodyFatEstimate } : {}),

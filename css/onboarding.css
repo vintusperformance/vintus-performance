@@ -121,6 +121,13 @@
     color: var(--off-white);
 }
 
+.onboard-field-note {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    color: var(--gray);
+    margin: -0.25rem 0 0;
+}
+
 .onboard-field input[type="text"],
 .onboard-field input[type="password"],
 .onboard-field input[type="number"],

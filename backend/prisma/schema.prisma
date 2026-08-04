@@ -99,6 +99,7 @@ model AthleteProfile {
   recoveryPractices String[]    // foam-roll | stretch | sauna | cold-plunge | massage | none
 
   // Physical Profile (expanded onboarding)
+  gender            String?       // male | female — used to match the opposite-sex trainer in "show me how" demo videos
   heightInches      Int?
   weightLbs         Float?
   bodyFatEstimate   String?       // under-15 | 15-20 | 20-25 | 25-30 | 30-plus | unsure
@@ -568,7 +569,11 @@ model ChatMessage {
 
 model ExerciseVideo {
   id             String              @id @default(cuid())
-  exerciseName   String              @unique // must match exercise-swaps.ts naming exactly
+  exerciseName   String              // must match exercise-swaps.ts naming exactly
+  // The trainer's sex in this specific clip. Two rows exist per exerciseName
+  // (one male, one female) so the client-facing player can show whichever is
+  // the opposite sex of the logged-in client (AthleteProfile.gender).
+  trainerGender  String
   prompt         String              // exact prompt sent to the video model, for reproducibility
   runwayTaskId   String?             // for polling generation status — generation is async
   videoUrl       String?
@@ -579,6 +584,8 @@ model ExerciseVideo {
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@unique([exerciseName, trainerGender])
 }
 
 enum ExerciseVideoStatus {
