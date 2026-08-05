@@ -300,26 +300,48 @@
       '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.carbsG + 'g</span><span class="tp-nutrition__macro-label">Carbs</span></div>' +
       '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.fatG + 'g</span><span class="tp-nutrition__macro-label">Fat</span></div>';
 
-    document.getElementById('nutritionTiming').textContent = plan.mealTiming || '';
+    document.getElementById('nutritionRhythm').textContent = plan.mealTiming || '';
 
-    var meals = plan.sampleMeals || {};
-    var groups = [
-      { key: 'breakfast', label: 'Breakfast' },
-      { key: 'lunch', label: 'Lunch' },
-      { key: 'dinner', label: 'Dinner' },
-      { key: 'snacks', label: 'Snacks' }
-    ];
-    var mealsHtml = '';
-    groups.forEach(function (g) {
-      var items = meals[g.key];
-      if (!items || !items.length) return;
-      mealsHtml += '<div class="tp-nutrition__meal-group"><h5>' + escapeHtml(g.label) + '</h5><ul>' +
-        items.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') +
-        '</ul></div>';
+    var NUTRITION_ICONS = {
+      breakfast: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+      lunch: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2M7 2v20M17 2v20M17 2a5 5 0 0 0-5 5v6h5"/></svg>',
+      dinner: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+      snack: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 5V3M9 3h6"/></svg>'
+    };
+
+    var checklist = plan.sampleMeals;
+    var checklistHtml = '';
+    if (Array.isArray(checklist)) {
+      checklist.forEach(function (item, idx) {
+        var icon = NUTRITION_ICONS[item.type] || NUTRITION_ICONS.snack;
+        checklistHtml +=
+          '<div class="tp-nutrition__item" id="nutritionItem' + idx + '">' +
+            '<div class="tp-nutrition__item-icon">' + icon + '</div>' +
+            '<div class="tp-nutrition__item-body">' +
+              '<div class="tp-nutrition__item-top">' +
+                '<span class="tp-nutrition__item-time">' + escapeHtml(item.time || '') + '</span>' +
+                '<span class="tp-nutrition__item-label">' + escapeHtml(item.label || '') + '</span>' +
+              '</div>' +
+              '<div class="tp-nutrition__item-food">' + escapeHtml(item.food || '') + '</div>' +
+            '</div>' +
+            '<button class="tp-nutrition__item-check" data-idx="' + idx + '" title="Mark done">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
+            '</button>' +
+          '</div>';
+      });
+    }
+    var checklistEl = document.getElementById('nutritionChecklist');
+    checklistEl.innerHTML = checklistHtml;
+    checklistEl.querySelectorAll('.tp-nutrition__item-check').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.getElementById('nutritionItem' + btn.getAttribute('data-idx')).classList.toggle('checked');
+      });
     });
-    document.getElementById('nutritionMeals').innerHTML = mealsHtml;
 
-    document.getElementById('nutritionSupplements').textContent = plan.supplementNotes || 'None specified.';
+    var supplements = (plan.supplementNotes || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    document.getElementById('nutritionSupplements').innerHTML = supplements
+      .map(function (s) { return '<span class="tp-nutrition__supplement-chip">' + escapeHtml(s) + '</span>'; })
+      .join('');
   }
 
   // ============================================================
