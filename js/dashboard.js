@@ -170,6 +170,11 @@
       // Today's workout
       renderTodayWorkout(d);
 
+      // Nutrition plan (Nutrition Plan tiers only)
+      if (currentTier && currentTier.indexOf('NUTRITION') === 0) {
+        loadNutritionPlan();
+      }
+
       // 30-day milestone report, if one's due
       if (d.milestoneReport) {
         showMilestoneReport(d.milestoneReport);
@@ -205,6 +210,60 @@
     document.getElementById('metricsRow').style.display = 'none';
     var trendsCard = document.getElementById('trendsChart');
     if (trendsCard) trendsCard.closest('.tp-trends').style.display = 'none';
+  }
+
+  // ============================================================
+  // NUTRITION PLAN (Nutrition Plan tiers only)
+  // ============================================================
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function loadNutritionPlan() {
+    try {
+      var res = await apiGet('/api/v1/dashboard/nutrition');
+      if (!res.success || !res.data) return;
+      renderNutritionPlan(res.data);
+    } catch (err) {
+      // A nutrition-plan load failure shouldn't break the rest of the dashboard.
+    }
+  }
+
+  function renderNutritionPlan(plan) {
+    var section = document.getElementById('nutritionSection');
+    if (!section) return;
+    section.style.display = 'block';
+
+    document.getElementById('nutritionMacros').innerHTML =
+      '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.dailyCalories + '</span><span class="tp-nutrition__macro-label">Calories</span></div>' +
+      '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.proteinG + 'g</span><span class="tp-nutrition__macro-label">Protein</span></div>' +
+      '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.carbsG + 'g</span><span class="tp-nutrition__macro-label">Carbs</span></div>' +
+      '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.fatG + 'g</span><span class="tp-nutrition__macro-label">Fat</span></div>';
+
+    document.getElementById('nutritionTiming').textContent = plan.mealTiming || '';
+
+    var meals = plan.sampleMeals || {};
+    var groups = [
+      { key: 'breakfast', label: 'Breakfast' },
+      { key: 'lunch', label: 'Lunch' },
+      { key: 'dinner', label: 'Dinner' },
+      { key: 'snacks', label: 'Snacks' }
+    ];
+    var mealsHtml = '';
+    groups.forEach(function (g) {
+      var items = meals[g.key];
+      if (!items || !items.length) return;
+      mealsHtml += '<div class="tp-nutrition__meal-group"><h5>' + escapeHtml(g.label) + '</h5><ul>' +
+        items.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join('') +
+        '</ul></div>';
+    });
+    document.getElementById('nutritionMeals').innerHTML = mealsHtml;
+
+    document.getElementById('nutritionSupplements').textContent = plan.supplementNotes || 'None specified.';
   }
 
   // ============================================================

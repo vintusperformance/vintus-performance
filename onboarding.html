@@ -163,8 +163,8 @@
                 </div>
             </div>
 
-            <!-- Section 2: Training Background -->
-            <div class="onboard-form-section open" data-section="training">
+            <!-- Section 2: Training Background (hidden for Nutrition Plan tiers) -->
+            <div class="onboard-form-section open" data-section="training" data-training-only="true">
                 <button class="onboard-section-header" type="button">
                     <span>Training Background</span>
                     <span class="onboard-section-chevron">&#9660;</span>
@@ -355,6 +355,71 @@
                             <label for="supplements">Supplements (optional)</label>
                             <input type="text" id="supplements" placeholder="e.g. Creatine, Protein">
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Nutrition Profile (shown only for Nutrition Plan tiers) -->
+            <div class="onboard-form-section open" data-section="nutrition" style="display:none;">
+                <button class="onboard-section-header" type="button">
+                    <span>Nutrition Profile</span>
+                    <span class="onboard-section-chevron">&#9660;</span>
+                </button>
+                <div class="onboard-section-body">
+                    <div class="onboard-field">
+                        <label for="activityLevel">Daily Activity Level</label>
+                        <select id="activityLevel">
+                            <option value="">— Select —</option>
+                            <option value="sedentary">Sedentary — little to no exercise</option>
+                            <option value="light">Light — exercise 1-3 days/week</option>
+                            <option value="moderate" selected>Moderate — exercise 4-5 days/week</option>
+                            <option value="active">Active — daily exercise or physical job</option>
+                            <option value="very-active">Very active — intense daily training</option>
+                        </select>
+                        <p class="onboard-field-note">Used to calculate your daily calorie target.</p>
+                    </div>
+                    <div class="onboard-field">
+                        <label for="foodAllergies">Food Allergies / Intolerances (important — we never include these)</label>
+                        <textarea id="foodAllergies" rows="2" placeholder="e.g. Peanuts, shellfish, gluten, dairy — or 'none'"></textarea>
+                    </div>
+                    <div class="onboard-fields-row">
+                        <div class="onboard-field">
+                            <label for="foodsLoved">Foods You Love (optional)</label>
+                            <input type="text" id="foodsLoved" placeholder="e.g. Chicken, rice, salmon">
+                        </div>
+                        <div class="onboard-field">
+                            <label for="foodsHated">Foods You Hate (optional)</label>
+                            <input type="text" id="foodsHated" placeholder="e.g. Mushrooms, tofu">
+                        </div>
+                    </div>
+                    <div class="onboard-fields-row">
+                        <div class="onboard-field">
+                            <label for="cookingSkill">Cooking Skill</label>
+                            <select id="cookingSkill">
+                                <option value="">— Select —</option>
+                                <option value="beginner">Beginner — keep it simple</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div class="onboard-field">
+                            <label for="mealPrepTime">Meal Prep Time Available</label>
+                            <select id="mealPrepTime">
+                                <option value="">— Select —</option>
+                                <option value="minimal">Minimal — quick meals only</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="extensive">Extensive — I enjoy cooking</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="onboard-field">
+                        <label for="foodBudget">Food Budget</label>
+                        <select id="foodBudget">
+                            <option value="">— Select —</option>
+                            <option value="budget-conscious">Budget-conscious</option>
+                            <option value="moderate" selected>Moderate</option>
+                            <option value="no-constraint">No constraint</option>
+                        </select>
                     </div>
                 </div>
             </div>

@@ -72,6 +72,17 @@
       currentTier = verifyRes.data.tier || null;
       waiverRequired = !!verifyRes.data.waiverRequired;
 
+      // Nutrition Plan tiers get a Nutrition Profile section instead of
+      // Training Background — lifting maxes aren't relevant to a nutrition
+      // purchase, and food/allergy/cooking questions are.
+      var isNutritionTier = !!currentTier && currentTier.indexOf('NUTRITION') === 0;
+      document.querySelectorAll('[data-section="nutrition"]').forEach(function (el) {
+        el.style.display = isNutritionTier ? '' : 'none';
+      });
+      document.querySelectorAll('[data-training-only="true"]').forEach(function (el) {
+        el.style.display = isNutritionTier ? 'none' : '';
+      });
+
       // Set password
       var pwRes = await apiPost('/api/v1/onboarding/set-password', { userId: userId, sessionId: sessionId, password: pw });
       if (pwRes.success && pwRes.data && pwRes.data.token) {
@@ -225,6 +236,15 @@
       dietaryApproach: optVal('dietaryApproach'),
       alcoholFrequency: optVal('alcoholFrequency'),
       caffeineDaily: optVal('caffeineDaily'),
+
+      // Nutrition Profile
+      activityLevel: optVal('activityLevel'),
+      foodAllergies: optText('foodAllergies'),
+      foodsLoved: optText('foodsLoved'),
+      foodsHated: optText('foodsHated'),
+      cookingSkill: optVal('cookingSkill'),
+      mealPrepTime: optVal('mealPrepTime'),
+      foodBudget: optVal('foodBudget'),
 
       // Injuries & Health
       specificInjuries: injuries.length > 0 ? injuries : undefined,
