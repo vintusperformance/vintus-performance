@@ -763,3 +763,68 @@ export async function getActiveNutritionPlan(userId: string) {
     orderBy: { createdAt: "desc" },
   });
 }
+
+// ============================================================
+// Jerry's nutrition-adjustment tool (chat.service.ts)
+// ============================================================
+
+export interface NutritionGoalUpdateParams {
+  goalDescription: string;
+  targetWeight?: number;
+}
+
+export interface NutritionGoalUpdateResult {
+  ok: boolean;
+  message: string; // fed back to Claude as the tool_result
+  description?: string; // short client-facing change note, if successful
+}
+
+/**
+ * Executes a client-requested nutrition goal change from the chat tool:
+ * updates their stated goal (and target weight, if given), then regenerates
+ * the full nutrition plan so calories/macros/meals actually reflect it —
+ * a goal update that doesn't touch the plan would just be a note nobody
+ * acts on.
+ */
+export async function executeNutritionGoalUpdate(
+  userId: string,
+  params: NutritionGoalUpdateParams
+): Promise<NutritionGoalUpdateResult> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) return { ok: false, message: "No athlete profile found for this client." };
+
+  const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+  if (!nutritionSub || nutritionSub.status !== "ACTIVE") {
+    return { ok: false, message: "This client doesn't have an active Nutrition Plan to adjust." };
+  }
+
+  if (!params.goalDescription || !params.goalDescription.trim()) {
+    return { ok: false, message: "A goal description is required to update the nutrition plan." };
+  }
+
+  await prisma.athleteProfile.update({
+    where: { id: profile.id },
+    data: {
+      nutritionGoals: params.goalDescription.trim(),
+      ...(params.targetWeight != null ? { targetWeight: params.targetWeight } : {}),
+    },
+  });
+
+  try {
+    const result = await generateNutritionPlan(profile.id);
+    const usedFallback = result.source === "fallback";
+    return {
+      ok: true,
+      description: "Nutrition plan updated",
+      message: usedFallback
+        ? "Goal updated and the plan was regenerated (a starter template was used — full AI plan will refine shortly)."
+        : "Goal updated and the nutrition plan was regenerated with new calorie/macro targets.",
+    };
+  } catch (err) {
+    logger.error({ err, userId }, "Nutrition plan regeneration failed after Jerry goal update");
+    return {
+      ok: false,
+      message: "The goal was saved, but regenerating the plan failed. Tell the client their coach will follow up.",
+    };
+  }
+}
