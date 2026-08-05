@@ -26,6 +26,22 @@
         return;
     }
 
+    // Contact info + intake questions are gathered on the survey step first —
+    // if that hasn't happened yet (direct link, cleared storage, etc.), send
+    // them there before they can see a calendar.
+    var SURVEY_STORAGE_KEY = 'vintus_session_survey:' + sessionType;
+    var surveyData = null;
+    try {
+        var rawSurvey = sessionStorage.getItem(SURVEY_STORAGE_KEY);
+        if (rawSurvey) surveyData = JSON.parse(rawSurvey);
+    } catch (err) {
+        surveyData = null;
+    }
+    if (!surveyData || !surveyData.firstName || !surveyData.email || !surveyData.phone || !surveyData.meetingPreference) {
+        window.location.href = '/session-survey?type=' + sessionType;
+        return;
+    }
+
     var CONFIG = {
         availableHours: [9, 10, 11, 13, 14, 15, 16, 17, 18],
         // Days of week bookable (0 = Sunday ... 6 = Saturday). Saturday is
@@ -113,9 +129,21 @@
     function renderSessionInfo() {
         document.getElementById('sessionTitle').textContent = catalogEntry.label;
         document.getElementById('sessionSubtitle').textContent =
-            catalogEntry.duration + '-minute session. Pick a time, tell us how we can help, and confirm with secure checkout.';
+            catalogEntry.duration + '-minute session. Pick a time and confirm with secure checkout.';
         elements.summarySessionLabel.textContent = catalogEntry.label;
         elements.summaryDuration.textContent = catalogEntry.duration + ' minutes';
+
+        var nameEl = document.getElementById('surveySummaryName');
+        var emailEl = document.getElementById('surveySummaryEmail');
+        var editLink = document.getElementById('editSurveyLink');
+        if (nameEl) nameEl.textContent = surveyData.firstName + (surveyData.lastName ? ' ' + surveyData.lastName : '');
+        if (emailEl) emailEl.textContent = surveyData.email;
+        if (editLink) {
+            editLink.href = '/session-survey?type=' + sessionType;
+            editLink.addEventListener('click', function () {
+                try { sessionStorage.removeItem(SURVEY_STORAGE_KEY); } catch (err) { /* no-op */ }
+            });
+        }
 
         if (catalogEntry.max > 1) {
             elements.headcountDetail.style.display = 'flex';
@@ -337,19 +365,19 @@
         elements.bookingError.style.display = 'none';
     }
 
-    async function submitBooking(formData) {
+    async function submitBooking() {
         hideError();
         var origin = window.location.origin;
 
         var payload = {
             sessionType: sessionType,
             headcount: state.headcount,
-            firstName: formData.get('firstName'),
-            lastName: formData.get('lastName') || undefined,
-            email: formData.get('email'),
-            phone: formData.get('phone') || undefined,
-            meetingPreference: formData.get('meetingPreference'),
-            coachingContext: formData.get('coachingContext') || undefined,
+            firstName: surveyData.firstName,
+            lastName: surveyData.lastName || undefined,
+            email: surveyData.email,
+            phone: surveyData.phone || undefined,
+            meetingPreference: surveyData.meetingPreference,
+            coachingContext: surveyData.coachingContext || undefined,
             scheduledDate: getDateKey(state.selectedDate),
             scheduledTime: state.selectedTime,
             successUrl: origin + '/session-confirmed.html',
@@ -366,6 +394,7 @@
             var result = await response.json().catch(function () { return {}; });
 
             if (response.ok && result.success && result.data && result.data.url) {
+                try { sessionStorage.removeItem(SURVEY_STORAGE_KEY); } catch (err) { /* no-op */ }
                 window.location.href = result.data.url;
                 return;
             }
@@ -391,14 +420,13 @@
             e.preventDefault();
             if (!state.selectedDate || !state.selectedTime) return;
 
-            var formData = new FormData(e.target);
             var submitText = elements.bookingSubmit.querySelector('.submit-text');
             var submitLoading = elements.bookingSubmit.querySelector('.submit-loading');
             submitText.style.display = 'none';
             submitLoading.style.display = 'inline-flex';
             elements.bookingSubmit.disabled = true;
 
-            await submitBooking(formData);
+            await submitBooking();
 
             submitText.style.display = 'inline';
             submitLoading.style.display = 'none';

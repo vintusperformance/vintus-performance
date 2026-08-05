@@ -288,34 +288,18 @@
                             </div>
                         </div>
 
-                        <!-- Booking Form -->
+                        <!-- Booking As (collected on the survey step) -->
+                        <div class="booking-detail" id="surveySummaryDetail">
+                            <div class="booking-detail-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                            <div class="booking-detail-text">
+                                <div class="booking-detail-label">Booking As</div>
+                                <div class="booking-detail-value" id="surveySummaryName">—</div>
+                                <div class="booking-detail-value" id="surveySummaryEmail" style="font-size:0.8rem;color:var(--gray);">—</div>
+                            </div>
+                        </div>
+                        <a href="#" id="editSurveyLink" style="display:block;font-size:0.8rem;color:var(--gray);margin:-0.75rem 0 1.25rem;text-decoration:underline;">Edit your answers</a>
+
                         <form class="booking-form" id="bookingForm">
-                            <div class="form-group">
-                                <input type="text" id="firstName" name="firstName" placeholder="First Name *" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="text" id="lastName" name="lastName" placeholder="Last Name">
-                            </div>
-                            <div class="form-group">
-                                <input type="email" id="email" name="email" placeholder="Email Address *" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="tel" id="phone" name="phone" placeholder="Phone Number *" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="meetingPreference">How should we connect?</label>
-                                <select id="meetingPreference" name="meetingPreference" required>
-                                    <option value="">Select a method *</option>
-                                    <option value="Phone Call">Phone Call</option>
-                                    <option value="FaceTime">FaceTime</option>
-                                    <option value="Google Meet">Google Meet</option>
-                                    <option value="Zoom">Zoom</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="coachingContext">How can we help you?</label>
-                                <textarea id="coachingContext" name="coachingContext" placeholder="What do you want to focus on in this session?"></textarea>
-                            </div>
                             <button type="submit" class="btn-primary booking-submit" id="bookingSubmit" disabled>
                                 <span class="submit-text">Continue to Payment</span>
                                 <span class="submit-loading" style="display: none;">

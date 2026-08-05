@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tell us about your session before scheduling — Vintus Performance.">
+    <title>Session Survey | Vintus Performance</title>
+
+    <link rel="icon" type="image/png" href="images/favicon-256.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=2">
+    <link rel="stylesheet" href="css/onboarding.css?v=3">
+    <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
+</head>
+<body class="onboarding-page">
+    <!-- Minimal Nav -->
+    <nav style="display:flex;align-items:center;justify-content:center;padding:1rem 5%;position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(10,10,10,0.98);border-bottom:1px solid rgba(192,192,192,0.1);">
+        <a href="/" class="logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="logo-img"></a>
+    </nav>
+
+    <section class="onboard-section">
+        <div class="onboard-error" id="onboardError"></div>
+
+        <div class="onboard-step active" data-step="1" id="stepSurvey">
+            <h2 id="surveyTitle">Tell Us About Your Session</h2>
+            <p id="surveySubtitle">A few questions so your coach can prep before you get to scheduling.</p>
+
+            <div class="onboard-form-section open">
+                <div class="onboard-section-body">
+                    <div class="onboard-fields-row">
+                        <div class="onboard-field">
+                            <label for="firstName">First Name *</label>
+                            <input type="text" id="firstName" placeholder="First name">
+                        </div>
+                        <div class="onboard-field">
+                            <label for="lastName">Last Name</label>
+                            <input type="text" id="lastName" placeholder="Last name">
+                        </div>
+                    </div>
+                    <div class="onboard-fields-row">
+                        <div class="onboard-field">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" placeholder="you@example.com">
+                        </div>
+                        <div class="onboard-field">
+                            <label for="phone">Phone Number *</label>
+                            <input type="tel" id="phone" placeholder="(555) 555-5555">
+                        </div>
+                    </div>
+                    <div class="onboard-field">
+                        <label for="meetingPreference">How should we connect? *</label>
+                        <select id="meetingPreference">
+                            <option value="">— Select —</option>
+                            <option value="Phone Call">Phone Call</option>
+                            <option value="FaceTime">FaceTime</option>
+                            <option value="Google Meet">Google Meet</option>
+                            <option value="Zoom">Zoom</option>
+                        </select>
+                    </div>
+
+                    <!-- General call questions (30-Minute Meeting) -->
+                    <div id="generalQuestions">
+                        <div class="onboard-field">
+                            <label for="callPurpose">What's this call primarily about? *</label>
+                            <select id="callPurpose">
+                                <option value="">— Select —</option>
+                                <option value="General coaching questions">General coaching questions</option>
+                                <option value="Considering Private Coaching">Considering Private Coaching</option>
+                                <option value="Considering a Training Plan">Considering a Training Plan</option>
+                                <option value="Considering a Nutrition Plan">Considering a Nutrition Plan</option>
+                                <option value="Something else">Something else</option>
+                            </select>
+                        </div>
+                        <div class="onboard-field">
+                            <label for="focusNotes">What would you like to focus on or get out of this call?</label>
+                            <textarea id="focusNotes" rows="3" placeholder="Optional — the more context, the better we can use the time"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Training session questions (60-Min sessions) -->
+                    <div id="trainingQuestions" style="display:none;">
+                        <div class="onboard-field">
+                            <label for="sessionFocus">What should this session focus on? *</label>
+                            <select id="sessionFocus">
+                                <option value="">— Select —</option>
+                                <option value="Strength Training">Strength Training</option>
+                                <option value="Conditioning & Cardio">Conditioning &amp; Cardio</option>
+                                <option value="Mobility & Recovery">Mobility &amp; Recovery</option>
+                                <option value="Sport-Specific Performance">Sport-Specific Performance</option>
+                                <option value="Full-Body — Coach's Call">Full-Body — Coach's Call</option>
+                            </select>
+                        </div>
+                        <div class="onboard-fields-row">
+                            <div class="onboard-field">
+                                <label for="experienceLevel">Experience Level *</label>
+                                <select id="experienceLevel">
+                                    <option value="">— Select —</option>
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+                            <div class="onboard-field">
+                                <label for="equipmentAccess">Equipment Access *</label>
+                                <select id="equipmentAccess">
+                                    <option value="">— Select —</option>
+                                    <option value="Full Gym">Full Gym</option>
+                                    <option value="Home Gym">Home Gym</option>
+                                    <option value="Minimal Equipment">Minimal Equipment</option>
+                                    <option value="Bodyweight Only">Bodyweight Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="onboard-field">
+                            <label for="injuries">Any injuries or physical limitations we should know about?</label>
+                            <textarea id="injuries" rows="2" placeholder="Optional — or 'none'"></textarea>
+                        </div>
+                        <div class="onboard-field">
+                            <label for="sessionNotes">Anything else you'd like to cover in this session?</label>
+                            <textarea id="sessionNotes" rows="2" placeholder="Optional"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="onboard-btn" id="surveyContinueBtn">Continue to Scheduling</button>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/session-survey.js?v=1"></script>
+</body>
+</html>

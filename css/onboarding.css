@@ -133,6 +133,8 @@
 .onboard-field input[type="number"],
 .onboard-field input[type="date"],
 .onboard-field input[type="time"],
+.onboard-field input[type="email"],
+.onboard-field input[type="tel"],
 .onboard-field select,
 .onboard-field textarea {
     width: 100%;
