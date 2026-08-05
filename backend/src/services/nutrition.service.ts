@@ -240,7 +240,9 @@ interface ChecklistItem {
   time: string; // e.g. "6:30 AM" or "Post-Workout" — anchored to their actual wake/bed time when known
   type: "breakfast" | "lunch" | "dinner" | "snack";
   label: string; // e.g. "Breakfast"
+  title: string; // short appealing dish name, e.g. "Protein Oatmeal Bowl"
   foods: string[]; // each with an exact quantity baked in, e.g. "180g Chicken Breast", "2 Whole Eggs"
+  instructions: string; // brief prep steps — 1-3 short sentences, not a full recipe
   calories: number;
   proteinG: number;
   carbsG: number;
@@ -364,12 +366,12 @@ const NUTRITION_SYSTEM_PROMPT = `You are a precision nutrition coach building a 
 
 This client is a busy, high-performing professional. They do not want to read, and they do not want to guess portion sizes — they want to glance at a checklist, know exactly what to eat, exactly how much, and when, and move on. No explanatory prose, no alternatives to choose between — one concrete set of foods per slot, not a menu of options.
 
-You will be given a per-meal calorie/protein/carb/fat budget for each slot. Choose real foods and exact quantities — grams for anything weighed (e.g. "180g Chicken Breast", "150g White Rice"), simple counts for discrete items (e.g. "2 Whole Eggs", "1 Banana", "1 Slice Whole Wheat Toast") — that land close to that slot's budget. Then report the ACTUAL calories/protein/carbs/fat for the exact quantities you chose (real nutrition values, calculated correctly for those amounts) — these do not need to match the budget exactly, they need to be true for the foods and quantities you listed.
+You will be given a per-meal calorie/protein/carb/fat budget for each slot. Choose real foods and exact quantities — grams for anything weighed (e.g. "180g Chicken Breast", "150g White Rice"), simple counts for discrete items (e.g. "2 Whole Eggs", "1 Banana", "1 Slice Whole Wheat Toast") — that land close to that slot's budget. Then report the ACTUAL calories/protein/carbs/fat for the exact quantities you chose (real nutrition values, calculated correctly for those amounts) — these do not need to match the budget exactly, they need to be true for the foods and quantities you listed. Give each meal a short, appealing dish title (e.g. "Protein Oatmeal Bowl", not just "Breakfast"), and 1-3 short, concrete prep steps — enough to actually make it, nothing padded.
 
 Rules:
 - NEVER suggest a food the client has listed as an allergy — treat this as a hard safety constraint, not a preference.
 - Respect their stated dietary approach (vegan, keto, vegetarian, paleo, high-protein, IIFYM, or no restriction) strictly.
-- Keep meals within their stated cooking skill and food budget — beginner/budget-conscious means simple, accessible staples, not technique or specialty ingredients.
+- Keep meals within their stated cooking skill and food budget — beginner/budget-conscious means simple, accessible staples, not technique or specialty ingredients. Instructions must match their cooking skill: beginner gets dead-simple steps (no technique assumed), advanced can include real technique.
 - Favor foods they said they love; avoid foods they said they hate, where compatible with the above.
 - Every meal must fit its slot, not just its macros. Breakfast means foods people actually eat in the morning — eggs, oats, yogurt, toast, a smoothie — never a dinner-style entree like grilled chicken or steak, even if the protein target is high. Lunch and dinner are full plated meals: a protein, a carb, a vegetable, each with its own quantity. Snacks are 1-2 simple, no-prep items. Do not reuse a lunch/dinner protein choice (e.g. chicken, beef, fish) as the breakfast protein.
 - Supplements are short tags only (e.g. "Whey Protein", "Creatine Monohydrate", "Multivitamin") — no dosing, no sentences, never anything that could conflict with a stated medication or condition. Omit entirely if none are appropriate.
@@ -379,7 +381,7 @@ Respond with ONLY valid JSON, no markdown fences, in this exact shape:
 {
   "eatingRhythm": "one short sentence, e.g. '4 meals, ~4 hours apart, protein with each one.'",
   "checklist": [
-    { "time": "6:30 AM", "type": "breakfast", "label": "Breakfast", "foods": ["3 Whole Eggs", "60g Dry Oats", "1 Banana"], "calories": 520, "proteinG": 28, "carbsG": 58, "fatG": 19 }
+    { "time": "6:30 AM", "type": "breakfast", "label": "Breakfast", "title": "Protein Oatmeal Bowl", "foods": ["3 Whole Eggs", "60g Dry Oats", "1 Banana"], "instructions": "Scramble the eggs. Cook oats with water or milk. Slice banana over the oats and plate together.", "calories": 520, "proteinG": 28, "carbsG": 58, "fatG": 19 }
   ],
   "supplements": ["short tag", "short tag"],
   "coachNotes": "one sentence explaining the calorie/macro strategy in plain language"
@@ -465,14 +467,20 @@ async function generateMealPlanWithClaude(
     (item) =>
       !Array.isArray(item.foods) ||
       !item.foods.length ||
+      !item.title ||
       typeof item.calories !== "number" ||
       typeof item.proteinG !== "number" ||
       typeof item.carbsG !== "number" ||
       typeof item.fatG !== "number"
   );
   if (malformedItem) {
-    throw new Error(`Claude nutrition response has a checklist item missing foods/macros: ${JSON.stringify(malformedItem)}`);
+    throw new Error(`Claude nutrition response has a checklist item missing foods/title/macros: ${JSON.stringify(malformedItem)}`);
   }
+  // Instructions are useful but not safety- or math-critical — patch a
+  // missing one rather than discarding an otherwise-good AI response.
+  parsed.checklist.forEach((item) => {
+    if (!item.instructions) item.instructions = `Prepare and plate: ${item.foods.join(", ")}.`;
+  });
 
   return parsed;
 }
@@ -506,6 +514,62 @@ function gramsFor(targetAmount: number, per100gValue: number, min = 30, max = 35
 function scaledMacros(ref: { cal: number; protein: number; carb: number; fat: number }, grams: number) {
   const factor = grams / 100;
   return { cal: ref.cal * factor, protein: ref.protein * factor, carb: ref.carb * factor, fat: ref.fat * factor };
+}
+
+/**
+ * Fixed title per composition branch, plus prep steps built from whichever
+ * foods actually ended up in the list — the protein-powder and olive-oil
+ * top-ups are conditional, so instructions can't unconditionally reference
+ * them without risking a step for an ingredient that isn't actually there.
+ */
+function titleAndInstructionsFor(
+  type: ChecklistItem["type"],
+  isVegan: boolean,
+  isVegetarian: boolean,
+  isKeto: boolean,
+  foods: string[]
+): { title: string; instructions: string } {
+  const has = (needle: string) => foods.some((f) => f.toLowerCase().includes(needle));
+  const steps: string[] = [];
+
+  if (type === "breakfast") {
+    if (isVegan) {
+      steps.push("Crumble and pan-fry the tofu with a pinch of turmeric and black salt for an egg-like scramble.");
+      if (has("dry oats")) steps.push("Cook the oats with water.");
+    } else if (isKeto) {
+      steps.push("Scramble or fry the eggs in butter or oil.");
+      if (has("avocado")) steps.push("Slice the avocado and plate alongside.");
+    } else {
+      steps.push("Scramble the eggs.");
+      if (has("dry oats")) steps.push("Cook the oats with water or milk.");
+    }
+    if (has("banana")) steps.push("Slice the banana over the top.");
+    if (has("protein powder")) steps.push("Stir the protein powder into the oats or a splash of water.");
+    const title = isVegan ? "Tofu Scramble & Oats" : isKeto ? "Eggs & Avocado" : "Protein Oatmeal Bowl";
+    return { title, instructions: steps.join(" ") };
+  }
+
+  if (type === "lunch" || type === "dinner") {
+    const protein = isVegan || isVegetarian ? "tofu" : type === "lunch" ? "chicken breast" : "white fish";
+    steps.push(`Season and cook the ${protein} (grill, bake, or pan-sear).`);
+    if (has("white rice")) steps.push("Cook the rice per package instructions.");
+    steps.push("Steam or roast the vegetables.");
+    if (has("olive oil")) steps.push("Plate together and finish with the olive oil.");
+    else steps.push("Plate together.");
+    if (has("protein powder")) steps.push("Mix the protein powder into water on the side if you're short on the day's protein.");
+    const title = isVegan || isVegetarian ? "Tofu, Rice & Veg Bowl" : type === "lunch" ? "Grilled Chicken & Rice Bowl" : "Baked White Fish & Rice";
+    return { title, instructions: steps.join(" ") };
+  }
+
+  // snack
+  if (has("greek yogurt")) {
+    steps.push("Stir the protein powder into the Greek yogurt, if using.");
+    steps.push("Top with almonds.");
+    return { title: "Greek Yogurt & Almonds", instructions: steps.join(" ") };
+  }
+  steps.push("Blend the protein powder with water or a milk alternative.");
+  steps.push("Pair with the almonds.");
+  return { title: "Protein Shake & Almonds", instructions: steps.join(" ") };
 }
 
 /**
@@ -595,11 +659,15 @@ function generateRuleBasedMealPlan(dietaryApproach: string | null, mealTargets: 
       }
     }
 
+    const { title, instructions } = titleAndInstructionsFor(mt.type, isVegan, isVegetarian, isKeto, foods);
+
     return {
       time: mt.time,
       type: mt.type,
       label: mt.label,
+      title,
       foods,
+      instructions,
       calories: Math.round(cal),
       proteinG: Math.round(protein),
       carbsG: Math.round(carb),
