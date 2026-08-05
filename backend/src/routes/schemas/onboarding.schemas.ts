@@ -62,6 +62,7 @@ export const routineQuestionnaireSchema = z.object({
 
   // Nutrition Profile
   activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very-active"]).optional(),
+  nutritionGoals: z.string().max(1000).optional(),
   foodAllergies: z.string().max(500).optional(),
   foodsLoved: z.string().max(500).optional(),
   foodsHated: z.string().max(500).optional(),
@@ -93,6 +94,7 @@ export const nutritionIntakeSchema = z.object({
   mealsPerDay: z.number().int().min(1).max(8).optional(),
   dietaryApproach: z.enum(["no-restriction", "high-protein", "keto", "vegan", "vegetarian", "paleo", "iifym"]).optional(),
   activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very-active"]).optional(),
+  nutritionGoals: z.string().max(1000).optional(),
   foodAllergies: z.string().max(500).optional(),
   foodsLoved: z.string().max(500).optional(),
   foodsHated: z.string().max(500).optional(),

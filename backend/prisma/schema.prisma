@@ -126,6 +126,8 @@ model AthleteProfile {
   // Nutrition Profile (Nutrition Plan tiers) — drives calorie/macro calculation
   // and AI meal-plan generation, separate from dietaryApproach/chronicConditions above.
   activityLevel     String?       // sedentary | light | moderate | active | very-active
+  nutritionGoals    String?       // free text — what they want out of this plan; classified
+                                   // into calorie direction/magnitude + protein emphasis
   foodAllergies     String?       // free text — safety-critical, kept distinct from chronicConditions
   foodsLoved        String?
   foodsHated        String?
