@@ -834,6 +834,98 @@
 }
 
 /* ====================================================
+   4b. NUTRITION PLAN
+   ==================================================== */
+
+.tp-nutrition {
+  background: var(--black-card);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tp-nutrition__macros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.tp-nutrition__macro {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+}
+
+.tp-nutrition__macro-value {
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--off-white);
+  display: block;
+}
+
+.tp-nutrition__macro-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray);
+}
+
+.tp-nutrition__block {
+  margin-top: 1rem;
+}
+
+.tp-nutrition__block h4 {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gray);
+  margin: 0 0 0.4rem;
+}
+
+.tp-nutrition__block p {
+  font-size: 0.9rem;
+  color: var(--off-white);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.tp-nutrition__meals {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.tp-nutrition__meal-group h5 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--silver);
+  margin: 0 0 0.3rem;
+}
+
+.tp-nutrition__meal-group ul {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+  color: var(--off-white);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .tp-nutrition__macros,
+  .tp-nutrition__meals {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ====================================================
    7. 14-DAY TREND CHART
    ==================================================== */
 

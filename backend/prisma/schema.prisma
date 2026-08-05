@@ -122,6 +122,16 @@ model AthleteProfile {
   alcoholFrequency  String?       // never | rare | 1-2-per-week | 3-5-per-week | daily
   caffeineDaily     String?       // none | 1-cup | 2-3-cups | 4-plus-cups
 
+  // Nutrition Profile (Nutrition Plan tiers) — drives calorie/macro calculation
+  // and AI meal-plan generation, separate from dietaryApproach/chronicConditions above.
+  activityLevel     String?       // sedentary | light | moderate | active | very-active
+  foodAllergies     String?       // free text — safety-critical, kept distinct from chronicConditions
+  foodsLoved        String?
+  foodsHated        String?
+  cookingSkill      String?       // beginner | intermediate | advanced
+  mealPrepTime      String?       // minimal | moderate | extensive
+  foodBudget        String?       // budget-conscious | moderate | no-constraint
+
   // Goal Specifics
   targetWeight      Float?
   goalTimeline      String?       // no-rush | 3-months | 6-months | 12-months | event-date
@@ -142,6 +152,7 @@ model AthleteProfile {
 
   readinessMetrics  ReadinessMetric[]
   workoutPlans      WorkoutPlan[]
+  nutritionPlans    NutritionPlan[]
 }
 
 // ============================================================
@@ -272,6 +283,37 @@ enum SessionStatus {
   MISSED
   SKIPPED
   RESCHEDULED
+}
+
+// ============================================================
+// NUTRITION PLAN (NUTRITION_4WEEK / NUTRITION_8WEEK tiers)
+// ============================================================
+
+model NutritionPlan {
+  id              String   @id @default(cuid())
+  athleteProfileId String
+  athleteProfile  AthleteProfile @relation(fields: [athleteProfileId], references: [id], onDelete: Cascade)
+
+  tier            String         // NUTRITION_4WEEK | NUTRITION_8WEEK
+  startDate       DateTime @db.Date
+  endDate         DateTime @db.Date
+  isActive        Boolean  @default(true)
+
+  // Calculated targets (Mifflin-St Jeor BMR + activity multiplier + goal adjustment)
+  dailyCalories   Int
+  proteinG        Int
+  carbsG          Int
+  fatG            Int
+
+  mealTiming      String         // AI-generated guidance on when/how to eat
+  sampleMeals     Json           // { breakfast: [...], lunch: [...], dinner: [...], snacks: [...] }
+  supplementNotes String?        // AI-generated, general — never a medical recommendation
+  coachNotes      String?        // short AI rationale summary, shown to client
+
+  source          String   @default("ai") // "ai" | "fallback" — surfaced to admin if the AI call failed
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ============================================================

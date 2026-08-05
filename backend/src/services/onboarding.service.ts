@@ -6,6 +6,7 @@ import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { generateInitialPlan } from "./workout.service.js";
+import { generateNutritionPlan } from "./nutrition.service.js";
 import { notifyNewClient } from "../lib/gmail-notify.js";
 import { isWaiverEnabled } from "../lib/feature-flags.js";
 import { sendSMS } from "../lib/twilio.js";
@@ -213,6 +214,15 @@ export async function submitRoutineQuestionnaire(
       ...(data.alcoholFrequency ? { alcoholFrequency: data.alcoholFrequency } : {}),
       ...(data.caffeineDaily ? { caffeineDaily: data.caffeineDaily } : {}),
 
+      // Nutrition Profile
+      ...(data.activityLevel ? { activityLevel: data.activityLevel } : {}),
+      ...(data.foodAllergies ? { foodAllergies: data.foodAllergies } : {}),
+      ...(data.foodsLoved ? { foodsLoved: data.foodsLoved } : {}),
+      ...(data.foodsHated ? { foodsHated: data.foodsHated } : {}),
+      ...(data.cookingSkill ? { cookingSkill: data.cookingSkill } : {}),
+      ...(data.mealPrepTime ? { mealPrepTime: data.mealPrepTime } : {}),
+      ...(data.foodBudget ? { foodBudget: data.foodBudget } : {}),
+
       // Injuries & Health
       ...(data.specificInjuries ? { specificInjuries: data.specificInjuries as unknown as Prisma.InputJsonValue } : {}),
       ...(data.chronicConditions ? { chronicConditions: data.chronicConditions } : {}),
@@ -321,6 +331,25 @@ export async function submitRoutineQuestionnaire(
           })
         )
         .catch((err) => logger.error({ err, userId }, "Coach approval SMS failed"));
+    }
+
+    // Nutrition tiers get a real generated nutrition plan (calorie/macro
+    // targets + AI meal plan) in addition to the lighter recovery-oriented
+    // workout plan above — this is the tier's primary paid deliverable.
+    if (userWithSub.subscription.planTier.startsWith("NUTRITION_")) {
+      try {
+        const nutritionResult = await generateNutritionPlan(profile.id);
+        if (nutritionResult.source === "fallback") {
+          logger.error(
+            { userId, profileId: profile.id, reason: nutritionResult.fallbackReason },
+            "NEW NUTRITION CLIENT RECEIVED TEMPLATE MEAL PLAN — AI generation failed during onboarding"
+          );
+        }
+      } catch (err) {
+        // A nutrition-plan failure must never block onboarding completion —
+        // the client still gets their password/dashboard access either way.
+        logger.error({ err, userId, profileId: profile.id }, "Nutrition plan generation failed during onboarding");
+      }
     }
   }
 

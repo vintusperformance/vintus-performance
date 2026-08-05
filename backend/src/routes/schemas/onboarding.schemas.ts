@@ -60,6 +60,15 @@ export const routineQuestionnaireSchema = z.object({
   alcoholFrequency: z.enum(["never", "rare", "1-2-per-week", "3-5-per-week", "daily"]).optional(),
   caffeineDaily: z.enum(["none", "1-cup", "2-3-cups", "4-plus-cups"]).optional(),
 
+  // Nutrition Profile
+  activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very-active"]).optional(),
+  foodAllergies: z.string().max(500).optional(),
+  foodsLoved: z.string().max(500).optional(),
+  foodsHated: z.string().max(500).optional(),
+  cookingSkill: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  mealPrepTime: z.enum(["minimal", "moderate", "extensive"]).optional(),
+  foodBudget: z.enum(["budget-conscious", "moderate", "no-constraint"]).optional(),
+
   // Injuries & Health
   specificInjuries: z.array(injuryEntrySchema).max(10).optional(),
   chronicConditions: z.string().max(1000).optional(),

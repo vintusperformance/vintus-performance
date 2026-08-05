@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { authenticate } from "../middleware/auth.js";
 import * as dashboardService from "../services/dashboard.service.js";
+import { getActiveNutritionPlan } from "../services/nutrition.service.js";
 
 const router = Router();
 
@@ -19,6 +20,24 @@ router.get(
       res.status(200).json({
         success: true,
         data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /dashboard/nutrition — active nutrition plan, null if none (non-nutrition tiers)
+router.get(
+  "/nutrition",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const plan = await getActiveNutritionPlan(userId);
+
+      res.status(200).json({
+        success: true,
+        data: plan,
       });
     } catch (err) {
       next(err);
