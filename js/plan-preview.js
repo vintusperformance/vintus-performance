@@ -112,8 +112,48 @@
   localStorage.setItem('vintus_selected_tier', tier);
 
   var assessmentUrl = '/assessment?tier=' + encodeURIComponent(tier);
-  document.getElementById('pvUnlockBtn').href = assessmentUrl;
-  document.getElementById('pvUnlockBtnBottom').href = assessmentUrl;
+  var unlockBtn = document.getElementById('pvUnlockBtn');
+  var unlockBtnBottom = document.getElementById('pvUnlockBtnBottom');
+  unlockBtn.href = assessmentUrl;
+  unlockBtnBottom.href = assessmentUrl;
+
+  // An already-logged-in client adding a Nutrition Plan on top of an
+  // existing plan doesn't need the full new-client assessment — they're
+  // already onboarded. Send them straight to checkout, then a short
+  // nutrition-only intake instead of the whole survey.
+  var isNutritionTier = tier.indexOf('NUTRITION') === 0;
+  if (isNutritionTier && typeof isLoggedIn === 'function' && isLoggedIn()) {
+    [unlockBtn, unlockBtnBottom].forEach(function (btn) {
+      if (!btn) return;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        buyNutritionDirect(btn, tier);
+      });
+    });
+  }
+
+  async function buyNutritionDirect(btn, tier) {
+    var originalText = btn.textContent;
+    btn.textContent = 'Redirecting to checkout...';
+    try {
+      var res = await apiPost('/api/v1/checkout/session', {
+        tier: tier,
+        successUrl: window.location.origin + '/nutrition-intake',
+        cancelUrl: window.location.origin + '/plan-preview?tier=' + encodeURIComponent(tier)
+      });
+      if (res.data && res.data.url) {
+        window.location.href = res.data.url;
+      } else {
+        btn.textContent = originalText;
+        window.location.href = assessmentUrl;
+      }
+    } catch (err) {
+      // Fall back to the normal assessment path rather than leaving the
+      // client stuck on a dead button.
+      btn.textContent = originalText;
+      window.location.href = assessmentUrl;
+    }
+  }
 
   function escapeHtml(str) {
     var div = document.createElement('div');
