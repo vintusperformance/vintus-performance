@@ -828,3 +828,110 @@ export async function executeNutritionGoalUpdate(
     };
   }
 }
+
+// ============================================================
+// Nutrition adherence tracking — checklist check-offs, streak, trend
+// ============================================================
+
+function todayUtc(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+function isSameUtcDate(a: Date, b: Date): boolean {
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  );
+}
+
+/** Records which of today's checklist items the client has checked off — upserted, so re-toggling just overwrites today's record. */
+export async function recordNutritionCheckIn(
+  userId: string,
+  completedIndices: number[],
+  totalItems: number
+): Promise<void> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const date = todayUtc();
+
+  await prisma.nutritionCheckIn.upsert({
+    where: { athleteProfileId_date: { athleteProfileId: profile.id, date } },
+    create: { athleteProfileId: profile.id, date, completedIndices, totalItems },
+    update: { completedIndices, totalItems },
+  });
+}
+
+/**
+ * Streak (consecutive days, ending today or yesterday, with every checklist
+ * item checked), this week's adherence %, a 14-day trend, and today's
+ * already-checked items (to restore checkbox state on page load) — all from
+ * real persisted NutritionCheckIn rows, not a client-side-only toggle.
+ */
+export async function getNutritionProgress(userId: string): Promise<{
+  todayCompletedIndices: number[];
+  streak: number;
+  weekAdherencePct: number;
+  last14Days: Array<{ date: string; pct: number | null }>;
+}> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) return { todayCompletedIndices: [], streak: 0, weekAdherencePct: 0, last14Days: [] };
+
+  const today = todayUtc();
+  const fourteenDaysAgo = new Date(today);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 13);
+
+  const records = await prisma.nutritionCheckIn.findMany({
+    where: { athleteProfileId: profile.id, date: { gte: fourteenDaysAgo, lte: today } },
+  });
+
+  const recordFor = (d: Date) => records.find((r) => isSameUtcDate(new Date(r.date), d));
+
+  const todayRecord = recordFor(today);
+  const todayCompletedIndices = todayRecord?.completedIndices ?? [];
+
+  let streak = 0;
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const rec = recordFor(d);
+    if (rec && rec.totalItems > 0 && rec.completedIndices.length === rec.totalItems) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  let weekCompleted = 0;
+  let weekTotal = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const rec = recordFor(d);
+    if (rec) {
+      weekCompleted += rec.completedIndices.length;
+      weekTotal += rec.totalItems;
+    }
+  }
+  const weekAdherencePct = weekTotal > 0 ? Math.round((weekCompleted / weekTotal) * 100) : 0;
+
+  const last14Days: Array<{ date: string; pct: number | null }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const rec = recordFor(d);
+    last14Days.push({
+      date: d.toISOString().split("T")[0],
+      pct: rec && rec.totalItems > 0 ? Math.round((rec.completedIndices.length / rec.totalItems) * 100) : null,
+    });
+  }
+
+  return { todayCompletedIndices, streak, weekAdherencePct, last14Days };
+}
