@@ -82,6 +82,27 @@ export const routineQuestionnaireSchema = z.object({
   eventDescription: z.string().max(500).optional(),
 });
 
+// Lightweight intake for a client who already has an account and profile
+// (e.g. a training-plan client adding a Nutrition Plan) — just the fields
+// that actually drive calorie/macro calculation and meal planning, no
+// password step and no re-asking training-specific questions.
+export const nutritionIntakeSchema = z.object({
+  gender: z.enum(["male", "female"]).optional(),
+  heightInches: z.number().int().min(36).max(96).optional(),
+  weightLbs: z.number().min(50).max(600).optional(),
+  mealsPerDay: z.number().int().min(1).max(8).optional(),
+  dietaryApproach: z.enum(["no-restriction", "high-protein", "keto", "vegan", "vegetarian", "paleo", "iifym"]).optional(),
+  activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very-active"]).optional(),
+  foodAllergies: z.string().max(500).optional(),
+  foodsLoved: z.string().max(500).optional(),
+  foodsHated: z.string().max(500).optional(),
+  cookingSkill: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+  mealPrepTime: z.enum(["minimal", "moderate", "extensive"]).optional(),
+  foodBudget: z.enum(["budget-conscious", "moderate", "no-constraint"]).optional(),
+  chronicConditions: z.string().max(1000).optional(),
+  medications: z.string().max(1000).optional(),
+});
+
 export const deviceSelectionSchema = z.object({
   provider: z.enum(["STRAVA", "GARMIN", "APPLE_HEALTH", "WHOOP", "OURA", "FITBIT"]),
 });
@@ -93,5 +114,6 @@ export const waiverAcceptSchema = z.object({
 export type VerifySession = z.infer<typeof verifySessionSchema>;
 export type SetPassword = z.infer<typeof setPasswordSchema>;
 export type RoutineQuestionnaire = z.infer<typeof routineQuestionnaireSchema>;
+export type NutritionIntake = z.infer<typeof nutritionIntakeSchema>;
 export type DeviceSelection = z.infer<typeof deviceSelectionSchema>;
 export type WaiverAccept = z.infer<typeof waiverAcceptSchema>;

@@ -111,6 +111,24 @@ router.get(
   }
 );
 
+// GET /checkout/nutrition-status — returns current user's nutrition plan status, null if none
+router.get(
+  "/nutrition-status",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const result = await checkoutService.getNutritionSubscriptionStatus(userId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /checkout/portal — returns Stripe Customer Portal URL
 router.post(
   "/portal",

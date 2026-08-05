@@ -6,6 +6,7 @@ import {
   verifySessionSchema,
   setPasswordSchema,
   routineQuestionnaireSchema,
+  nutritionIntakeSchema,
   deviceSelectionSchema,
   waiverAcceptSchema,
 } from "./schemas/onboarding.schemas.js";
@@ -70,6 +71,27 @@ router.post(
     try {
       const userId = req.user!.userId;
       const result = await onboardingService.submitRoutineQuestionnaire(userId, req.body);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /onboarding/nutrition-intake — requires auth — add-on Nutrition Plan
+// for an existing client (already has password/profile) — body: NutritionIntake
+router.post(
+  "/nutrition-intake",
+  authenticate,
+  validate(nutritionIntakeSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const result = await onboardingService.submitNutritionIntake(userId, req.body);
 
       res.status(201).json({
         success: true,

@@ -47,7 +47,7 @@ export async function createCheckoutSession(
 ): Promise<{ sessionId: string; url: string }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { subscription: true },
+    include: { subscription: true, nutritionSubscription: true },
   });
 
   if (!user) {
@@ -75,9 +75,11 @@ export async function createCheckoutSession(
     };
   }
 
-  // Reuse existing Stripe customer if available
-  if (user.subscription?.stripeCustomerId) {
-    sessionParams.customer = user.subscription.stripeCustomerId;
+  // Reuse existing Stripe customer if available, from either plan
+  const existingStripeCustomerId =
+    user.subscription?.stripeCustomerId ?? user.nutritionSubscription?.stripeCustomerId;
+  if (existingStripeCustomerId) {
+    sessionParams.customer = existingStripeCustomerId;
   } else {
     sessionParams.customer_email = user.email;
   }
@@ -141,16 +143,34 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  // Guard: prevent overwriting an active or pending subscription with a different tier
-  const existingSub = await prisma.subscription.findUnique({ where: { userId } });
-  if (existingSub) {
-    const activeStatuses = ["ACTIVE", "PENDING_APPROVAL", "TRIALING"];
-    if (activeStatuses.includes(existingSub.status) && existingSub.planTier !== tier) {
-      logger.warn(
-        { userId, existingTier: existingSub.planTier, newTier: tier, existingStatus: existingSub.status },
-        "Checkout completed but user already has an active subscription — skipping overwrite"
-      );
-      return;
+  const isNutrition = NUTRITION_TIERS.has(tier);
+
+  // Nutrition tiers live in their own table so a client can hold a training/
+  // coaching plan and a nutrition plan at the same time — each table's
+  // overwrite guard only ever compares within its own category.
+  if (isNutrition) {
+    const existingNutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+    if (existingNutritionSub) {
+      const activeStatuses = ["ACTIVE", "PENDING_APPROVAL", "TRIALING"];
+      if (activeStatuses.includes(existingNutritionSub.status) && existingNutritionSub.planTier !== tier) {
+        logger.warn(
+          { userId, existingTier: existingNutritionSub.planTier, newTier: tier },
+          "Checkout completed but user already has an active nutrition plan — skipping overwrite"
+        );
+        return;
+      }
+    }
+  } else {
+    const existingSub = await prisma.subscription.findUnique({ where: { userId } });
+    if (existingSub) {
+      const activeStatuses = ["ACTIVE", "PENDING_APPROVAL", "TRIALING"];
+      if (activeStatuses.includes(existingSub.status) && existingSub.planTier !== tier) {
+        logger.warn(
+          { userId, existingTier: existingSub.planTier, newTier: tier, existingStatus: existingSub.status },
+          "Checkout completed but user already has an active subscription — skipping overwrite"
+        );
+        return;
+      }
     }
   }
 
@@ -188,47 +208,82 @@ async function handleCheckoutCompleted(
   }
 
   // Nutrition plans activate immediately; all others need admin approval
-  const initialStatus: SubscriptionStatus = NUTRITION_TIERS.has(tier)
-    ? "ACTIVE"
-    : "PENDING_APPROVAL";
+  const initialStatus: SubscriptionStatus = isNutrition ? "ACTIVE" : "PENDING_APPROVAL";
 
-  // Upsert subscription record
-  await prisma.subscription.upsert({
-    where: { userId },
-    create: {
-      userId,
-      planTier: tier,
-      stripeCustomerId,
-      stripeSubscriptionId,
-      stripePriceId,
-      status: initialStatus,
-      currentPeriodStart,
-      currentPeriodEnd,
-    },
-    update: {
-      planTier: tier,
-      stripeCustomerId,
-      stripeSubscriptionId,
-      stripePriceId,
-      status: initialStatus,
-      currentPeriodStart,
-      currentPeriodEnd,
-      cancelAtPeriodEnd: false,
-    },
-  });
+  if (isNutrition) {
+    await prisma.nutritionSubscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        planTier: tier,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        stripePriceId,
+        status: initialStatus,
+        currentPeriodStart,
+        currentPeriodEnd,
+      },
+      update: {
+        planTier: tier,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        stripePriceId,
+        status: initialStatus,
+        currentPeriodStart,
+        currentPeriodEnd,
+        cancelAtPeriodEnd: false,
+      },
+    });
+  } else {
+    await prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        planTier: tier,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        stripePriceId,
+        status: initialStatus,
+        currentPeriodStart,
+        currentPeriodEnd,
+      },
+      update: {
+        planTier: tier,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        stripePriceId,
+        status: initialStatus,
+        currentPeriodStart,
+        currentPeriodEnd,
+        cancelAtPeriodEnd: false,
+      },
+    });
+  }
 
   logger.info(
-    { userId, tier, stripeSubscriptionId, isRecurring, status: initialStatus },
+    { userId, tier, stripeSubscriptionId, isRecurring, status: initialStatus, isNutrition },
     "Purchase record created from checkout"
   );
 
   // Fire welcome sequence only for immediately-active subscriptions (nutrition plans).
-  // Non-nutrition plans get the welcome sequence when admin approves.
-  if (initialStatus === "ACTIVE") {
+  // Non-nutrition plans get the welcome sequence when admin approves. Skip it for a
+  // nutrition add-on bought by an already-active client — they don't need a second
+  // "welcome to Vintus" text.
+  if (initialStatus === "ACTIVE" && !isNutrition) {
     try {
       await sendWelcomeSequence(userId);
     } catch (err) {
       logger.error({ err, userId }, "Welcome sequence failed after checkout");
+    }
+  } else if (initialStatus === "ACTIVE" && isNutrition) {
+    const existingProfile = await prisma.athleteProfile.findUnique({ where: { userId } });
+    const isFirstPurchase = !existingProfile || (!existingProfile.wakeTime && !existingProfile.mealsPerDay);
+    if (isFirstPurchase) {
+      try {
+        await sendWelcomeSequence(userId);
+      } catch (err) {
+        logger.error({ err, userId }, "Welcome sequence failed after nutrition checkout");
+      }
     }
   }
 
@@ -371,6 +426,27 @@ export async function getSubscriptionStatus(userId: string): Promise<{
   cancelAtPeriodEnd: boolean;
 } | null> {
   const subscription = await prisma.subscription.findUnique({
+    where: { userId },
+    select: {
+      planTier: true,
+      status: true,
+      currentPeriodStart: true,
+      currentPeriodEnd: true,
+      cancelAtPeriodEnd: true,
+    },
+  });
+
+  return subscription;
+}
+
+export async function getNutritionSubscriptionStatus(userId: string): Promise<{
+  planTier: PlanTier;
+  status: SubscriptionStatus;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  cancelAtPeriodEnd: boolean;
+} | null> {
+  const subscription = await prisma.nutritionSubscription.findUnique({
     where: { userId },
     select: {
       planTier: true,

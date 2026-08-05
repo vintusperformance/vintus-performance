@@ -130,6 +130,14 @@ router.get(
               currentPeriodEnd: true,
             },
           },
+          nutritionSubscription: {
+            select: {
+              id: true,
+              planTier: true,
+              status: true,
+              currentPeriodEnd: true,
+            },
+          },
         },
       });
 
