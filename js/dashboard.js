@@ -179,6 +179,7 @@
       // primary tier, since nutrition is a separate add-on plan now
       if (d.athlete && d.athlete.hasNutritionPlan) {
         loadNutritionPlan();
+        loadNutritionProgress();
       }
 
       // Show the plan tabs only when a client has both a training/coaching
@@ -282,6 +283,98 @@
     }
   }
 
+  // ============================================================
+  // Nutrition Progress (streak, adherence, 14-day trend, check-in state)
+  // ============================================================
+
+  var nutritionCompletedIndices = [];
+  var nutritionTotalItems = 0;
+
+  async function loadNutritionProgress() {
+    try {
+      var res = await apiGet('/api/v1/dashboard/nutrition/progress');
+      if (!res.success || !res.data) return;
+      renderNutritionProgress(res.data);
+    } catch (err) {
+      // Progress is supplementary — don't break the checklist if it fails.
+    }
+  }
+
+  function renderNutritionProgress(d) {
+    nutritionCompletedIndices = d.todayCompletedIndices || [];
+    applyNutritionCheckState();
+
+    document.getElementById('nMetricStreak').textContent = d.streak;
+
+    var pct = d.weekAdherencePct;
+    document.getElementById('nMetricAdherence').textContent = pct + '%';
+    var circumference = 2 * Math.PI * 20; // r=20
+    var offset = circumference - (pct / 100) * circumference;
+    var arc = document.getElementById('nAdherenceArc');
+    arc.setAttribute('stroke-dashoffset', offset);
+    var color = pct >= 80 ? '#4ade80' : pct >= 50 ? '#fbbf24' : '#f87171';
+    arc.setAttribute('stroke', color);
+
+    renderNutritionTrendChart(d.last14Days);
+  }
+
+  function applyNutritionCheckState() {
+    var checklistEl = document.getElementById('nutritionChecklist');
+    if (!checklistEl) return;
+    nutritionCompletedIndices.forEach(function (idx) {
+      var item = document.getElementById('nutritionItem' + idx);
+      if (item) item.classList.add('checked');
+    });
+  }
+
+  function renderNutritionTrendChart(days) {
+    var container = document.getElementById('nutritionTrendsChart');
+    if (!container) return;
+
+    if (!days || !days.length) {
+      container.innerHTML = '<div class="tp-trends__empty">No data yet. Check off today\'s meals above to start tracking.</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    var chart = document.createElement('div');
+    chart.className = 'daily-chart';
+
+    days.forEach(function (day) {
+      var group = document.createElement('div');
+      group.className = 'daily-chart__bar-group';
+
+      var d = new Date(day.date + 'T12:00:00');
+
+      var bar = document.createElement('div');
+      bar.className = 'daily-chart__bar';
+
+      if (day.pct != null) {
+        bar.style.height = Math.max(8, day.pct) + '%';
+        var color = day.pct >= 80 ? '#4ade80' : day.pct >= 50 ? '#fbbf24' : '#f87171';
+        bar.style.background = color;
+      } else {
+        bar.style.height = '15%';
+        bar.classList.add('daily-chart__bar--gray');
+      }
+
+      var label = document.createElement('div');
+      label.className = 'daily-chart__label';
+      label.textContent = DAY_NAMES_SHORT[d.getDay()].charAt(0);
+
+      var dateLabel = document.createElement('div');
+      dateLabel.className = 'daily-chart__date';
+      dateLabel.textContent = d.getDate();
+
+      group.appendChild(bar);
+      group.appendChild(label);
+      group.appendChild(dateLabel);
+      chart.appendChild(group);
+    });
+
+    container.appendChild(chart);
+  }
+
   var nutritionRegenBtn = document.getElementById('nutritionRegenBtn');
   if (nutritionRegenBtn) {
     nutritionRegenBtn.addEventListener('click', async function () {
@@ -368,13 +461,31 @@
           '</div>';
       });
     }
+    nutritionTotalItems = Array.isArray(checklist) ? checklist.length : 0;
+
     var checklistEl = document.getElementById('nutritionChecklist');
     checklistEl.innerHTML = checklistHtml;
     checklistEl.querySelectorAll('.tp-nutrition__item-check').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        document.getElementById('nutritionItem' + btn.getAttribute('data-idx')).classList.toggle('checked');
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        var item = document.getElementById('nutritionItem' + idx);
+        var isChecked = item.classList.toggle('checked');
+        if (isChecked) {
+          if (nutritionCompletedIndices.indexOf(idx) === -1) nutritionCompletedIndices.push(idx);
+        } else {
+          nutritionCompletedIndices = nutritionCompletedIndices.filter(function (i) { return i !== idx; });
+        }
+        apiPost('/api/v1/dashboard/nutrition/checkin', {
+          completedIndices: nutritionCompletedIndices,
+          totalItems: nutritionTotalItems
+        }).then(function () {
+          return loadNutritionProgress();
+        }).catch(function () {
+          // Non-critical — the checkbox already reflects the click locally.
+        });
       });
     });
+    applyNutritionCheckState();
     checklistEl.querySelectorAll('.tp-nutrition__item-howto-toggle').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var panel = document.getElementById('nutritionInstructions' + btn.getAttribute('data-idx'));
@@ -437,11 +548,14 @@
       if (readinessVals.length > 0) {
         var readinessAvg = readinessVals.reduce(function(a, b) { return a + b; }, 0) / readinessVals.length;
         document.getElementById('metricReadiness').textContent = Math.round(readinessAvg);
+        document.getElementById('nMetricReadiness').textContent = Math.round(readinessAvg);
       } else {
         document.getElementById('metricReadiness').textContent = '--';
+        document.getElementById('nMetricReadiness').textContent = '--';
       }
     } else {
       document.getElementById('metricReadiness').textContent = '--';
+      document.getElementById('nMetricReadiness').textContent = '--';
     }
   }
 

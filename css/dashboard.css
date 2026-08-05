@@ -650,6 +650,10 @@
   margin-bottom: 1.5rem;
 }
 
+#nutritionMetricsRow {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .tp-metric-card {
   background: var(--black-card);
   border: 1px solid rgba(255,255,255,0.05);
@@ -1198,9 +1202,11 @@
 
 .daily-chart__bar-group {
   flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   cursor: pointer;
   transition: transform 0.15s ease;
 }

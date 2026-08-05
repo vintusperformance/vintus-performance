@@ -3,7 +3,12 @@ import type { Request, Response, NextFunction } from "express";
 import { authenticate } from "../middleware/auth.js";
 import * as dashboardService from "../services/dashboard.service.js";
 import { prisma } from "../lib/prisma.js";
-import { getActiveNutritionPlan, generateNutritionPlan } from "../services/nutrition.service.js";
+import {
+  getActiveNutritionPlan,
+  generateNutritionPlan,
+  recordNutritionCheckIn,
+  getNutritionProgress,
+} from "../services/nutrition.service.js";
 
 const router = Router();
 
@@ -71,6 +76,50 @@ router.post(
         success: true,
         data: result,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /dashboard/nutrition/progress — streak, this week's adherence, 14-day trend, today's checked items
+router.get(
+  "/nutrition/progress",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const data = await getNutritionProgress(userId);
+
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/checkin — records today's checked-off meal items
+router.post(
+  "/nutrition/checkin",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const completedIndices = req.body?.completedIndices;
+      const totalItems = parseInt(req.body?.totalItems, 10);
+
+      if (!Array.isArray(completedIndices) || completedIndices.some((i) => typeof i !== "number") || isNaN(totalItems)) {
+        res.status(400).json({
+          success: false,
+          error: "completedIndices must be an array of numbers, totalItems must be a number",
+        });
+        return;
+      }
+
+      await recordNutritionCheckIn(userId, completedIndices, totalItems);
+
+      res.status(200).json({ success: true, data: {} });
     } catch (err) {
       next(err);
     }
