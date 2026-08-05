@@ -6,6 +6,7 @@ import type { ContactInput, ConsultationInput } from "../routes/schemas/leads.sc
 import { getClassScheduleBlockedTimes, isClassScheduleBlocked } from "../data/booking-rules.js";
 import { appendSheetRow } from "../lib/google-sheets.js";
 import { createCalendarEvent } from "../lib/google-calendar.js";
+import { sendSMS } from "../lib/twilio.js";
 
 /** Save a contact form submission and email admin */
 export async function createContactLead(data: ContactInput) {
@@ -162,6 +163,13 @@ export async function createConsultationLead(data: ConsultationInput) {
     `New Consultation Request — ${data.firstName}`,
     adminBody
   ).catch((err) => logger.error({ err }, "Failed to send consultation admin email"));
+
+  if (env.COACH_PHONE) {
+    const smsBody = `Vintus: Booked — Free consultation with ${data.firstName}${data.lastName ? " " + data.lastName : ""} on ${data.preferredDate} at ${data.preferredTime}.${meetLink ? ` ${meetLink}` : ""}`;
+    sendSMS(env.COACH_PHONE, smsBody).catch((err) =>
+      logger.error({ err, leadId: lead.id }, "Failed to send consultation admin SMS")
+    );
+  }
 
   // Client confirmation
   const clientBody = [

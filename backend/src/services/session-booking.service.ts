@@ -9,6 +9,7 @@ import { PAID_SESSION_CATALOG, computeSessionTotalCents, isValidHeadcount } from
 import { isClassScheduleBlocked } from "../data/booking-rules.js";
 import { createCalendarEvent } from "../lib/google-calendar.js";
 import { appendSheetRow } from "../lib/google-sheets.js";
+import { sendSMS } from "../lib/twilio.js";
 import type { CreateSessionBookingInput } from "../routes/schemas/session-booking.schemas.js";
 
 // ============================================================
@@ -218,6 +219,13 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
   sendEmail(env.COACH_EMAIL, `Paid Session Booked — ${booking.firstName}`, adminBody).catch((err) =>
     logger.error({ err, bookingId }, "Failed to send paid-session admin notification")
   );
+
+  if (env.COACH_PHONE) {
+    const smsBody = `Vintus: Booked — ${config.label} with ${booking.firstName}${booking.lastName ? " " + booking.lastName : ""} on ${booking.scheduledDate} at ${booking.scheduledTime}.${meetLink ? ` ${meetLink}` : ""}`;
+    sendSMS(env.COACH_PHONE, smsBody).catch((err) =>
+      logger.error({ err, bookingId }, "Failed to send paid-session admin SMS")
+    );
+  }
 
   logger.info({ bookingId, sessionType: booking.sessionType }, "Paid session marked PAID, emails queued");
 }

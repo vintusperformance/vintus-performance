@@ -10,6 +10,8 @@ import * as adherenceService from "./adherence.service.js";
 import * as workoutService from "./workout.service.js";
 import * as readinessService from "./readiness.service.js";
 import * as adminService from "./admin.service.js";
+import { sendSMS } from "../lib/twilio.js";
+import { PAID_SESSION_CATALOG } from "../data/paid-sessions.js";
 
 import { isAutoMessagingEnabled, isCronEnabled } from "../lib/feature-flags.js";
 
@@ -157,6 +159,35 @@ function getWeekStart(date: Date): Date {
 }
 
 // ============================================================
+// Helper: convert a "YYYY-MM-DD" + "H:MM" pair — always interpreted as
+// America/New_York wall-clock time (how bookings store scheduledDate/Time
+// and preferredDate/Time) — into the equivalent UTC instant, DST-aware.
+// ============================================================
+
+function nyDateTimeToUtc(dateStr: string, timeStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = timeStr.split(":").map(Number);
+
+  // Wall-clock numbers taken as if they were already UTC...
+  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute);
+
+  // ...then re-read that instant in America/New_York to find the actual
+  // offset in effect on that date (handles EST/EDT correctly).
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
+  const parts = formatter.formatToParts(new Date(naiveUtc));
+  const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
+  const readAsUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+
+  const offsetMs = readAsUtc - naiveUtc;
+  return new Date(naiveUtc - offsetMs);
+}
+
+// ============================================================
 // startCrons — register all cron jobs on server boot
 // ============================================================
 
@@ -207,6 +238,19 @@ export function startCrons(): void {
   cron.schedule("0 4 * * *", () => {
     processedReviews.clear();
     logger.info("Cleared processed reviews cache");
+  });
+
+  // Every 5 minutes — text the coach 1 hour ahead of any booked session or
+  // free consultation, with the meeting link attached
+  cron.schedule("*/5 * * * *", async () => {
+    if (!isCronEnabled()) {
+      return; // Admin has paused cron via dashboard
+    }
+    try {
+      await bookingReminderCron();
+    } catch (err) {
+      logger.error({ err }, "Booking reminder cron failed");
+    }
   });
 
   logger.info("Cron jobs registered successfully");
@@ -1166,6 +1210,77 @@ async function coachRenewalReminderCron(): Promise<void> {
 
   if (sent > 0) {
     logger.info({ sent }, "Coach renewal reminder cron completed");
+  }
+}
+
+// ============================================================
+// bookingReminderCron — text the coach 1 hour ahead of any paid session
+// or free consultation, with the meeting link attached. Runs every 5
+// minutes and checks a ~10-minute window around the 1-hour mark so a
+// booking is always caught by at least one tick; reminderSentAt guards
+// against double-sends across ticks.
+// ============================================================
+
+async function bookingReminderCron(): Promise<void> {
+  if (!env.COACH_PHONE) return;
+
+  const now = new Date();
+  const windowStart = new Date(now.getTime() + 55 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 65 * 60 * 1000);
+
+  const [upcomingSessions, upcomingConsults] = await Promise.all([
+    prisma.sessionBooking.findMany({
+      where: { status: "PAID", reminderSentAt: null },
+    }),
+    prisma.lead.findMany({
+      where: {
+        type: "CONSULTATION",
+        status: { in: ["NEW", "CONFIRMED"] },
+        reminderSentAt: null,
+        preferredDate: { not: null },
+        preferredTime: { not: null },
+      },
+    }),
+  ]);
+
+  let sent = 0;
+
+  for (const booking of upcomingSessions) {
+    const startUtc = nyDateTimeToUtc(booking.scheduledDate, booking.scheduledTime);
+    if (startUtc < windowStart || startUtc > windowEnd) continue;
+
+    const config = PAID_SESSION_CATALOG[booking.sessionType];
+    const clientName = `${booking.firstName}${booking.lastName ? " " + booking.lastName : ""}`;
+    const body = `Vintus: ${config.label} with ${clientName} starts in 1 hour (${booking.scheduledTime}).${booking.meetLink ? ` ${booking.meetLink}` : ""}`;
+
+    try {
+      await sendSMS(env.COACH_PHONE, body);
+      await prisma.sessionBooking.update({ where: { id: booking.id }, data: { reminderSentAt: new Date() } });
+      sent++;
+    } catch (err) {
+      logger.error({ err, bookingId: booking.id }, "Failed to send paid-session reminder SMS");
+    }
+  }
+
+  for (const lead of upcomingConsults) {
+    if (!lead.preferredDate || !lead.preferredTime) continue;
+    const startUtc = nyDateTimeToUtc(lead.preferredDate, lead.preferredTime);
+    if (startUtc < windowStart || startUtc > windowEnd) continue;
+
+    const clientName = `${lead.firstName}${lead.lastName ? " " + lead.lastName : ""}`;
+    const body = `Vintus: Free consultation with ${clientName} starts in 1 hour (${lead.preferredTime}).${lead.meetLink ? ` ${lead.meetLink}` : ""}`;
+
+    try {
+      await sendSMS(env.COACH_PHONE, body);
+      await prisma.lead.update({ where: { id: lead.id }, data: { reminderSentAt: new Date() } });
+      sent++;
+    } catch (err) {
+      logger.error({ err, leadId: lead.id }, "Failed to send consultation reminder SMS");
+    }
+  }
+
+  if (sent > 0) {
+    logger.info({ sent }, "Booking reminder cron completed");
   }
 }
 

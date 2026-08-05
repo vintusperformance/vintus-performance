@@ -12,8 +12,9 @@
     const CONFIG = {
         // Available time slots (24-hour format)
         availableHours: [9, 10, 11, 13, 14, 15, 16, 17, 18],
-        // Days of week available (0 = Sunday, 6 = Saturday)
-        availableDays: [1, 2, 3, 4, 5], // Monday - Friday
+        // Days of week available (0 = Sunday, 6 = Saturday). Saturday is
+        // Anthony's day off — left out entirely.
+        availableDays: [0, 1, 2, 3, 4, 5], // Sunday - Friday
         // Slot duration in minutes
         slotDuration: 30,
         // How many days in advance can book
