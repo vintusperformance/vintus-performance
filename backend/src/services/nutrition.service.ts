@@ -31,20 +31,161 @@ interface MacroTargets {
   usedDefaults: string[]; // which inputs were missing and defaulted, for coachNotes
 }
 
+export interface GoalClassification {
+  calorieDirection: "deficit" | "surplus" | "maintenance";
+  magnitude: "conservative" | "moderate" | "aggressive";
+  proteinEmphasis: boolean; // true when muscle preservation/growth matters alongside the calorie direction
+  rationale: string; // short, client-facing explanation of the approach chosen
+}
+
+const CALORIE_ADJUSTMENTS: Record<GoalClassification["calorieDirection"], Record<GoalClassification["magnitude"], number>> = {
+  deficit: { conservative: -300, moderate: -500, aggressive: -750 },
+  surplus: { conservative: 200, moderate: 300, aggressive: 500 },
+  maintenance: { conservative: 0, moderate: 0, aggressive: 0 },
+};
+
+const GOAL_CLASSIFICATION_SYSTEM_PROMPT = `You classify a client's free-text nutrition goal into structured directives that drive calorie and protein math for a precision nutrition coaching service. Read their own words carefully — a goal can combine multiple intents (e.g. "lose weight but keep my muscle" is a deficit AND needs elevated protein to protect muscle during that deficit).
+
+Respond with ONLY valid JSON, no markdown fences, in this exact shape:
+{
+  "calorieDirection": "deficit" | "surplus" | "maintenance",
+  "magnitude": "conservative" | "moderate" | "aggressive",
+  "proteinEmphasis": true | false,
+  "rationale": "one sentence, client-facing, explaining the approach in plain language"
+}
+
+Guidance:
+- "lose weight/fat", "cut", "lean out", "drop pounds" -> deficit.
+- "build/gain muscle", "bulk", "get bigger/stronger" -> surplus.
+- "recomp", "lose fat and build muscle", "tone up" -> deficit, proteinEmphasis true (body recomposition is best driven by a modest deficit with high protein, not a surplus).
+- "maintain", "stay the same", "just eat better", "more energy" with no weight-change intent -> maintenance.
+- proteinEmphasis is true whenever preserving or building muscle is mentioned or implied, regardless of calorie direction.
+- Default to moderate magnitude unless they explicitly signal urgency ("fast", "aggressive", "quickly") -> aggressive, or caution ("slow", "sustainable", "gradual") -> conservative.
+- If the free text is empty, vague, or uninterpretable, fall back to their stated primary goal.`;
+
 /**
- * Mifflin-St Jeor BMR + activity multiplier + goal-based calorie adjustment.
- * Never throws — missing inputs (height/weight/gender/age) get reasonable
- * defaults so a plan can always be delivered, with the defaults used
- * surfaced back to the caller for disclosure in coachNotes.
+ * Classifies a client's free-text nutrition goal (plus their primaryGoal as
+ * a prior) into structured calorie-direction/magnitude/protein-emphasis
+ * directives. AI-first with a keyword-based fallback — never throws.
  */
-export function calculateNutritionTargets(profile: {
-  gender: string | null;
-  heightInches: number | null;
-  weightLbs: number | null;
-  dateOfBirth: Date | null;
-  activityLevel: string | null;
-  primaryGoal: string;
-}): MacroTargets {
+export async function classifyNutritionGoal(
+  goalText: string | null,
+  primaryGoal: string
+): Promise<GoalClassification> {
+  const text = (goalText ?? "").trim();
+
+  try {
+    if (!text) throw new Error("No free-text goal provided — skip straight to fallback");
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 300,
+      system: GOAL_CLASSIFICATION_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: `Free-text goal: "${text}"\nStated primary goal: ${primaryGoal}` }],
+    });
+
+    const textBlock = response.content.find(
+      (b): b is Extract<typeof b, { type: "text" }> => b.type === "text"
+    );
+    const raw = textBlock?.text ?? "";
+    if (!raw) throw new Error("Claude returned no usable text block for goal classification");
+
+    const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(cleaned) as GoalClassification;
+
+    if (
+      !["deficit", "surplus", "maintenance"].includes(parsed.calorieDirection) ||
+      !["conservative", "moderate", "aggressive"].includes(parsed.magnitude) ||
+      typeof parsed.proteinEmphasis !== "boolean"
+    ) {
+      throw new Error("Claude returned malformed goal classification");
+    }
+
+    return parsed;
+  } catch (err) {
+    logger.error({ err, goalText, primaryGoal }, "AI goal classification failed, using keyword-based fallback");
+    return classifyGoalWithKeywords(text, primaryGoal);
+  }
+}
+
+/** Deterministic keyword-based classification — the safety net if the AI call fails or no free text was given. */
+function classifyGoalWithKeywords(text: string, primaryGoal: string): GoalClassification {
+  const lower = text.toLowerCase();
+
+  const lossSignals = /lose|cut|cutting|lean out|shed|drop weight|fat loss|slim/;
+  const gainSignals = /build muscle|gain muscle|bulk|get bigger|mass|pack on/;
+  const maintainSignals = /maintain|stay the same|more energy|feel better|eat better/;
+  const muscleProtectSignals = /keep.*muscle|preserve.*muscle|maintain.*muscle|tone|don't lose muscle|retain muscle|build muscle|gain muscle/;
+  const aggressiveSignals = /fast|quickly|aggressive|asap|rapid/;
+  const conservativeSignals = /slow|gradual|sustainable|steady|slowly/;
+
+  let calorieDirection: GoalClassification["calorieDirection"];
+  let proteinEmphasis = muscleProtectSignals.test(lower);
+
+  if (lossSignals.test(lower) && gainSignals.test(lower)) {
+    // Recomposition intent stated directly — deficit with high protein.
+    calorieDirection = "deficit";
+    proteinEmphasis = true;
+  } else if (lossSignals.test(lower)) {
+    calorieDirection = "deficit";
+  } else if (gainSignals.test(lower)) {
+    calorieDirection = "surplus";
+    proteinEmphasis = true;
+  } else if (maintainSignals.test(lower)) {
+    calorieDirection = "maintenance";
+  } else {
+    // No usable signal in the free text — fall back to the stated primary goal.
+    switch (primaryGoal) {
+      case "lose-fat":
+        calorieDirection = "deficit";
+        break;
+      case "build-muscle":
+        calorieDirection = "surplus";
+        proteinEmphasis = true;
+        break;
+      case "recomposition":
+        calorieDirection = "deficit";
+        proteinEmphasis = true;
+        break;
+      default:
+        calorieDirection = "maintenance";
+    }
+  }
+
+  const magnitude: GoalClassification["magnitude"] = aggressiveSignals.test(lower)
+    ? "aggressive"
+    : conservativeSignals.test(lower)
+      ? "conservative"
+      : "moderate";
+
+  const rationale =
+    calorieDirection === "deficit"
+      ? proteinEmphasis
+        ? "A calorie deficit with elevated protein to protect your muscle while you lose weight."
+        : "A calorie deficit to drive weight loss."
+      : calorieDirection === "surplus"
+        ? "A calorie surplus with high protein to support muscle growth."
+        : "Maintenance calories to support your current weight and performance.";
+
+  return { calorieDirection, magnitude, proteinEmphasis, rationale };
+}
+
+/**
+ * Mifflin-St Jeor BMR + activity multiplier + goal-classification-based
+ * calorie adjustment. Never throws — missing inputs (height/weight/gender/
+ * age) get reasonable defaults so a plan can always be delivered, with the
+ * defaults used surfaced back to the caller for disclosure in coachNotes.
+ */
+export function calculateNutritionTargets(
+  profile: {
+    gender: string | null;
+    heightInches: number | null;
+    weightLbs: number | null;
+    dateOfBirth: Date | null;
+    activityLevel: string | null;
+  },
+  classification: GoalClassification
+): MacroTargets {
   const usedDefaults: string[] = [];
 
   const gender = profile.gender === "female" ? "female" : profile.gender === "male" ? "male" : "male";
@@ -77,24 +218,15 @@ export function calculateNutritionTargets(profile: {
 
   const tdee = bmr * activityMultiplier;
 
-  let dailyCalories: number;
-  switch (profile.primaryGoal) {
-    case "lose-fat":
-      dailyCalories = tdee - 500;
-      break;
-    case "build-muscle":
-      dailyCalories = tdee + 300;
-      break;
-    case "recomposition":
-      dailyCalories = tdee - 200;
-      break;
-    default: // endurance, well-rounded
-      dailyCalories = tdee;
-  }
+  const adjustment = CALORIE_ADJUSTMENTS[classification.calorieDirection][classification.magnitude];
+  let dailyCalories = tdee + adjustment;
   dailyCalories = Math.round(Math.max(dailyCalories, 1200) / 10) * 10; // floor to a safe minimum, round to 10s
 
-  // Protein: ~1g per lb bodyweight (evidence-based target for active adults).
-  const proteinG = Math.round(weightLbs);
+  // Protein: ~1g per lb bodyweight baseline (evidence-based for active adults).
+  // Bumped higher specifically when cutting while trying to protect muscle —
+  // that's the scenario where protein does the most work.
+  const proteinPerLb = classification.calorieDirection === "deficit" && classification.proteinEmphasis ? 1.15 : 1.0;
+  const proteinG = Math.round(weightLbs * proteinPerLb);
   // Fat: ~28% of total calories.
   const fatG = Math.round((dailyCalories * 0.28) / 9);
   // Carbs: remainder.
@@ -143,6 +275,7 @@ async function generateMealPlanWithClaude(
   profile: {
     firstName: string;
     primaryGoal: string;
+    nutritionGoals: string | null;
     dietaryApproach: string | null;
     foodAllergies: string | null;
     foodsLoved: string | null;
@@ -154,11 +287,14 @@ async function generateMealPlanWithClaude(
     chronicConditions: string | null;
     medications: string | null;
   },
-  targets: MacroTargets
+  targets: MacroTargets,
+  classification: GoalClassification
 ): Promise<MealPlanContent> {
   const lines: string[] = [
     `Name: ${profile.firstName}`,
     `Primary Goal: ${profile.primaryGoal}`,
+    `Nutrition Goal (their own words): ${profile.nutritionGoals || "not specified"}`,
+    `Calorie Strategy: ${classification.calorieDirection} (${classification.magnitude}) — ${classification.rationale}`,
     `Daily Targets: ${targets.dailyCalories} calories, ${targets.proteinG}g protein, ${targets.carbsG}g carbs, ${targets.fatG}g fat`,
   ];
   if (profile.dietaryApproach) lines.push(`Dietary Approach: ${profile.dietaryApproach}`);
@@ -251,14 +387,15 @@ export async function generateNutritionPlan(
   const tier = nutritionSubscription?.planTier ?? "NUTRITION_4WEEK";
   const durationDays = TIER_DURATION_DAYS[tier] ?? 28;
 
-  const targets = calculateNutritionTargets(profile);
+  const classification = await classifyNutritionGoal(profile.nutritionGoals, profile.primaryGoal);
+  const targets = calculateNutritionTargets(profile, classification);
 
   let content: MealPlanContent;
   let source: "ai" | "fallback" = "ai";
   let fallbackReason: string | undefined;
 
   try {
-    content = await generateMealPlanWithClaude(profile, targets);
+    content = await generateMealPlanWithClaude(profile, targets, classification);
   } catch (aiErr) {
     logger.error({ err: aiErr, profileId }, "Claude nutrition plan generation failed, using rule-based fallback");
     source = "fallback";

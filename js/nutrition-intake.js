@@ -67,6 +67,7 @@
       mealsPerDay: optInt('mealsPerDay'),
       dietaryApproach: optVal('dietaryApproach'),
       activityLevel: optVal('activityLevel'),
+      nutritionGoals: optText('nutritionGoals'),
       foodAllergies: optText('foodAllergies'),
       foodsLoved: optText('foodsLoved'),
       foodsHated: optText('foodsHated'),

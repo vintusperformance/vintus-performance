@@ -239,6 +239,7 @@
 
       // Nutrition Profile
       activityLevel: optVal('activityLevel'),
+      nutritionGoals: optText('nutritionGoals'),
       foodAllergies: optText('foodAllergies'),
       foodsLoved: optText('foodsLoved'),
       foodsHated: optText('foodsHated'),

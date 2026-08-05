@@ -216,6 +216,7 @@ export async function submitRoutineQuestionnaire(
 
       // Nutrition Profile
       ...(data.activityLevel ? { activityLevel: data.activityLevel } : {}),
+      ...(data.nutritionGoals ? { nutritionGoals: data.nutritionGoals } : {}),
       ...(data.foodAllergies ? { foodAllergies: data.foodAllergies } : {}),
       ...(data.foodsLoved ? { foodsLoved: data.foodsLoved } : {}),
       ...(data.foodsHated ? { foodsHated: data.foodsHated } : {}),
@@ -414,6 +415,7 @@ export async function submitNutritionIntake(
       ...(data.mealsPerDay != null ? { mealsPerDay: data.mealsPerDay } : {}),
       ...(data.dietaryApproach ? { dietaryApproach: data.dietaryApproach } : {}),
       ...(data.activityLevel ? { activityLevel: data.activityLevel } : {}),
+      ...(data.nutritionGoals ? { nutritionGoals: data.nutritionGoals } : {}),
       ...(data.foodAllergies ? { foodAllergies: data.foodAllergies } : {}),
       ...(data.foodsLoved ? { foodsLoved: data.foodsLoved } : {}),
       ...(data.foodsHated ? { foodsHated: data.foodsHated } : {}),
