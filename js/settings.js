@@ -35,6 +35,17 @@
   var manageSubBtnText = document.getElementById('manageSubBtnText');
   var subError = document.getElementById('subError');
 
+  // Nutrition plan elements
+  var nutritionCard = document.getElementById('nutritionCard');
+  var nutritionOwned = document.getElementById('nutritionOwned');
+  var nutritionOffer = document.getElementById('nutritionOffer');
+  var nutritionTier = document.getElementById('nutritionTier');
+  var nutritionStatus = document.getElementById('nutritionStatus');
+  var nutritionPeriodEnd = document.getElementById('nutritionPeriodEnd');
+  var nutritionError = document.getElementById('nutritionError');
+  var buyNutrition4Btn = document.getElementById('buyNutrition4Btn');
+  var buyNutrition8Btn = document.getElementById('buyNutrition8Btn');
+
   // ── Load user data ──
   loadUserData();
 
@@ -106,6 +117,36 @@
         subTier.textContent = 'No active plan';
         subStatus.innerHTML = '<span class="settings-badge settings-badge--default">None</span>';
         subPeriodEnd.textContent = '--';
+      }
+
+      // Populate nutrition plan info — separate from the main subscription so
+      // a client can hold a training/coaching plan and a nutrition plan at once
+      var nutritionSub = user.nutritionSubscription;
+      var nutritionTierNames = {
+        'NUTRITION_4WEEK': '4-Week Nutrition Plan',
+        'NUTRITION_8WEEK': '8-Week Nutrition Plan'
+      };
+      nutritionCard.style.display = 'block';
+      if (nutritionSub && nutritionSub.status !== 'CANCELED') {
+        nutritionOwned.style.display = 'block';
+        nutritionOffer.style.display = 'none';
+
+        nutritionTier.textContent = nutritionTierNames[nutritionSub.planTier] || nutritionSub.planTier || '--';
+
+        var nStatusLower = (nutritionSub.status || '').toLowerCase();
+        var nBadgeClass = 'settings-badge--default';
+        if (nStatusLower === 'active') nBadgeClass = 'settings-badge--active';
+        nutritionStatus.innerHTML = '<span class="settings-badge ' + nBadgeClass + '">' + (nutritionSub.status || '--') + '</span>';
+
+        if (nutritionSub.currentPeriodEnd) {
+          var nd = new Date(nutritionSub.currentPeriodEnd);
+          nutritionPeriodEnd.textContent = nd.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        } else {
+          nutritionPeriodEnd.textContent = '--';
+        }
+      } else {
+        nutritionOwned.style.display = 'none';
+        nutritionOffer.style.display = 'block';
       }
 
       // Show content, hide loading
@@ -232,6 +273,38 @@
       manageSubBtnText.textContent = 'Manage Subscription';
     }
   });
+
+  // ── Buy add-on Nutrition Plan ──
+  function buyNutritionPlan(tier, btn) {
+    return async function () {
+      nutritionError.style.display = 'none';
+      btn.disabled = true;
+      var originalText = btn.textContent;
+      btn.textContent = 'Redirecting to checkout...';
+
+      try {
+        var res = await apiPost('/api/v1/checkout/session', {
+          tier: tier,
+          successUrl: window.location.origin + '/nutrition-intake',
+          cancelUrl: window.location.origin + '/settings'
+        });
+        if (res.data && res.data.url) {
+          window.location.href = res.data.url;
+        } else {
+          showMsg(nutritionError, 'Could not start checkout.');
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      } catch (err) {
+        showMsg(nutritionError, err.message || 'Failed to start checkout.');
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    };
+  }
+
+  if (buyNutrition4Btn) buyNutrition4Btn.addEventListener('click', buyNutritionPlan('NUTRITION_4WEEK', buyNutrition4Btn));
+  if (buyNutrition8Btn) buyNutrition8Btn.addEventListener('click', buyNutritionPlan('NUTRITION_8WEEK', buyNutrition8Btn));
 
   // ── Helper: show message ──
   function showMsg(el, msg) {

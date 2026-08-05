@@ -23,6 +23,7 @@ model User {
 
   athleteProfile  AthleteProfile?
   subscription    Subscription?
+  nutritionSubscription NutritionSubscription?
   messageLogs     MessageLog[]
   escalationEvents EscalationEvent[]
   deviceConnections DeviceConnection[]
@@ -460,6 +461,34 @@ model Subscription {
 
   // Coach-facing reminder to review/update next month's Private Coaching plan
   coachReminderSentAt DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// A client's Nutrition Plan purchase (4-Week / 8-Week), tracked independently
+// of the main Subscription (training/coaching) so a client can hold both
+// simultaneously — e.g. a 60-Day Training Plan client who adds a Nutrition
+// Plan on top. Same shape as Subscription minus fields that don't apply to
+// nutrition (nutrition tiers activate immediately, no admin-approval gate).
+model NutritionSubscription {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  planTier        PlanTier // NUTRITION_4WEEK | NUTRITION_8WEEK — enforced at the app layer
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  stripePriceId       String?
+
+  status          SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean @default(false)
+
+  renewalPromptedAt  DateTime?
+  renewalResponseAt  DateTime?
+  scheduledDeleteAt  DateTime?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

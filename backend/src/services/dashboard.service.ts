@@ -41,6 +41,7 @@ export async function getOverview(userId: string): Promise<unknown> {
     include: {
       athleteProfile: true,
       subscription: { select: { planTier: true, status: true, currentPeriodStart: true, currentPeriodEnd: true } },
+      nutritionSubscription: { select: { planTier: true, status: true } },
     },
   });
 
@@ -188,6 +189,8 @@ export async function getOverview(userId: string): Promise<unknown> {
       planState,
       dayNumber,
       totalDays,
+      hasNutritionPlan: !!user.nutritionSubscription && user.nutritionSubscription.status !== "CANCELED",
+      nutritionTier: user.nutritionSubscription?.planTier ?? null,
     },
     today: {
       workout: todayWorkout,

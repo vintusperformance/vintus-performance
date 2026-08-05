@@ -10,7 +10,7 @@ import { generateNutritionPlan } from "./nutrition.service.js";
 import { notifyNewClient } from "../lib/gmail-notify.js";
 import { isWaiverEnabled } from "../lib/feature-flags.js";
 import { sendSMS } from "../lib/twilio.js";
-import type { RoutineQuestionnaire } from "../routes/schemas/onboarding.schemas.js";
+import type { RoutineQuestionnaire, NutritionIntake } from "../routes/schemas/onboarding.schemas.js";
 
 const SALT_ROUNDS = 12;
 
@@ -298,10 +298,17 @@ export async function submitRoutineQuestionnaire(
 
   // Notify admin — client has completed onboarding with full profile + plan generated.
   // This is the ideal time: admin has all data to review before approving.
+  // Nutrition tiers live in a separate table (NutritionSubscription) so a
+  // client can hold a training/coaching plan and a nutrition plan at once —
+  // a first-time nutrition-only signup has no `subscription` row at all.
   const userWithSub = await prisma.user.findUnique({
     where: { id: userId },
-    include: { subscription: { select: { planTier: true, status: true } } },
+    include: {
+      subscription: { select: { planTier: true, status: true } },
+      nutritionSubscription: { select: { planTier: true, status: true } },
+    },
   });
+
   if (userWithSub?.subscription) {
     const name = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || userWithSub.email;
     notifyNewClient({
@@ -332,28 +339,103 @@ export async function submitRoutineQuestionnaire(
         )
         .catch((err) => logger.error({ err, userId }, "Coach approval SMS failed"));
     }
+  }
 
-    // Nutrition tiers get a real generated nutrition plan (calorie/macro
-    // targets + AI meal plan) in addition to the lighter recovery-oriented
-    // workout plan above — this is the tier's primary paid deliverable.
-    if (userWithSub.subscription.planTier.startsWith("NUTRITION_")) {
-      try {
-        const nutritionResult = await generateNutritionPlan(profile.id);
-        if (nutritionResult.source === "fallback") {
-          logger.error(
-            { userId, profileId: profile.id, reason: nutritionResult.fallbackReason },
-            "NEW NUTRITION CLIENT RECEIVED TEMPLATE MEAL PLAN — AI generation failed during onboarding"
-          );
-        }
-      } catch (err) {
-        // A nutrition-plan failure must never block onboarding completion —
-        // the client still gets their password/dashboard access either way.
-        logger.error({ err, userId, profileId: profile.id }, "Nutrition plan generation failed during onboarding");
+  // A first-time nutrition-only signup admin notification (training/coaching
+  // clients adding nutrition as an add-on go through a separate lightweight
+  // endpoint, not this questionnaire, so there's no double-notify risk here).
+  if (userWithSub?.nutritionSubscription && !userWithSub.subscription) {
+    const name = [profile.firstName, profile.lastName].filter(Boolean).join(" ") || userWithSub.email;
+    notifyNewClient({
+      name,
+      email: userWithSub.email,
+      planTier: userWithSub.nutritionSubscription.planTier,
+      status: userWithSub.nutritionSubscription.status,
+    }).catch((err) => logger.error({ err, userId }, "Admin notification failed after nutrition onboarding"));
+  }
+
+  // Nutrition tiers get a real generated nutrition plan (calorie/macro
+  // targets + AI meal plan) in addition to the lighter recovery-oriented
+  // workout plan above — this is the tier's primary paid deliverable.
+  if (userWithSub?.nutritionSubscription) {
+    try {
+      const nutritionResult = await generateNutritionPlan(profile.id);
+      if (nutritionResult.source === "fallback") {
+        logger.error(
+          { userId, profileId: profile.id, reason: nutritionResult.fallbackReason },
+          "NEW NUTRITION CLIENT RECEIVED TEMPLATE MEAL PLAN — AI generation failed during onboarding"
+        );
       }
+    } catch (err) {
+      // A nutrition-plan failure must never block onboarding completion —
+      // the client still gets their password/dashboard access either way.
+      logger.error({ err, userId, profileId: profile.id }, "Nutrition plan generation failed during onboarding");
     }
   }
 
   return plan;
+}
+
+// ============================================================
+// submitNutritionIntake — add-on Nutrition Plan for an existing client
+// ============================================================
+
+/**
+ * Lightweight nutrition-only intake for a client who already has an account
+ * and profile (most commonly: a training/coaching client who bought a
+ * Nutrition Plan on top). No password step, no re-asking training-specific
+ * questions — just the fields that drive calorie/macro calculation and meal
+ * planning, then generates the plan immediately.
+ */
+export async function submitNutritionIntake(
+  userId: string,
+  data: NutritionIntake
+): Promise<{ planId: string; source: "ai" | "fallback" }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+  if (!nutritionSub) {
+    const err = new Error("No active nutrition plan found for this account") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await prisma.athleteProfile.update({
+    where: { id: profile.id },
+    data: {
+      ...(data.gender ? { gender: data.gender } : {}),
+      ...(data.heightInches != null ? { heightInches: data.heightInches } : {}),
+      ...(data.weightLbs != null ? { weightLbs: data.weightLbs } : {}),
+      ...(data.mealsPerDay != null ? { mealsPerDay: data.mealsPerDay } : {}),
+      ...(data.dietaryApproach ? { dietaryApproach: data.dietaryApproach } : {}),
+      ...(data.activityLevel ? { activityLevel: data.activityLevel } : {}),
+      ...(data.foodAllergies ? { foodAllergies: data.foodAllergies } : {}),
+      ...(data.foodsLoved ? { foodsLoved: data.foodsLoved } : {}),
+      ...(data.foodsHated ? { foodsHated: data.foodsHated } : {}),
+      ...(data.cookingSkill ? { cookingSkill: data.cookingSkill } : {}),
+      ...(data.mealPrepTime ? { mealPrepTime: data.mealPrepTime } : {}),
+      ...(data.foodBudget ? { foodBudget: data.foodBudget } : {}),
+      ...(data.chronicConditions ? { chronicConditions: data.chronicConditions } : {}),
+      ...(data.medications ? { medications: data.medications } : {}),
+    },
+  });
+
+  const result = await generateNutritionPlan(profile.id);
+  if (result.source === "fallback") {
+    logger.error(
+      { userId, profileId: profile.id, reason: result.fallbackReason },
+      "ADD-ON NUTRITION CLIENT RECEIVED TEMPLATE MEAL PLAN — AI generation failed during intake"
+    );
+  }
+
+  logger.info({ userId, profileId: profile.id, planId: result.planId }, "Add-on nutrition intake completed");
+
+  return { planId: result.planId, source: result.source };
 }
 
 // ============================================================

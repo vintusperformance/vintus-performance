@@ -244,11 +244,11 @@ export async function generateNutritionPlan(
     throw err;
   }
 
-  const subscription = await prisma.subscription.findUnique({
+  const nutritionSubscription = await prisma.nutritionSubscription.findUnique({
     where: { userId: profile.userId },
     select: { planTier: true },
   });
-  const tier = subscription?.planTier ?? "NUTRITION_4WEEK";
+  const tier = nutritionSubscription?.planTier ?? "NUTRITION_4WEEK";
   const durationDays = TIER_DURATION_DAYS[tier] ?? 28;
 
   const targets = calculateNutritionTargets(profile);

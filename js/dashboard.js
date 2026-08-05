@@ -121,10 +121,12 @@
         return true;
       }
 
-      // No subscription at all (e.g. completed the assessment but never
+      // No plan of any kind at all (e.g. completed the assessment but never
       // purchased) — nothing to show here, send them to pick a plan instead
-      // of rendering an empty dashboard.
-      if (d.athlete && !d.athlete.planTier) {
+      // of rendering an empty dashboard. A nutrition-only client (no
+      // training/coaching plan) still has something to show, so only
+      // redirect if neither exists.
+      if (d.athlete && !d.athlete.planTier && !d.athlete.hasNutritionPlan) {
         window.location.href = '/features';
         return true;
       }
@@ -167,12 +169,23 @@
       // Metrics
       renderMetrics(d);
 
-      // Today's workout
-      renderTodayWorkout(d);
+      // Today's workout — only relevant when there's a training/coaching plan
+      if (d.athlete && d.athlete.planTier) {
+        renderTodayWorkout(d);
+      } else {
+        document.getElementById('trainingTabContent').style.display = 'none';
+      }
 
-      // Nutrition plan (Nutrition Plan tiers only)
-      if (currentTier && currentTier.indexOf('NUTRITION') === 0) {
+      // Nutrition plan — fetch whenever one might exist, regardless of the
+      // primary tier, since nutrition is a separate add-on plan now
+      if (d.athlete && d.athlete.hasNutritionPlan) {
         loadNutritionPlan();
+      }
+
+      // Show the plan tabs only when a client has both a training/coaching
+      // plan and a nutrition plan — single-plan clients see no tabs at all.
+      if (d.athlete && d.athlete.planTier && d.athlete.hasNutritionPlan) {
+        setupPlanTabs(d.athlete.planTier, d.athlete.nutritionTier);
       }
 
       // 30-day milestone report, if one's due
@@ -213,6 +226,43 @@
   }
 
   // ============================================================
+  // PLAN TABS (Training + Nutrition, when a client has both)
+  // ============================================================
+
+  var planTabsSetUp = false;
+
+  function setupPlanTabs(trainingTier, nutritionTier) {
+    var tabsEl = document.getElementById('planTabs');
+    var tabTraining = document.getElementById('tabTraining');
+    var tabNutrition = document.getElementById('tabNutrition');
+    var trainingContent = document.getElementById('trainingTabContent');
+    var nutritionContent = document.getElementById('nutritionSection');
+
+    var trainingLabel = (TIER_DISPLAY[trainingTier] || trainingTier) +
+      (trainingTier === 'PRIVATE_COACHING' ? '' : ' Training Plan');
+    var nutritionLabel = (TIER_DISPLAY[nutritionTier] || nutritionTier) + ' Plan';
+
+    tabTraining.textContent = trainingLabel;
+    tabNutrition.textContent = nutritionLabel;
+    tabsEl.style.display = 'flex';
+
+    if (planTabsSetUp) return; // avoid double-binding click handlers on re-render
+    planTabsSetUp = true;
+
+    function activate(tab) {
+      var isTraining = tab === 'training';
+      tabTraining.classList.toggle('tp-plan-tab--active', isTraining);
+      tabNutrition.classList.toggle('tp-plan-tab--active', !isTraining);
+      trainingContent.style.display = isTraining ? '' : 'none';
+      nutritionContent.style.display = isTraining ? 'none' : 'block';
+    }
+
+    tabTraining.addEventListener('click', function () { activate('training'); });
+    tabNutrition.addEventListener('click', function () { activate('nutrition'); });
+    activate('training');
+  }
+
+  // ============================================================
   // NUTRITION PLAN (Nutrition Plan tiers only)
   // ============================================================
 
@@ -236,7 +286,13 @@
   function renderNutritionPlan(plan) {
     var section = document.getElementById('nutritionSection');
     if (!section) return;
-    section.style.display = 'block';
+    // If plan tabs are active, tab-switching owns this section's visibility —
+    // don't fight it. Only force it visible for a nutrition-only client with
+    // no tabs at all.
+    var tabsEl = document.getElementById('planTabs');
+    if (!tabsEl || tabsEl.style.display === 'none' || !tabsEl.style.display) {
+      section.style.display = 'block';
+    }
 
     document.getElementById('nutritionMacros').innerHTML =
       '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + plan.dailyCalories + '</span><span class="tp-nutrition__macro-label">Calories</span></div>' +

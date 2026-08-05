@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=2">
-    <link rel="stylesheet" href="css/dashboard.css?v=5">
+    <link rel="stylesheet" href="css/dashboard.css?v=6">
     <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
 </head>
 <body class="dashboard-page" style="background: #0a0a0a !important;">
@@ -62,36 +62,141 @@
             </div>
         </div>
 
-        <!-- 2. Plan Progress Strip -->
-        <div class="tp-progress" id="planProgress" style="display:none;">
-            <div class="tp-progress__bar-wrap">
-                <div class="tp-progress__fill" id="progressFill"></div>
-            </div>
-            <div class="tp-progress__text" id="progressText"></div>
+        <!-- 1b. Plan Tabs (only shown when a client has both a training/coaching
+             plan and a Nutrition Plan) -->
+        <div class="tp-plan-tabs" id="planTabs" style="display:none;">
+            <button class="tp-plan-tab tp-plan-tab--active" id="tabTraining" data-tab="training"></button>
+            <button class="tp-plan-tab" id="tabNutrition" data-tab="nutrition"></button>
         </div>
 
-        <!-- 3. Weekly Calendar -->
-        <div class="tp-week" id="weekSection">
-            <div class="tp-week__nav">
-                <button class="tp-week__nav-btn" id="weekPrev" title="Previous week">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <span class="tp-week__label" id="weekLabel">This Week</span>
-                <button class="tp-week__nav-btn" id="weekNext" title="Next week">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
+        <!-- Training Plan Tab Content -->
+        <div id="trainingTabContent">
+
+            <!-- 2. Plan Progress Strip -->
+            <div class="tp-progress" id="planProgress" style="display:none;">
+                <div class="tp-progress__bar-wrap">
+                    <div class="tp-progress__fill" id="progressFill"></div>
+                </div>
+                <div class="tp-progress__text" id="progressText"></div>
             </div>
-            <div class="tp-week__grid" id="weekGrid">
-                <div class="dash-loading-shimmer" style="height:100px;border-radius:8px;"></div>
+
+            <!-- 3. Weekly Calendar -->
+            <div class="tp-week" id="weekSection">
+                <div class="tp-week__nav">
+                    <button class="tp-week__nav-btn" id="weekPrev" title="Previous week">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <span class="tp-week__label" id="weekLabel">This Week</span>
+                    <button class="tp-week__nav-btn" id="weekNext" title="Next week">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+                <div class="tp-week__grid" id="weekGrid">
+                    <div class="dash-loading-shimmer" style="height:100px;border-radius:8px;"></div>
+                </div>
             </div>
+
+            <!-- 4. Today's Workout Detail (expanded by default) -->
+            <div class="tp-workout" id="todayWorkout">
+                <div class="dash-loading-shimmer" style="height:120px;border-radius:10px;"></div>
+            </div>
+
+            <!-- 5. Performance Metrics Row -->
+            <div class="tp-metrics" id="metricsRow" style="display:none;">
+                <div class="tp-metric-card">
+                    <div class="tp-metric-card__value" id="metricStreak">--</div>
+                    <div class="tp-metric-card__label">Streak</div>
+                    <div class="tp-metric-card__sub">days</div>
+                </div>
+                <div class="tp-metric-card">
+                    <div class="tp-metric-card__ring" id="metricAdherenceRing">
+                        <svg viewBox="0 0 48 48">
+                            <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+                            <circle cx="24" cy="24" r="20" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-dasharray="125.66" stroke-dashoffset="125.66" transform="rotate(-90 24 24)" id="adherenceArc"/>
+                        </svg>
+                        <span class="tp-metric-card__ring-value" id="metricAdherence">--%</span>
+                    </div>
+                    <div class="tp-metric-card__label">Adherence</div>
+                    <div class="tp-metric-card__sub">this week</div>
+                </div>
+                <div class="tp-metric-card">
+                    <div class="tp-metric-card__value" id="metricTSS">--</div>
+                    <div class="tp-metric-card__label">TSS</div>
+                    <div class="tp-metric-card__sub" id="metricTSSSub">weekly load</div>
+                </div>
+                <div class="tp-metric-card">
+                    <div class="tp-metric-card__value" id="metricReadiness">--</div>
+                    <div class="tp-metric-card__label">Readiness</div>
+                    <div class="tp-metric-card__sub">latest</div>
+                </div>
+            </div>
+
+            <!-- 6. Daily Check-in -->
+            <div class="tp-checkin" id="checkinSection">
+                <div class="tp-checkin__header">
+                    <h3 class="tp-section-title">Daily Check-in</h3>
+                    <div class="tp-checkin__success" id="checkinSuccess">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4ade80" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Submitted
+                    </div>
+                </div>
+                <div class="tp-checkin__sliders">
+                    <div class="tp-slider-group">
+                        <div class="tp-slider-group__top">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                            <span class="tp-slider-group__name">Energy</span>
+                            <span class="tp-slider-group__val" id="ciEnergyVal">5</span>
+                        </div>
+                        <input type="range" class="tp-slider tp-slider--energy" id="ciEnergy" min="1" max="10" value="5">
+                        <div class="tp-slider-group__range"><span>Low</span><span>High</span></div>
+                    </div>
+                    <div class="tp-slider-group">
+                        <div class="tp-slider-group__top">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f87171" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+                            <span class="tp-slider-group__name">Soreness</span>
+                            <span class="tp-slider-group__val" id="ciSorenessVal">5</span>
+                        </div>
+                        <input type="range" class="tp-slider tp-slider--soreness" id="ciSoreness" min="1" max="10" value="5">
+                        <div class="tp-slider-group__range"><span>None</span><span>Severe</span></div>
+                    </div>
+                    <div class="tp-slider-group">
+                        <div class="tp-slider-group__top">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#60a5fa" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                            <span class="tp-slider-group__name">Mood</span>
+                            <span class="tp-slider-group__val" id="ciMoodVal">5</span>
+                        </div>
+                        <input type="range" class="tp-slider tp-slider--mood" id="ciMood" min="1" max="10" value="5">
+                        <div class="tp-slider-group__range"><span>Low</span><span>High</span></div>
+                    </div>
+                    <div class="tp-slider-group">
+                        <div class="tp-slider-group__top">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                            <span class="tp-slider-group__name">Sleep</span>
+                            <span class="tp-slider-group__val" id="ciSleepVal">5</span>
+                        </div>
+                        <input type="range" class="tp-slider tp-slider--sleep" id="ciSleep" min="1" max="10" value="5">
+                        <div class="tp-slider-group__range"><span>Poor</span><span>Great</span></div>
+                    </div>
+                </div>
+                <div class="tp-checkin__footer">
+                    <button class="tp-checkin__btn" id="checkinBtn">Submit Check-in</button>
+                </div>
+            </div>
+
+            <!-- 7. 14-Day Trend Chart -->
+            <div class="tp-trends">
+                <div class="tp-trends__header">
+                    <h3 class="tp-section-title">14-Day Performance</h3>
+                    <div class="tp-trends__score" id="trendsScore"></div>
+                </div>
+                <div class="tp-trends__chart" id="trendsChart">
+                    <div class="dash-loading-shimmer" style="height:140px;border-radius:8px;"></div>
+                </div>
+            </div>
+
         </div>
 
-        <!-- 4. Today's Workout Detail (expanded by default) -->
-        <div class="tp-workout" id="todayWorkout">
-            <div class="dash-loading-shimmer" style="height:120px;border-radius:10px;"></div>
-        </div>
-
-        <!-- 4b. Nutrition Plan (Nutrition Plan tiers only) -->
+        <!-- Nutrition Plan Tab Content -->
         <div class="tp-nutrition" id="nutritionSection" style="display:none;">
             <h3 class="tp-section-title">Your Nutrition Plan</h3>
             <div class="tp-nutrition__macros" id="nutritionMacros"></div>
@@ -106,99 +211,6 @@
             <div class="tp-nutrition__block">
                 <h4>Supplement Notes</h4>
                 <p id="nutritionSupplements"></p>
-            </div>
-        </div>
-
-        <!-- 5. Performance Metrics Row -->
-        <div class="tp-metrics" id="metricsRow" style="display:none;">
-            <div class="tp-metric-card">
-                <div class="tp-metric-card__value" id="metricStreak">--</div>
-                <div class="tp-metric-card__label">Streak</div>
-                <div class="tp-metric-card__sub">days</div>
-            </div>
-            <div class="tp-metric-card">
-                <div class="tp-metric-card__ring" id="metricAdherenceRing">
-                    <svg viewBox="0 0 48 48">
-                        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
-                        <circle cx="24" cy="24" r="20" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-dasharray="125.66" stroke-dashoffset="125.66" transform="rotate(-90 24 24)" id="adherenceArc"/>
-                    </svg>
-                    <span class="tp-metric-card__ring-value" id="metricAdherence">--%</span>
-                </div>
-                <div class="tp-metric-card__label">Adherence</div>
-                <div class="tp-metric-card__sub">this week</div>
-            </div>
-            <div class="tp-metric-card">
-                <div class="tp-metric-card__value" id="metricTSS">--</div>
-                <div class="tp-metric-card__label">TSS</div>
-                <div class="tp-metric-card__sub" id="metricTSSSub">weekly load</div>
-            </div>
-            <div class="tp-metric-card">
-                <div class="tp-metric-card__value" id="metricReadiness">--</div>
-                <div class="tp-metric-card__label">Readiness</div>
-                <div class="tp-metric-card__sub">latest</div>
-            </div>
-        </div>
-
-        <!-- 6. Daily Check-in -->
-        <div class="tp-checkin" id="checkinSection">
-            <div class="tp-checkin__header">
-                <h3 class="tp-section-title">Daily Check-in</h3>
-                <div class="tp-checkin__success" id="checkinSuccess">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4ade80" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Submitted
-                </div>
-            </div>
-            <div class="tp-checkin__sliders">
-                <div class="tp-slider-group">
-                    <div class="tp-slider-group__top">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                        <span class="tp-slider-group__name">Energy</span>
-                        <span class="tp-slider-group__val" id="ciEnergyVal">5</span>
-                    </div>
-                    <input type="range" class="tp-slider tp-slider--energy" id="ciEnergy" min="1" max="10" value="5">
-                    <div class="tp-slider-group__range"><span>Low</span><span>High</span></div>
-                </div>
-                <div class="tp-slider-group">
-                    <div class="tp-slider-group__top">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#f87171" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
-                        <span class="tp-slider-group__name">Soreness</span>
-                        <span class="tp-slider-group__val" id="ciSorenessVal">5</span>
-                    </div>
-                    <input type="range" class="tp-slider tp-slider--soreness" id="ciSoreness" min="1" max="10" value="5">
-                    <div class="tp-slider-group__range"><span>None</span><span>Severe</span></div>
-                </div>
-                <div class="tp-slider-group">
-                    <div class="tp-slider-group__top">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#60a5fa" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                        <span class="tp-slider-group__name">Mood</span>
-                        <span class="tp-slider-group__val" id="ciMoodVal">5</span>
-                    </div>
-                    <input type="range" class="tp-slider tp-slider--mood" id="ciMood" min="1" max="10" value="5">
-                    <div class="tp-slider-group__range"><span>Low</span><span>High</span></div>
-                </div>
-                <div class="tp-slider-group">
-                    <div class="tp-slider-group__top">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                        <span class="tp-slider-group__name">Sleep</span>
-                        <span class="tp-slider-group__val" id="ciSleepVal">5</span>
-                    </div>
-                    <input type="range" class="tp-slider tp-slider--sleep" id="ciSleep" min="1" max="10" value="5">
-                    <div class="tp-slider-group__range"><span>Poor</span><span>Great</span></div>
-                </div>
-            </div>
-            <div class="tp-checkin__footer">
-                <button class="tp-checkin__btn" id="checkinBtn">Submit Check-in</button>
-            </div>
-        </div>
-
-        <!-- 7. 14-Day Trend Chart -->
-        <div class="tp-trends">
-            <div class="tp-trends__header">
-                <h3 class="tp-section-title">14-Day Performance</h3>
-                <div class="tp-trends__score" id="trendsScore"></div>
-            </div>
-            <div class="tp-trends__chart" id="trendsChart">
-                <div class="dash-loading-shimmer" style="height:140px;border-radius:8px;"></div>
             </div>
         </div>
 
@@ -313,6 +325,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=2"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/dashboard.js?v=6"></script>
+    <script src="js/dashboard.js?v=7"></script>
 </body>
 </html>
