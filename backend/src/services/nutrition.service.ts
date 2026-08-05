@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { anthropic } from "../lib/anthropic.js";
@@ -235,40 +236,41 @@ export function calculateNutritionTargets(
   return { dailyCalories, proteinG, carbsG, fatG, usedDefaults };
 }
 
-interface MealPlanContent {
-  mealTiming: string;
-  sampleMeals: {
-    breakfast: string[];
-    lunch: string[];
-    dinner: string[];
-    snacks: string[];
-  };
-  supplementNotes: string;
-  coachNotes: string;
+interface ChecklistItem {
+  time: string; // e.g. "6:30 AM" or "Post-Workout" — anchored to their actual wake/bed time when known
+  type: "breakfast" | "lunch" | "dinner" | "snack";
+  label: string; // e.g. "Breakfast"
+  food: string; // ONE concrete meal — no alternatives, nothing to decide
 }
 
-const NUTRITION_SYSTEM_PROMPT = `You are a precision nutrition coach writing a meal plan for a paying client of Vintus Performance, a premium performance-coaching service. Voice: calm, disciplined, confident — never hype-y, never uses exclamation points, never says "crushing it" or similar.
+interface MealPlanContent {
+  eatingRhythm: string; // one short sentence — not a paragraph
+  checklist: ChecklistItem[];
+  supplements: string[]; // short tags only, e.g. "Whey Protein" — no explanatory sentences
+  coachNotes: string; // one sentence
+}
+
+const NUTRITION_SYSTEM_PROMPT = `You are a precision nutrition coach building a daily checklist for a paying client of Vintus Performance, a premium performance-coaching service. Voice: calm, disciplined, confident — never hype-y, never uses exclamation points, never says "crushing it" or similar.
+
+This client is a busy, high-performing professional. They do not want to read — they want to glance at a checklist, know exactly what to eat and when, and move on. Every field must be as short as physically possible while staying specific and correct. No explanatory prose, no alternatives to choose between — one concrete meal per slot, not a menu of options.
 
 Rules:
 - NEVER suggest a food the client has listed as an allergy — treat this as a hard safety constraint, not a preference.
 - Respect their stated dietary approach (vegan, keto, vegetarian, paleo, high-protein, IIFYM, or no restriction) strictly.
-- Keep recipes within their stated cooking skill — beginner means simple, few-ingredient meals; advanced can include more technique.
-- Respect their stated food budget — budget-conscious means accessible, inexpensive staples, not specialty/premium ingredients.
+- Keep meals within their stated cooking skill and food budget — beginner/budget-conscious means simple, accessible staples, not technique or specialty ingredients.
 - Favor foods they said they love; avoid foods they said they hate, where compatible with the above.
-- Supplement notes must stay general and safe (e.g. whey/plant protein, creatine monohydrate, a multivitamin, fish oil) — never dosing advice beyond standard label guidance, never anything that could conflict with a stated medication or medical condition, and always frame it as optional, not required.
-- If the client has a chronic condition or takes medication, do not give any nutrition advice that could interact with it — stay generic and note in coachNotes that they should loop in their physician.
+- Build exactly as many checklist entries as their stated meals/day (default 4 if unspecified: 3 meals + 1 snack). Anchor times to their actual wake/bed time if given — first meal shortly after waking, last meal at least 2 hours before bed, evenly spaced between.
+- Supplements are short tags only (e.g. "Whey Protein", "Creatine Monohydrate", "Multivitamin") — no dosing, no sentences, never anything that could conflict with a stated medication or condition. Omit entirely if none are appropriate.
+- If the client has a chronic condition or takes medication, keep coachNotes generic and tell them to loop in their physician rather than giving anything that could interact with it.
 
 Respond with ONLY valid JSON, no markdown fences, in this exact shape:
 {
-  "mealTiming": "2-4 sentences on when/how to structure meals for this person given their schedule and goal",
-  "sampleMeals": {
-    "breakfast": ["short meal idea 1", "short meal idea 2"],
-    "lunch": ["short meal idea 1", "short meal idea 2"],
-    "dinner": ["short meal idea 1", "short meal idea 2"],
-    "snacks": ["short snack idea 1", "short snack idea 2"]
-  },
-  "supplementNotes": "1-3 sentences, general and optional",
-  "coachNotes": "1-2 sentences summarizing the approach and why, in Vintus's calm/disciplined voice"
+  "eatingRhythm": "one short sentence, e.g. '4 meals, ~4 hours apart, protein with each one.'",
+  "checklist": [
+    { "time": "6:30 AM", "type": "breakfast", "label": "Breakfast", "food": "3 eggs, oatmeal, banana" }
+  ],
+  "supplements": ["short tag", "short tag"],
+  "coachNotes": "one sentence explaining the calorie/macro strategy in plain language"
 }`;
 
 async function generateMealPlanWithClaude(
@@ -284,6 +286,8 @@ async function generateMealPlanWithClaude(
     mealPrepTime: string | null;
     foodBudget: string | null;
     mealsPerDay: number | null;
+    wakeTime: string | null;
+    bedTime: string | null;
     chronicConditions: string | null;
     medications: string | null;
   },
@@ -304,7 +308,9 @@ async function generateMealPlanWithClaude(
   if (profile.cookingSkill) lines.push(`Cooking Skill: ${profile.cookingSkill}`);
   if (profile.mealPrepTime) lines.push(`Meal Prep Time Available: ${profile.mealPrepTime}`);
   if (profile.foodBudget) lines.push(`Food Budget: ${profile.foodBudget}`);
-  if (profile.mealsPerDay) lines.push(`Preferred Meals/Day: ${profile.mealsPerDay}`);
+  lines.push(`Meals/Day: ${profile.mealsPerDay || 4}`);
+  if (profile.wakeTime) lines.push(`Wake Time: ${profile.wakeTime}`);
+  if (profile.bedTime) lines.push(`Bed Time: ${profile.bedTime}`);
   if (profile.chronicConditions) lines.push(`Chronic Conditions: ${profile.chronicConditions}`);
   if (profile.medications) lines.push(`Medications: ${profile.medications}`);
 
@@ -338,7 +344,7 @@ async function generateMealPlanWithClaude(
     );
   }
 
-  if (!parsed.sampleMeals || !parsed.mealTiming) {
+  if (!parsed.checklist || !parsed.checklist.length || !parsed.eatingRhythm) {
     throw new Error("Claude nutrition response missing required fields");
   }
 
@@ -346,25 +352,26 @@ async function generateMealPlanWithClaude(
 }
 
 /** Simple, safe, dietary-approach-aware fallback if the AI call fails. */
-function generateRuleBasedMealPlan(dietaryApproach: string | null): MealPlanContent {
+function generateRuleBasedMealPlan(dietaryApproach: string | null, mealsPerDay: number | null): MealPlanContent {
   const isVegan = dietaryApproach === "vegan";
   const isVegetarian = dietaryApproach === "vegetarian" || isVegan;
   const isKeto = dietaryApproach === "keto";
 
-  const protein = isVegan ? "tofu, tempeh, or a plant protein shake" : isVegetarian ? "eggs, greek yogurt, or a protein shake" : "chicken, lean beef, or fish";
+  const protein = isVegan ? "Tofu, tempeh, or a plant protein shake" : isVegetarian ? "Eggs, Greek yogurt, or a protein shake" : "Chicken, lean beef, or fish";
   const carb = isKeto ? "leafy greens and non-starchy vegetables" : "rice, oats, or potatoes";
 
+  const fullChecklist: ChecklistItem[] = [
+    { time: "7:00 AM", type: "breakfast", label: "Breakfast", food: `${protein} with ${isKeto ? "avocado and eggs" : "oats"}` },
+    { time: "12:30 PM", type: "lunch", label: "Lunch", food: `${protein} with ${carb} and a vegetable side` },
+    { time: "4:00 PM", type: "snack", label: "Snack", food: "Greek yogurt or a handful of nuts" },
+    { time: "7:00 PM", type: "dinner", label: "Dinner", food: `${protein} with ${carb} and roasted vegetables` },
+  ];
+  const checklist = fullChecklist.slice(0, Math.max(mealsPerDay ?? 4, 2));
+
   return {
-    mealTiming:
-      "Spread your intake across 3-4 meals, anchoring protein to each one. Eat within an hour of waking and keep your last meal at least two hours before bed.",
-    sampleMeals: {
-      breakfast: [`${protein} with ${isKeto ? "avocado and eggs" : "oats or toast"}`, "Greek yogurt with berries and a scoop of protein"],
-      lunch: [`${protein} with ${carb} and a vegetable side`, "A large salad with protein and olive oil dressing"],
-      dinner: [`${protein} with ${carb} and roasted vegetables`, "A protein-forward stir-fry with vegetables"],
-      snacks: ["A handful of nuts", "Protein shake or cottage cheese"],
-    },
-    supplementNotes:
-      "A basic multivitamin and a protein supplement can help you hit your targets consistently — neither is required, and check with your physician if you take other medications.",
+    eatingRhythm: `${checklist.length} meals, spaced ~4 hours apart, protein with each one.`,
+    checklist,
+    supplements: ["Protein Powder", "Multivitamin"],
     coachNotes:
       "This is a starter template built to your calculated targets while your full plan is refined. Message your coach with more detail on your preferences for a more tailored version.",
   };
@@ -400,7 +407,7 @@ export async function generateNutritionPlan(
     logger.error({ err: aiErr, profileId }, "Claude nutrition plan generation failed, using rule-based fallback");
     source = "fallback";
     fallbackReason = (aiErr as Error).message;
-    content = generateRuleBasedMealPlan(profile.dietaryApproach);
+    content = generateRuleBasedMealPlan(profile.dietaryApproach, profile.mealsPerDay);
   }
 
   if (targets.usedDefaults.length > 0) {
@@ -426,9 +433,9 @@ export async function generateNutritionPlan(
       proteinG: targets.proteinG,
       carbsG: targets.carbsG,
       fatG: targets.fatG,
-      mealTiming: content.mealTiming,
-      sampleMeals: content.sampleMeals,
-      supplementNotes: content.supplementNotes,
+      mealTiming: content.eatingRhythm,
+      sampleMeals: content.checklist as unknown as Prisma.InputJsonValue,
+      supplementNotes: content.supplements.join(", "),
       coachNotes: content.coachNotes,
       source,
     },
