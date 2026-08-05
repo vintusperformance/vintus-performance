@@ -28,7 +28,9 @@
 
     var CONFIG = {
         availableHours: [9, 10, 11, 13, 14, 15, 16, 17, 18],
-        availableDays: [1, 2, 3, 4, 5],
+        // Days of week bookable (0 = Sunday ... 6 = Saturday). Saturday is
+        // Anthony's day off — left out entirely rather than shown as booked.
+        availableDays: [0, 1, 2, 3, 4, 5],
         maxAdvanceDays: 30,
         minNoticeHours: 24
     };
