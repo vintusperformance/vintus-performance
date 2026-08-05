@@ -1017,10 +1017,35 @@
   letter-spacing: 0.5px;
 }
 
-.tp-nutrition__item-food {
+.tp-nutrition__item-foods {
+  list-style: none;
+  margin: 0 0 0.3rem;
+  padding: 0;
   font-size: 0.9rem;
   color: var(--off-white);
-  line-height: 1.4;
+  line-height: 1.45;
+}
+
+.tp-nutrition__item-foods li {
+  position: relative;
+  padding-left: 0.7rem;
+}
+
+.tp-nutrition__item-foods li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gray);
+}
+
+.tp-nutrition__item-macros {
+  font-size: 0.72rem;
+  color: var(--gray);
+  letter-spacing: 0.2px;
 }
 
 .tp-nutrition__item-check {
@@ -1052,7 +1077,7 @@
   color: var(--black);
 }
 
-.tp-nutrition__item.checked .tp-nutrition__item-food {
+.tp-nutrition__item.checked .tp-nutrition__item-foods {
   text-decoration: line-through;
 }
 
