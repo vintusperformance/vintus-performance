@@ -240,7 +240,11 @@ interface ChecklistItem {
   time: string; // e.g. "6:30 AM" or "Post-Workout" — anchored to their actual wake/bed time when known
   type: "breakfast" | "lunch" | "dinner" | "snack";
   label: string; // e.g. "Breakfast"
-  food: string; // ONE concrete meal — no alternatives, nothing to decide
+  foods: string[]; // each with an exact quantity baked in, e.g. "180g Chicken Breast", "2 Whole Eggs"
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
 }
 
 interface MealPlanContent {
@@ -250,17 +254,124 @@ interface MealPlanContent {
   coachNotes: string; // one sentence
 }
 
+interface MealTarget {
+  time: string;
+  type: ChecklistItem["type"];
+  label: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+// Slot composition by meal count — meals come first, snacks fill in as count
+// grows. offsetPct places each slot across the client's actual eating window.
+const SLOT_PATTERNS: Record<number, Array<{ type: ChecklistItem["type"]; label: string; offsetPct: number }>> = {
+  2: [
+    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
+    { type: "dinner", label: "Dinner", offsetPct: 1 },
+  ],
+  3: [
+    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
+    { type: "lunch", label: "Lunch", offsetPct: 0.5 },
+    { type: "dinner", label: "Dinner", offsetPct: 1 },
+  ],
+  4: [
+    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
+    { type: "lunch", label: "Lunch", offsetPct: 0.4 },
+    { type: "snack", label: "Snack", offsetPct: 0.65 },
+    { type: "dinner", label: "Dinner", offsetPct: 1 },
+  ],
+  5: [
+    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
+    { type: "snack", label: "Snack", offsetPct: 0.25 },
+    { type: "lunch", label: "Lunch", offsetPct: 0.5 },
+    { type: "snack", label: "Snack", offsetPct: 0.75 },
+    { type: "dinner", label: "Dinner", offsetPct: 1 },
+  ],
+  6: [
+    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
+    { type: "snack", label: "Snack", offsetPct: 0.2 },
+    { type: "lunch", label: "Lunch", offsetPct: 0.4 },
+    { type: "snack", label: "Snack", offsetPct: 0.6 },
+    { type: "dinner", label: "Dinner", offsetPct: 0.85 },
+    { type: "snack", label: "Snack", offsetPct: 1 },
+  ],
+};
+
+function parseTimeToMinutes(t: string | null): number | null {
+  if (!t) return null;
+  const match = t.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+}
+
+function formatMinutesAsTime(mins: number): string {
+  const normalized = ((mins % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h24 = Math.floor(normalized / 60);
+  const m = normalized % 60;
+  const period = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * Splits daily calorie/macro targets across meal slots so both the AI and
+ * the rule-based fallback have a concrete per-meal number to hit instead of
+ * freely improvising 4 meals that happen to sum correctly. Protein is spread
+ * evenly across every slot (real-meals and snacks alike) per the standard
+ * "protein at every meal" principle; calories/carbs/fat are weighted toward
+ * full meals over snacks.
+ */
+function distributeMealTargets(
+  targets: MacroTargets,
+  mealsPerDay: number | null,
+  wakeTime: string | null,
+  bedTime: string | null
+): MealTarget[] {
+  const count = Math.min(Math.max(mealsPerDay ?? 4, 2), 6);
+  const pattern = SLOT_PATTERNS[count] ?? SLOT_PATTERNS[4];
+
+  const wakeMin = parseTimeToMinutes(wakeTime);
+  const bedMin = parseTimeToMinutes(bedTime);
+  // Default eating window: 7:00 AM to 9:00 PM. If we have real wake/bed
+  // times, start 30 min after waking and end 2 hours before bed.
+  const windowStart = wakeMin != null ? wakeMin + 30 : 7 * 60;
+  let windowEnd = bedMin != null ? bedMin - 120 : 21 * 60;
+  if (bedMin != null && bedMin < wakeMin!) windowEnd += 24 * 60; // bedtime past midnight
+  if (windowEnd <= windowStart) windowEnd = windowStart + 12 * 60; // sane fallback spread
+
+  const weights = pattern.map((slot) => (slot.type === "snack" ? 0.5 : 1));
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const proteinPerSlot = targets.proteinG / pattern.length;
+
+  return pattern.map((slot, i) => {
+    const share = weights[i] / weightSum;
+    const timeMin = Math.round(windowStart + (windowEnd - windowStart) * slot.offsetPct);
+    return {
+      time: formatMinutesAsTime(timeMin),
+      type: slot.type,
+      label: slot.label,
+      calories: Math.round((targets.dailyCalories * share) / 10) * 10,
+      proteinG: Math.round(proteinPerSlot),
+      carbsG: Math.round(targets.carbsG * share),
+      fatG: Math.round(targets.fatG * share),
+    };
+  });
+}
+
 const NUTRITION_SYSTEM_PROMPT = `You are a precision nutrition coach building a daily checklist for a paying client of Vintus Performance, a premium performance-coaching service. Voice: calm, disciplined, confident — never hype-y, never uses exclamation points, never says "crushing it" or similar.
 
-This client is a busy, high-performing professional. They do not want to read — they want to glance at a checklist, know exactly what to eat and when, and move on. Every field must be as short as physically possible while staying specific and correct. No explanatory prose, no alternatives to choose between — one concrete meal per slot, not a menu of options.
+This client is a busy, high-performing professional. They do not want to read, and they do not want to guess portion sizes — they want to glance at a checklist, know exactly what to eat, exactly how much, and when, and move on. No explanatory prose, no alternatives to choose between — one concrete set of foods per slot, not a menu of options.
+
+You will be given a per-meal calorie/protein/carb/fat budget for each slot. Choose real foods and exact quantities — grams for anything weighed (e.g. "180g Chicken Breast", "150g White Rice"), simple counts for discrete items (e.g. "2 Whole Eggs", "1 Banana", "1 Slice Whole Wheat Toast") — that land close to that slot's budget. Then report the ACTUAL calories/protein/carbs/fat for the exact quantities you chose (real nutrition values, calculated correctly for those amounts) — these do not need to match the budget exactly, they need to be true for the foods and quantities you listed.
 
 Rules:
 - NEVER suggest a food the client has listed as an allergy — treat this as a hard safety constraint, not a preference.
 - Respect their stated dietary approach (vegan, keto, vegetarian, paleo, high-protein, IIFYM, or no restriction) strictly.
 - Keep meals within their stated cooking skill and food budget — beginner/budget-conscious means simple, accessible staples, not technique or specialty ingredients.
 - Favor foods they said they love; avoid foods they said they hate, where compatible with the above.
-- Build exactly as many checklist entries as their stated meals/day (default 4 if unspecified: 3 meals + 1 snack). Anchor times to their actual wake/bed time if given — first meal shortly after waking, last meal at least 2 hours before bed, evenly spaced between.
-- Every meal must fit its slot, not just its macros. Breakfast means foods people actually eat in the morning — eggs, oats, yogurt, toast, a smoothie — never a dinner-style entree like grilled chicken or steak, even if the protein target is high. Lunch and dinner are full plated meals: a protein, a carb, a vegetable. Snacks are single, simple, no-prep items. Do not reuse a lunch/dinner protein choice (e.g. chicken, beef, fish) as the breakfast protein.
+- Every meal must fit its slot, not just its macros. Breakfast means foods people actually eat in the morning — eggs, oats, yogurt, toast, a smoothie — never a dinner-style entree like grilled chicken or steak, even if the protein target is high. Lunch and dinner are full plated meals: a protein, a carb, a vegetable, each with its own quantity. Snacks are 1-2 simple, no-prep items. Do not reuse a lunch/dinner protein choice (e.g. chicken, beef, fish) as the breakfast protein.
 - Supplements are short tags only (e.g. "Whey Protein", "Creatine Monohydrate", "Multivitamin") — no dosing, no sentences, never anything that could conflict with a stated medication or condition. Omit entirely if none are appropriate.
 - If the client has a chronic condition or takes medication, keep coachNotes generic and tell them to loop in their physician rather than giving anything that could interact with it.
 
@@ -268,7 +379,7 @@ Respond with ONLY valid JSON, no markdown fences, in this exact shape:
 {
   "eatingRhythm": "one short sentence, e.g. '4 meals, ~4 hours apart, protein with each one.'",
   "checklist": [
-    { "time": "6:30 AM", "type": "breakfast", "label": "Breakfast", "food": "3 eggs, oatmeal, banana" }
+    { "time": "6:30 AM", "type": "breakfast", "label": "Breakfast", "foods": ["3 Whole Eggs", "60g Dry Oats", "1 Banana"], "calories": 520, "proteinG": 28, "carbsG": 58, "fatG": 19 }
   ],
   "supplements": ["short tag", "short tag"],
   "coachNotes": "one sentence explaining the calorie/macro strategy in plain language"
@@ -293,7 +404,8 @@ async function generateMealPlanWithClaude(
     medications: string | null;
   },
   targets: MacroTargets,
-  classification: GoalClassification
+  classification: GoalClassification,
+  mealTargets: MealTarget[]
 ): Promise<MealPlanContent> {
   const lines: string[] = [
     `Name: ${profile.firstName}`,
@@ -301,6 +413,10 @@ async function generateMealPlanWithClaude(
     `Nutrition Goal (their own words): ${profile.nutritionGoals || "not specified"}`,
     `Calorie Strategy: ${classification.calorieDirection} (${classification.magnitude}) — ${classification.rationale}`,
     `Daily Targets: ${targets.dailyCalories} calories, ${targets.proteinG}g protein, ${targets.carbsG}g carbs, ${targets.fatG}g fat`,
+    `Per-meal budgets (hit these as closely as real food quantities allow):`,
+    ...mealTargets.map(
+      (m) => `  - ${m.label} (${m.time}): ~${m.calories} cal, ~${m.proteinG}g protein, ~${m.carbsG}g carbs, ~${m.fatG}g fat`
+    ),
   ];
   if (profile.dietaryApproach) lines.push(`Dietary Approach: ${profile.dietaryApproach}`);
   if (profile.foodAllergies) lines.push(`Food Allergies (HARD CONSTRAINT — never include): ${profile.foodAllergies}`);
@@ -309,9 +425,6 @@ async function generateMealPlanWithClaude(
   if (profile.cookingSkill) lines.push(`Cooking Skill: ${profile.cookingSkill}`);
   if (profile.mealPrepTime) lines.push(`Meal Prep Time Available: ${profile.mealPrepTime}`);
   if (profile.foodBudget) lines.push(`Food Budget: ${profile.foodBudget}`);
-  lines.push(`Meals/Day: ${profile.mealsPerDay || 4}`);
-  if (profile.wakeTime) lines.push(`Wake Time: ${profile.wakeTime}`);
-  if (profile.bedTime) lines.push(`Bed Time: ${profile.bedTime}`);
   if (profile.chronicConditions) lines.push(`Chronic Conditions: ${profile.chronicConditions}`);
   if (profile.medications) lines.push(`Medications: ${profile.medications}`);
 
@@ -348,36 +461,154 @@ async function generateMealPlanWithClaude(
   if (!parsed.checklist || !parsed.checklist.length || !parsed.eatingRhythm) {
     throw new Error("Claude nutrition response missing required fields");
   }
+  const malformedItem = parsed.checklist.find(
+    (item) =>
+      !Array.isArray(item.foods) ||
+      !item.foods.length ||
+      typeof item.calories !== "number" ||
+      typeof item.proteinG !== "number" ||
+      typeof item.carbsG !== "number" ||
+      typeof item.fatG !== "number"
+  );
+  if (malformedItem) {
+    throw new Error(`Claude nutrition response has a checklist item missing foods/macros: ${JSON.stringify(malformedItem)}`);
+  }
 
   return parsed;
 }
 
+// Standard per-100g nutrition reference (per-unit for eggs/banana/shake) used
+// only by the rule-based fallback, so its quantities and macro totals are
+// real arithmetic on real foods — not placeholder numbers.
+const FOOD_REF: Record<string, { cal: number; protein: number; carb: number; fat: number }> = {
+  chickenBreast: { cal: 165, protein: 31, carb: 0, fat: 3.6 },
+  whiteFish: { cal: 105, protein: 23, carb: 0, fat: 1 },
+  tofu: { cal: 144, protein: 15.5, carb: 3.5, fat: 8.7 },
+  greekYogurt: { cal: 73, protein: 10, carb: 3.9, fat: 1.9 },
+  oatsDry: { cal: 389, protein: 16.9, carb: 66, fat: 6.9 },
+  rice: { cal: 130, protein: 2.7, carb: 28, fat: 0.3 },
+  nonStarchyVeg: { cal: 25, protein: 2, carb: 5, fat: 0.2 },
+  nuts: { cal: 579, protein: 21, carb: 22, fat: 50 },
+  avocado: { cal: 160, protein: 2, carb: 9, fat: 15 },
+  egg: { cal: 72, protein: 6.3, carb: 0.4, fat: 4.8 }, // per whole large egg
+  banana: { cal: 105, protein: 1.3, carb: 27, fat: 0.4 }, // per medium banana
+  proteinPowder: { cal: 400, protein: 80, carb: 8, fat: 5 }, // per 100g whey/plant isolate
+  oliveOil: { cal: 884, protein: 0, carb: 0, fat: 100 }, // per 100g — used in small (5-25g) amounts to close the fat gap
+};
+
+/** Grams of a food needed to hit a target amount of one nutrient, rounded to a real-world 5g portion. */
+function gramsFor(targetAmount: number, per100gValue: number, min = 30, max = 350): number {
+  if (per100gValue <= 0) return min;
+  const grams = (targetAmount / per100gValue) * 100;
+  return Math.min(Math.max(Math.round(grams / 5) * 5, min), max);
+}
+
+function scaledMacros(ref: { cal: number; protein: number; carb: number; fat: number }, grams: number) {
+  const factor = grams / 100;
+  return { cal: ref.cal * factor, protein: ref.protein * factor, carb: ref.carb * factor, fat: ref.fat * factor };
+}
+
 /**
  * Simple, safe, dietary-approach-aware fallback if the AI call fails.
- * Breakfast, lunch/dinner, and snacks each get their own food pool — a
- * fallback that puts "chicken, lean beef, or fish" at breakfast fails the
- * basic bar of making sense, regardless of how good the macro math is.
+ * Builds each meal from real per-100g nutrition data sized to that meal's
+ * target, so the displayed quantities and macro totals are genuinely
+ * consistent with each other — not just a labeled placeholder.
  */
-function generateRuleBasedMealPlan(dietaryApproach: string | null, mealsPerDay: number | null): MealPlanContent {
+function generateRuleBasedMealPlan(dietaryApproach: string | null, mealTargets: MealTarget[]): MealPlanContent {
   const isVegan = dietaryApproach === "vegan";
   const isVegetarian = dietaryApproach === "vegetarian" || isVegan;
   const isKeto = dietaryApproach === "keto";
 
-  const breakfastProtein = isVegan ? "Tofu scramble or a plant protein shake" : "Eggs or Greek yogurt";
-  const mainProtein = isVegan ? "Tofu, tempeh, or lentils" : isVegetarian ? "Eggs, tofu, or a protein shake" : "Chicken, lean beef, or fish";
-  const snackFood = isVegan ? "A plant protein shake or a handful of nuts" : "Greek yogurt or a handful of nuts";
-  const carb = isKeto ? "leafy greens and non-starchy vegetables" : "rice, oats, or potatoes";
+  const checklist: ChecklistItem[] = mealTargets.map((mt) => {
+    const foods: string[] = [];
+    let cal = 0, protein = 0, carb = 0, fat = 0;
 
-  const fullChecklist: ChecklistItem[] = [
-    { time: "7:00 AM", type: "breakfast", label: "Breakfast", food: isKeto ? `${breakfastProtein} with avocado` : `${breakfastProtein} with oats and fruit` },
-    { time: "12:30 PM", type: "lunch", label: "Lunch", food: `${mainProtein} with ${carb} and a vegetable side` },
-    { time: "4:00 PM", type: "snack", label: "Snack", food: snackFood },
-    { time: "7:00 PM", type: "dinner", label: "Dinner", food: `${mainProtein} with ${carb} and roasted vegetables` },
-  ];
-  const checklist = fullChecklist.slice(0, Math.max(mealsPerDay ?? 4, 2));
+    const addGrams = (label: string, ref: typeof FOOD_REF[string], grams: number) => {
+      const m = scaledMacros(ref, grams);
+      cal += m.cal; protein += m.protein; carb += m.carb; fat += m.fat;
+      foods.push(`${grams}g ${label}`);
+    };
+    const addCount = (label: string, ref: typeof FOOD_REF[string], count: number) => {
+      cal += ref.cal * count; protein += ref.protein * count; carb += ref.carb * count; fat += ref.fat * count;
+      foods.push(`${count} ${label}${count === 1 ? "" : "s"}`);
+    };
+
+    // Protein powder tops up whatever whole-food protein sources don't cover
+    // — it's what keeps a high protein target from turning into an absurd
+    // whole-food quantity (5+ eggs, a second chicken breast).
+    const topUpProtein = (label: string) => {
+      const remaining = mt.proteinG - protein;
+      if (remaining > 8) {
+        addGrams(label, FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
+      }
+    };
+    // A small amount of olive oil closes whatever fat gap lean proteins,
+    // carbs, and vegetables leave open — without it, calories and fat both
+    // undershoot the target regardless of how well protein/carbs are sized.
+    const topUpFat = () => {
+      const remaining = mt.fatG - fat;
+      if (remaining > 3) {
+        addGrams("Olive Oil", FOOD_REF.oliveOil, gramsFor(remaining, FOOD_REF.oliveOil.fat, 5, 30));
+      }
+    };
+
+    // Order matters: every food that meaningfully contributes protein (the
+    // primary source AND the carb source — oats/rice are not protein-free)
+    // must be added BEFORE topUpProtein runs, or the top-up double-counts
+    // and overshoots the target.
+    if (mt.type === "breakfast") {
+      if (isVegan) {
+        addGrams("Tofu Scramble", FOOD_REF.tofu, gramsFor(Math.min(mt.proteinG, 25), FOOD_REF.tofu.protein, 80, 200));
+        addGrams("Dry Oats", FOOD_REF.oatsDry, gramsFor(Math.max(mt.carbsG - carb, 20), FOOD_REF.oatsDry.carb, 30, 120));
+        if (!isKeto) addCount("Banana", FOOD_REF.banana, 1);
+        topUpProtein("Plant Protein Powder");
+      } else {
+        addCount("Whole Egg", FOOD_REF.egg, 3);
+        if (!isKeto) {
+          addGrams("Dry Oats", FOOD_REF.oatsDry, gramsFor(Math.max(mt.carbsG - carb, 20), FOOD_REF.oatsDry.carb, 30, 100));
+        } else {
+          addGrams("Avocado", FOOD_REF.avocado, 75);
+        }
+        if (!isKeto) addCount("Banana", FOOD_REF.banana, 1);
+        topUpProtein("Protein Powder");
+      }
+      topUpFat();
+    } else if (mt.type === "lunch" || mt.type === "dinner") {
+      const proteinRef = isVegan || isVegetarian ? FOOD_REF.tofu : mt.type === "lunch" ? FOOD_REF.chickenBreast : FOOD_REF.whiteFish;
+      const proteinLabel = isVegan || isVegetarian ? "Tofu" : mt.type === "lunch" ? "Chicken Breast" : "White Fish";
+      addGrams(proteinLabel, proteinRef, gramsFor(Math.min(mt.proteinG, 55), proteinRef.protein, 120, 300));
+      if (!isKeto) {
+        addGrams("White Rice", FOOD_REF.rice, gramsFor(Math.max(mt.carbsG - carb, 30), FOOD_REF.rice.carb, 50, 300));
+      }
+      addGrams("Mixed Vegetables", FOOD_REF.nonStarchyVeg, 150);
+      topUpProtein(isVegan ? "Plant Protein Powder" : "Protein Powder");
+      topUpFat();
+    } else {
+      // snack
+      if (isVegan) {
+        addGrams("Almonds", FOOD_REF.nuts, 20);
+        addGrams("Plant Protein Powder", FOOD_REF.proteinPowder, gramsFor(Math.max(mt.proteinG - protein, 10), FOOD_REF.proteinPowder.protein, 20, 60));
+      } else {
+        addGrams("Greek Yogurt", FOOD_REF.greekYogurt, gramsFor(Math.min(mt.proteinG, 25), FOOD_REF.greekYogurt.protein, 100, 250));
+        addGrams("Almonds", FOOD_REF.nuts, 15);
+        topUpProtein("Protein Powder");
+      }
+    }
+
+    return {
+      time: mt.time,
+      type: mt.type,
+      label: mt.label,
+      foods,
+      calories: Math.round(cal),
+      proteinG: Math.round(protein),
+      carbsG: Math.round(carb),
+      fatG: Math.round(fat),
+    };
+  });
 
   return {
-    eatingRhythm: `${checklist.length} meals, spaced ~4 hours apart, protein with each one.`,
+    eatingRhythm: `${checklist.length} meals, spaced across the day, protein with each one.`,
     checklist,
     supplements: ["Protein Powder", "Multivitamin"],
     coachNotes:
@@ -404,18 +635,19 @@ export async function generateNutritionPlan(
 
   const classification = await classifyNutritionGoal(profile.nutritionGoals, profile.primaryGoal);
   const targets = calculateNutritionTargets(profile, classification);
+  const mealTargets = distributeMealTargets(targets, profile.mealsPerDay, profile.wakeTime, profile.bedTime);
 
   let content: MealPlanContent;
   let source: "ai" | "fallback" = "ai";
   let fallbackReason: string | undefined;
 
   try {
-    content = await generateMealPlanWithClaude(profile, targets, classification);
+    content = await generateMealPlanWithClaude(profile, targets, classification, mealTargets);
   } catch (aiErr) {
     logger.error({ err: aiErr, profileId }, "Claude nutrition plan generation failed, using rule-based fallback");
     source = "fallback";
     fallbackReason = (aiErr as Error).message;
-    content = generateRuleBasedMealPlan(profile.dietaryApproach, profile.mealsPerDay);
+    content = generateRuleBasedMealPlan(profile.dietaryApproach, mealTargets);
   }
 
   if (targets.usedDefaults.length > 0) {

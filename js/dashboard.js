@@ -334,6 +334,14 @@
     if (Array.isArray(checklist)) {
       checklist.forEach(function (item, idx) {
         var icon = NUTRITION_ICONS[item.type] || NUTRITION_ICONS.snack;
+        var foods = Array.isArray(item.foods) ? item.foods : (item.food ? [item.food] : []);
+        var foodsHtml = '<ul class="tp-nutrition__item-foods">' +
+          foods.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') +
+          '</ul>';
+        var hasMacros = typeof item.calories === 'number';
+        var macrosHtml = hasMacros
+          ? '<div class="tp-nutrition__item-macros">' + item.calories + ' cal &nbsp;·&nbsp; ' + item.proteinG + 'g protein &nbsp;·&nbsp; ' + item.carbsG + 'g carbs &nbsp;·&nbsp; ' + item.fatG + 'g fat</div>'
+          : '';
         checklistHtml +=
           '<div class="tp-nutrition__item" id="nutritionItem' + idx + '">' +
             '<div class="tp-nutrition__item-icon">' + icon + '</div>' +
@@ -342,7 +350,8 @@
                 '<span class="tp-nutrition__item-time">' + escapeHtml(item.time || '') + '</span>' +
                 '<span class="tp-nutrition__item-label">' + escapeHtml(item.label || '') + '</span>' +
               '</div>' +
-              '<div class="tp-nutrition__item-food">' + escapeHtml(item.food || '') + '</div>' +
+              foodsHtml +
+              macrosHtml +
             '</div>' +
             '<button class="tp-nutrition__item-check" data-idx="' + idx + '" title="Mark done">' +
               '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
