@@ -342,6 +342,13 @@
         var macrosHtml = hasMacros
           ? '<div class="tp-nutrition__item-macros">' + item.calories + ' cal &nbsp;·&nbsp; ' + item.proteinG + 'g protein &nbsp;·&nbsp; ' + item.carbsG + 'g carbs &nbsp;·&nbsp; ' + item.fatG + 'g fat</div>'
           : '';
+        var titleHtml = item.title ? '<div class="tp-nutrition__item-title">' + escapeHtml(item.title) + '</div>' : '';
+        var instructionsHtml = '';
+        if (item.instructions) {
+          instructionsHtml =
+            '<button class="tp-nutrition__item-howto-toggle" data-idx="' + idx + '">How to make it</button>' +
+            '<div class="tp-nutrition__item-instructions" id="nutritionInstructions' + idx + '" style="display:none;">' + escapeHtml(item.instructions) + '</div>';
+        }
         checklistHtml +=
           '<div class="tp-nutrition__item" id="nutritionItem' + idx + '">' +
             '<div class="tp-nutrition__item-icon">' + icon + '</div>' +
@@ -350,8 +357,10 @@
                 '<span class="tp-nutrition__item-time">' + escapeHtml(item.time || '') + '</span>' +
                 '<span class="tp-nutrition__item-label">' + escapeHtml(item.label || '') + '</span>' +
               '</div>' +
+              titleHtml +
               foodsHtml +
               macrosHtml +
+              instructionsHtml +
             '</div>' +
             '<button class="tp-nutrition__item-check" data-idx="' + idx + '" title="Mark done">' +
               '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
@@ -364,6 +373,14 @@
     checklistEl.querySelectorAll('.tp-nutrition__item-check').forEach(function (btn) {
       btn.addEventListener('click', function () {
         document.getElementById('nutritionItem' + btn.getAttribute('data-idx')).classList.toggle('checked');
+      });
+    });
+    checklistEl.querySelectorAll('.tp-nutrition__item-howto-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var panel = document.getElementById('nutritionInstructions' + btn.getAttribute('data-idx'));
+        var isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        btn.textContent = isOpen ? 'How to make it' : 'Hide instructions';
       });
     });
 
