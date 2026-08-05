@@ -880,6 +880,48 @@
   margin-bottom: 1.5rem;
 }
 
+.tp-nutrition__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tp-nutrition__regen-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--gray);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.7rem;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tp-nutrition__regen-btn:hover {
+  color: var(--off-white);
+  border-color: rgba(255,255,255,0.25);
+}
+
+.tp-nutrition__regen-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tp-nutrition__regen-btn svg.spinning {
+  animation: nutritionSpin 1s linear infinite;
+}
+
+@keyframes nutritionSpin {
+  to { transform: rotate(360deg); }
+}
+
 .tp-nutrition__macros {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
