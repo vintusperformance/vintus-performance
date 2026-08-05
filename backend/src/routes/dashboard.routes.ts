@@ -2,7 +2,8 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { authenticate } from "../middleware/auth.js";
 import * as dashboardService from "../services/dashboard.service.js";
-import { getActiveNutritionPlan } from "../services/nutrition.service.js";
+import { prisma } from "../lib/prisma.js";
+import { getActiveNutritionPlan, generateNutritionPlan } from "../services/nutrition.service.js";
 
 const router = Router();
 
@@ -38,6 +39,37 @@ router.get(
       res.status(200).json({
         success: true,
         data: plan,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/regenerate — client-triggered regen of their nutrition plan
+router.post(
+  "/nutrition/regenerate",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+
+      const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+      if (!profile) {
+        res.status(404).json({ success: false, error: "Profile not found" });
+        return;
+      }
+
+      const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+      if (!nutritionSub) {
+        res.status(400).json({ success: false, error: "No active nutrition plan found for this account" });
+        return;
+      }
+
+      const result = await generateNutritionPlan(profile.id);
+
+      res.status(200).json({
+        success: true,
+        data: result,
       });
     } catch (err) {
       next(err);

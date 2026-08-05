@@ -260,6 +260,7 @@ Rules:
 - Keep meals within their stated cooking skill and food budget — beginner/budget-conscious means simple, accessible staples, not technique or specialty ingredients.
 - Favor foods they said they love; avoid foods they said they hate, where compatible with the above.
 - Build exactly as many checklist entries as their stated meals/day (default 4 if unspecified: 3 meals + 1 snack). Anchor times to their actual wake/bed time if given — first meal shortly after waking, last meal at least 2 hours before bed, evenly spaced between.
+- Every meal must fit its slot, not just its macros. Breakfast means foods people actually eat in the morning — eggs, oats, yogurt, toast, a smoothie — never a dinner-style entree like grilled chicken or steak, even if the protein target is high. Lunch and dinner are full plated meals: a protein, a carb, a vegetable. Snacks are single, simple, no-prep items. Do not reuse a lunch/dinner protein choice (e.g. chicken, beef, fish) as the breakfast protein.
 - Supplements are short tags only (e.g. "Whey Protein", "Creatine Monohydrate", "Multivitamin") — no dosing, no sentences, never anything that could conflict with a stated medication or condition. Omit entirely if none are appropriate.
 - If the client has a chronic condition or takes medication, keep coachNotes generic and tell them to loop in their physician rather than giving anything that could interact with it.
 
@@ -351,20 +352,27 @@ async function generateMealPlanWithClaude(
   return parsed;
 }
 
-/** Simple, safe, dietary-approach-aware fallback if the AI call fails. */
+/**
+ * Simple, safe, dietary-approach-aware fallback if the AI call fails.
+ * Breakfast, lunch/dinner, and snacks each get their own food pool — a
+ * fallback that puts "chicken, lean beef, or fish" at breakfast fails the
+ * basic bar of making sense, regardless of how good the macro math is.
+ */
 function generateRuleBasedMealPlan(dietaryApproach: string | null, mealsPerDay: number | null): MealPlanContent {
   const isVegan = dietaryApproach === "vegan";
   const isVegetarian = dietaryApproach === "vegetarian" || isVegan;
   const isKeto = dietaryApproach === "keto";
 
-  const protein = isVegan ? "Tofu, tempeh, or a plant protein shake" : isVegetarian ? "Eggs, Greek yogurt, or a protein shake" : "Chicken, lean beef, or fish";
+  const breakfastProtein = isVegan ? "Tofu scramble or a plant protein shake" : "Eggs or Greek yogurt";
+  const mainProtein = isVegan ? "Tofu, tempeh, or lentils" : isVegetarian ? "Eggs, tofu, or a protein shake" : "Chicken, lean beef, or fish";
+  const snackFood = isVegan ? "A plant protein shake or a handful of nuts" : "Greek yogurt or a handful of nuts";
   const carb = isKeto ? "leafy greens and non-starchy vegetables" : "rice, oats, or potatoes";
 
   const fullChecklist: ChecklistItem[] = [
-    { time: "7:00 AM", type: "breakfast", label: "Breakfast", food: `${protein} with ${isKeto ? "avocado and eggs" : "oats"}` },
-    { time: "12:30 PM", type: "lunch", label: "Lunch", food: `${protein} with ${carb} and a vegetable side` },
-    { time: "4:00 PM", type: "snack", label: "Snack", food: "Greek yogurt or a handful of nuts" },
-    { time: "7:00 PM", type: "dinner", label: "Dinner", food: `${protein} with ${carb} and roasted vegetables` },
+    { time: "7:00 AM", type: "breakfast", label: "Breakfast", food: isKeto ? `${breakfastProtein} with avocado` : `${breakfastProtein} with oats and fruit` },
+    { time: "12:30 PM", type: "lunch", label: "Lunch", food: `${mainProtein} with ${carb} and a vegetable side` },
+    { time: "4:00 PM", type: "snack", label: "Snack", food: snackFood },
+    { time: "7:00 PM", type: "dinner", label: "Dinner", food: `${mainProtein} with ${carb} and roasted vegetables` },
   ];
   const checklist = fullChecklist.slice(0, Math.max(mealsPerDay ?? 4, 2));
 

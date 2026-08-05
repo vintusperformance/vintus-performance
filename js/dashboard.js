@@ -138,13 +138,12 @@
         tierBadge.textContent = TIER_DISPLAY[currentTier] || currentTier;
         tierBadge.style.display = 'inline-flex';
 
-        // Show manage subscription button for private coaching
+        // Billing/subscription management only applies to the recurring
+        // Private Coaching plan — one-time Training/Nutrition purchases have
+        // no Stripe subscription portal to manage. Coach chat, though, is
+        // available to every paying client regardless of tier.
         if (currentTier === 'PRIVATE_COACHING') {
           document.getElementById('manageSubBtn').style.display = 'inline-flex';
-        } else {
-          // Coach chat + plan editing are a Private Coaching feature — other
-          // tiers have no ongoing coach relationship to mediate a change through.
-          chatOpenBtn.style.display = 'none';
         }
       }
 
@@ -281,6 +280,27 @@
     } catch (err) {
       // A nutrition-plan load failure shouldn't break the rest of the dashboard.
     }
+  }
+
+  var nutritionRegenBtn = document.getElementById('nutritionRegenBtn');
+  if (nutritionRegenBtn) {
+    nutritionRegenBtn.addEventListener('click', async function () {
+      nutritionRegenBtn.disabled = true;
+      var icon = nutritionRegenBtn.querySelector('svg');
+      if (icon) icon.classList.add('spinning');
+
+      try {
+        var res = await apiPost('/api/v1/dashboard/nutrition/regenerate');
+        if (res.success) {
+          await loadNutritionPlan();
+        }
+      } catch (err) {
+        // Leave the existing plan showing rather than blanking it on failure.
+      } finally {
+        nutritionRegenBtn.disabled = false;
+        if (icon) icon.classList.remove('spinning');
+      }
+    });
   }
 
   function renderNutritionPlan(plan) {
