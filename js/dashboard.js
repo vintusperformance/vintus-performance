@@ -41,6 +41,7 @@
 
   // ── State ──
   var currentTier = null;
+  var planStartDateStr = null;
   var currentWeekOffset = 0;
   var weekSessions = [];
   var overviewData = null;
@@ -129,6 +130,10 @@
       if (d.athlete && !d.athlete.planTier && !d.athlete.hasNutritionPlan) {
         window.location.href = '/features';
         return true;
+      }
+
+      if (d.athlete && d.athlete.planStartDate) {
+        planStartDateStr = d.athlete.planStartDate;
       }
 
       // Header badges
@@ -802,7 +807,8 @@
         (isPast ? ' tp-week__cell--past' : '');
       cell.setAttribute('data-date', dateStr);
 
-      var statusInfo = getWeekCellStatus(daySessions, isPast);
+      var isBeforePlanStart = !!planStartDateStr && dateStr < planStartDateStr;
+      var statusInfo = getWeekCellStatus(daySessions, isPast && !isBeforePlanStart);
       var typeLabel = '';
       var durationLabel = '';
 

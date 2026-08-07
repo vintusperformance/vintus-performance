@@ -189,6 +189,9 @@ export async function getOverview(userId: string): Promise<unknown> {
       planState,
       dayNumber,
       totalDays,
+      planStartDate: sub?.currentPeriodStart
+        ? new Date(sub.currentPeriodStart).toISOString().split("T")[0]
+        : null,
       hasNutritionPlan: !!user.nutritionSubscription && user.nutritionSubscription.status !== "CANCELED",
       nutritionTier: user.nutritionSubscription?.planTier ?? null,
     },
