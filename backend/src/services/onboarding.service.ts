@@ -399,9 +399,15 @@ export async function submitNutritionIntake(
     throw err;
   }
 
-  const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
-  if (!nutritionSub) {
-    const err = new Error("No active nutrition plan found for this account") as Error & { statusCode?: number };
+  const [nutritionSub, subscription] = await Promise.all([
+    prisma.nutritionSubscription.findUnique({ where: { userId } }),
+    prisma.subscription.findUnique({ where: { userId }, select: { planTier: true, status: true } }),
+  ]);
+  // Private Coaching bundles nutrition guidance in as a concierge benefit —
+  // no separate NutritionSubscription required as long as the membership is active.
+  const isConciergeEligible = subscription?.planTier === "PRIVATE_COACHING" && subscription?.status === "ACTIVE";
+  if (!nutritionSub && !isConciergeEligible) {
+    const err = new Error("No active nutrition plan or Private Coaching membership found for this account") as Error & { statusCode?: number };
     err.statusCode = 400;
     throw err;
   }

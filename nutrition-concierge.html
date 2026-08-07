@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Your concierge nutrition strategy — Vintus Performance.">
+    <title>Nutrition Strategy | Vintus Performance</title>
+
+    <link rel="icon" type="image/png" href="images/favicon-256.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=2">
+    <link rel="stylesheet" href="css/onboarding.css?v=3">
+    <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
+</head>
+<body class="onboarding-page">
+    <!-- Minimal Nav -->
+    <nav style="display:flex;align-items:center;justify-content:center;padding:1rem 5%;position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(10,10,10,0.98);border-bottom:1px solid rgba(192,192,192,0.1);">
+        <a href="/" class="logo"><img src="images/VintusBlankLogo.jpeg" alt="Vintus Performance" class="logo-img"></a>
+    </nav>
+
+    <section class="onboard-section">
+        <div class="onboard-error" id="onboardError"></div>
+
+        <!-- Step 1: Concierge Nutrition Intake -->
+        <div class="onboard-step active" data-step="1" id="stepNutrition">
+            <p style="text-transform:uppercase;letter-spacing:0.12em;font-size:0.75rem;color:var(--gold, #c0c0c0);margin-bottom:0.5rem;">Included with Private Coaching</p>
+            <h2>A Few Details for Your Nutrition Strategist</h2>
+            <p>No separate intake, no extra charge — this is part of your concierge membership. A few questions and your coach builds your nutrition strategy around the same standards as your training.</p>
+
+            <div class="onboard-form-section open" data-section="nutrition">
+                <div class="onboard-section-body">
+                    <div class="onboard-field">
+                        <label for="nutritionGoals">What do you want your nutrition to do for you?</label>
+                        <textarea id="nutritionGoals" rows="3" placeholder="e.g. I want to lose weight but keep the muscle I have. Or: I'm trying to build muscle and put on size."></textarea>
+                        <p class="onboard-field-note">This drives your calorie and protein targets directly — be specific.</p>
+                    </div>
+                    <div class="onboard-field">
+                        <label for="dietaryApproach">Any dietary approach we should build around?</label>
+                        <select id="dietaryApproach">
+                            <option value="">— No restriction —</option>
+                            <option value="high-protein">High protein</option>
+                            <option value="keto">Keto</option>
+                            <option value="vegan">Vegan</option>
+                            <option value="vegetarian">Vegetarian</option>
+                            <option value="paleo">Paleo</option>
+                            <option value="iifym">IIFYM / Flexible</option>
+                        </select>
+                    </div>
+                    <div class="onboard-field">
+                        <label for="foodAllergies">Allergies or foods to avoid (important — we never include these)</label>
+                        <textarea id="foodAllergies" rows="2" placeholder="e.g. Peanuts, shellfish, gluten, dairy — or 'none'"></textarea>
+                    </div>
+                    <div class="onboard-field">
+                        <label for="activityLevel">How would you describe your daily activity, outside of training?</label>
+                        <select id="activityLevel">
+                            <option value="">— Select —</option>
+                            <option value="sedentary">Sedentary — mostly desk-bound</option>
+                            <option value="light">Light — on my feet occasionally</option>
+                            <option value="moderate" selected>Moderate — regularly active</option>
+                            <option value="active">Active — physical job or daily movement</option>
+                            <option value="very-active">Very active — high daily output</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button class="onboard-btn" id="nutritionIntakeBtn">Build My Nutrition Strategy</button>
+        </div>
+
+        <!-- Step 2: Success -->
+        <div class="onboard-step" data-step="2" id="stepSuccess">
+            <div class="onboard-success">
+                <div class="onboard-success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <h2>Your Nutrition Strategy Is Ready</h2>
+                <p>Your calorie targets and daily meal checklist are on your dashboard now, next to your training plan.</p>
+                <a href="/dashboard" class="onboard-btn" style="display:inline-block;text-decoration:none;text-align:center;max-width:300px;">Go to Dashboard</a>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js?v=2"></script>
+    <script src="js/api.js?v=2"></script>
+    <script src="js/nutrition-concierge.js?v=1"></script>
+</body>
+</html>

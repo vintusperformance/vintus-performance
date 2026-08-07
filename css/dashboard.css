@@ -891,6 +891,10 @@
   gap: 0.75rem;
 }
 
+.tp-nutrition__concierge-cta {
+  padding: 0.5rem 0 1rem;
+}
+
 .tp-nutrition__regen-btn {
   display: flex;
   align-items: center;
