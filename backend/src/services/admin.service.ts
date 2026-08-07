@@ -194,6 +194,7 @@ export async function getClientDetail(userId: string): Promise<unknown> {
         },
       },
       subscription: true,
+      nutritionSubscription: true,
       messageLogs: {
         orderBy: { sentAt: "desc" },
         take: 20,
@@ -817,8 +818,46 @@ export async function changePlanTier(
     data: { planTier: newTier as PlanTier },
   });
 
+  // Private Coaching bundles nutrition guidance in for free — a separately
+  // purchased NutritionSubscription becomes redundant the moment a client
+  // is on Private Coaching, so cancel it rather than leaving a client dual-
+  // tracked as "paying for" something their membership already includes.
+  if (newTier === "PRIVATE_COACHING") {
+    const activeStatuses = ["ACTIVE", "PENDING_APPROVAL", "TRIALING"];
+    const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+    if (nutritionSub && activeStatuses.includes(nutritionSub.status)) {
+      await prisma.nutritionSubscription.update({
+        where: { userId },
+        data: { status: "CANCELED" },
+      });
+      logger.info({ userId, priorNutritionTier: nutritionSub.planTier }, "Canceled redundant paid Nutrition Plan — now covered by Private Coaching");
+    }
+  }
+
   logger.info({ userId, oldTier: subscription.planTier, newTier }, "Admin changed client plan tier");
   return { success: true, planTier: newTier };
+}
+
+/**
+ * Cancels a client's separately purchased Nutrition Plan — used when it's
+ * now redundant (e.g. after moving to Private Coaching, which bundles
+ * nutrition guidance in for free) or on direct admin request.
+ */
+export async function cancelNutritionSubscription(userId: string): Promise<{ success: boolean }> {
+  const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+  if (!nutritionSub) {
+    const err = new Error("No Nutrition Plan found for this client") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  await prisma.nutritionSubscription.update({
+    where: { userId },
+    data: { status: "CANCELED" },
+  });
+
+  logger.info({ userId, priorNutritionTier: nutritionSub.planTier }, "Admin canceled client's Nutrition Plan");
+  return { success: true };
 }
 
 /**

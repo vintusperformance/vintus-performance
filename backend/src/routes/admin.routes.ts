@@ -283,6 +283,20 @@ router.put(
   }
 );
 
+// PUT /admin/clients/:userId/nutrition/cancel — cancel a client's separately
+// purchased Nutrition Plan (e.g. now redundant after moving to Private Coaching)
+router.put(
+  "/clients/:userId/nutrition/cancel",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.cancelNutritionSubscription(req.params.userId as string);
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // PUT /admin/clients/:userId/extend — extend subscription
 router.put(
   "/clients/:userId/extend",

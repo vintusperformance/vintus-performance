@@ -750,6 +750,7 @@
 
       var prof = d.athleteProfile || {};
       var sub = d.subscription;
+      var nutritionSub = d.nutritionSubscription;
       var name = (prof.firstName || '') + ' ' + (prof.lastName || '');
       detailName.textContent = name.trim() || d.email;
 
@@ -854,6 +855,23 @@
         html += '<div class="admin-detail-row"><span class="admin-detail-label">No subscription</span></div>';
       }
       html += '</div>';
+
+      // Nutrition Plan section — a separate paid add-on, distinct from
+      // Private Coaching's bundled nutrition guidance
+      var nutritionActive = nutritionSub && ['ACTIVE', 'PENDING_APPROVAL', 'TRIALING'].includes(nutritionSub.status);
+      if (nutritionActive) {
+        html += '<div class="admin-detail-section">' +
+          '<div class="admin-detail-section-title">Nutrition Plan</div>' +
+          detailRow('Plan', fmtTier(nutritionSub.planTier)) +
+          detailRow('Status', statusBadge(nutritionSub.status), true) +
+          detailRow('Period End', fmtDate(nutritionSub.currentPeriodEnd));
+        if (sub && sub.planTier === 'PRIVATE_COACHING') {
+          html += '<p style="font-size:0.75rem;color:#f59e0b;margin:0.5rem 0;">This client is on Private Coaching, which already bundles nutrition guidance in for free — this separately purchased plan is redundant.</p>' +
+            '<button class="admin-btn-secondary admin-btn-small" id="cancelNutritionBtn" style="border-color:#ef4444;color:#ef4444;">Cancel Redundant Nutrition Plan</button>' +
+            '<div id="nutritionCancelAlert" style="margin-top:0.5rem;"></div>';
+        }
+        html += '</div>';
+      }
 
       // Adherence history
       if (d.adherenceHistory && d.adherenceHistory.length) {
@@ -1118,6 +1136,23 @@
         } catch (err) {
           document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
         } finally { changeTierBtn.disabled = false; }
+      });
+    }
+
+    // Cancel redundant Nutrition Plan (now covered by Private Coaching)
+    var cancelNutritionBtn = document.getElementById('cancelNutritionBtn');
+    if (cancelNutritionBtn) {
+      cancelNutritionBtn.addEventListener('click', async function () {
+        if (!confirm('Cancel this client\'s separately purchased Nutrition Plan? They\'ll keep the free concierge nutrition guidance included with Private Coaching.')) return;
+        cancelNutritionBtn.disabled = true;
+        try {
+          await apiPut('/api/v1/admin/clients/' + encodeURIComponent(userId) + '/nutrition/cancel', {});
+          document.getElementById('nutritionCancelAlert').innerHTML = '<div class="admin-alert admin-alert--success">Nutrition Plan canceled</div>';
+          loadClientDetail(userId);
+        } catch (err) {
+          document.getElementById('nutritionCancelAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+          cancelNutritionBtn.disabled = false;
+        }
       });
     }
 
