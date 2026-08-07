@@ -167,6 +167,80 @@
 }
 
 /* ====================================================
+   1c. DIRECT LINE TO COACH (Private Coaching concierge touch)
+   ==================================================== */
+
+.tp-direct-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(192,192,192,0.06), rgba(192,192,192,0.02));
+  border: 1px solid rgba(192,192,192,0.15);
+  border-radius: 12px;
+  padding: 1.1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tp-direct-line__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+  color: var(--silver);
+  margin: 0 0 0.3rem;
+}
+
+.tp-direct-line__title {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  color: var(--off-white);
+  margin: 0 0 0.35rem;
+}
+
+.tp-direct-line__body {
+  color: var(--gray);
+  font-size: 0.85rem;
+  margin: 0;
+  max-width: 480px;
+}
+
+.tp-direct-line__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--silver);
+  color: var(--black);
+  border-radius: 6px;
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.tp-direct-line__btn:hover {
+  background: var(--white);
+  box-shadow: 0 4px 20px rgba(192, 192, 192, 0.25);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .tp-direct-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .tp-direct-line__btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ====================================================
    2. PLAN PROGRESS STRIP
    ==================================================== */
 
