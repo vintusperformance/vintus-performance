@@ -179,6 +179,7 @@ export async function submitExpandedIntake(data: ExpandedIntake): Promise<Intake
     smsConsent: data.smsConsent ?? false,
     timezone: data.timezone,
     dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+    gender: data.gender ?? null,
     primaryGoal: data.primaryGoal,
     secondaryGoals: data.secondaryGoals ?? [],
     trainingDaysPerWeek: data.trainingDaysPerWeek,

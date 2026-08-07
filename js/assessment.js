@@ -22,6 +22,7 @@
     smsConsent: false,
     dateOfBirth: '',
     occupation: '',
+    gender: '',
     timezone: 'America/New_York',
     primaryGoal: '',
     secondaryGoals: [],
@@ -194,6 +195,7 @@
       case 2:
         answers.dateOfBirth = document.getElementById('dateOfBirth').value || '';
         answers.occupation = document.getElementById('occupation').value.trim();
+        answers.gender = document.getElementById('gender').value;
         answers.timezone = document.getElementById('timezone').value;
         break;
       // Steps 3, 4, 5 — handled by click handlers (answers.primaryGoal, etc.)
@@ -233,6 +235,7 @@
     payload.smsConsent = !!answers.smsConsent;
     if (answers.dateOfBirth) payload.dateOfBirth = answers.dateOfBirth;
     if (answers.occupation) payload.occupation = answers.occupation;
+    if (answers.gender) payload.gender = answers.gender;
     if (answers.timezone) payload.timezone = answers.timezone;
     if (answers.secondaryGoals.length) payload.secondaryGoals = answers.secondaryGoals;
     if (answers.preferredTrainingTime) payload.preferredTrainingTime = answers.preferredTrainingTime;

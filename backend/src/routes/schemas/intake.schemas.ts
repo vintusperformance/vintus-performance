@@ -33,6 +33,7 @@ export const expandedIntakeSchema = z.object({
   // Demographics
   dateOfBirth: z.string().datetime({ offset: true }).optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
   occupation: z.string().optional(),
+  gender: z.enum(["male", "female"]).optional(),
   timezone: z.string().default("America/New_York"),
 
   // Goals
