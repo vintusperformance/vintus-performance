@@ -39,6 +39,7 @@
   var nutritionCard = document.getElementById('nutritionCard');
   var nutritionOwned = document.getElementById('nutritionOwned');
   var nutritionOffer = document.getElementById('nutritionOffer');
+  var nutritionConcierge = document.getElementById('nutritionConcierge');
   var nutritionTier = document.getElementById('nutritionTier');
   var nutritionStatus = document.getElementById('nutritionStatus');
   var nutritionPeriodEnd = document.getElementById('nutritionPeriodEnd');
@@ -130,6 +131,7 @@
       if (nutritionSub && nutritionSub.status !== 'CANCELED') {
         nutritionOwned.style.display = 'block';
         nutritionOffer.style.display = 'none';
+        nutritionConcierge.style.display = 'none';
 
         nutritionTier.textContent = nutritionTierNames[nutritionSub.planTier] || nutritionSub.planTier || '--';
 
@@ -144,9 +146,15 @@
         } else {
           nutritionPeriodEnd.textContent = '--';
         }
+      } else if (sub && sub.planTier === 'PRIVATE_COACHING' && sub.status === 'ACTIVE') {
+        // Private Coaching bundles nutrition guidance in — no separate purchase needed.
+        nutritionOwned.style.display = 'none';
+        nutritionOffer.style.display = 'none';
+        nutritionConcierge.style.display = 'block';
       } else {
         nutritionOwned.style.display = 'none';
         nutritionOffer.style.display = 'block';
+        nutritionConcierge.style.display = 'none';
       }
 
       // Show content, hide loading

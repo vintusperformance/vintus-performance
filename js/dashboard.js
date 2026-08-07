@@ -42,6 +42,7 @@
   // ── State ──
   var currentTier = null;
   var planStartDateStr = null;
+  var nutritionAccessType = null; // 'purchased' | 'concierge' | null
   var currentWeekOffset = 0;
   var weekSessions = [];
   var overviewData = null;
@@ -181,8 +182,10 @@
       }
 
       // Nutrition plan — fetch whenever one might exist, regardless of the
-      // primary tier, since nutrition is a separate add-on plan now
+      // primary tier, since nutrition is a separate add-on plan now (or, for
+      // an active Private Coaching client, a bundled concierge benefit)
       if (d.athlete && d.athlete.hasNutritionPlan) {
+        nutritionAccessType = d.athlete.nutritionAccessType || null;
         loadNutritionPlan();
         loadNutritionProgress();
       }
@@ -190,7 +193,7 @@
       // Show the plan tabs only when a client has both a training/coaching
       // plan and a nutrition plan — single-plan clients see no tabs at all.
       if (d.athlete && d.athlete.planTier && d.athlete.hasNutritionPlan) {
-        setupPlanTabs(d.athlete.planTier, d.athlete.nutritionTier);
+        setupPlanTabs(d.athlete.planTier, d.athlete.nutritionTier, d.athlete.nutritionAccessType);
       }
 
       // 30-day milestone report, if one's due
@@ -236,7 +239,7 @@
 
   var planTabsSetUp = false;
 
-  function setupPlanTabs(trainingTier, nutritionTier) {
+  function setupPlanTabs(trainingTier, nutritionTier, accessType) {
     var tabsEl = document.getElementById('planTabs');
     var tabTraining = document.getElementById('tabTraining');
     var tabNutrition = document.getElementById('tabNutrition');
@@ -245,7 +248,11 @@
 
     var trainingLabel = (TIER_DISPLAY[trainingTier] || trainingTier) +
       (trainingTier === 'PRIVATE_COACHING' ? '' : ' Training Plan');
-    var nutritionLabel = (TIER_DISPLAY[nutritionTier] || nutritionTier) + ' Plan';
+    // Concierge nutrition has no separate NutritionSubscription tier to name
+    // — it's a bundled benefit, not a purchased plan.
+    var nutritionLabel = accessType === 'concierge'
+      ? 'Nutrition Guidance'
+      : (TIER_DISPLAY[nutritionTier] || nutritionTier) + ' Plan';
 
     tabTraining.textContent = trainingLabel;
     tabNutrition.textContent = nutritionLabel;
@@ -281,11 +288,36 @@
   async function loadNutritionPlan() {
     try {
       var res = await apiGet('/api/v1/dashboard/nutrition');
-      if (!res.success || !res.data) return;
+      if (!res.success) return;
+      if (!res.data) {
+        // No plan generated yet — a concierge Private Coaching client who
+        // hasn't built their bundled nutrition strategy sees a CTA instead
+        // of an empty checklist.
+        showNutritionConciergeCTA();
+        return;
+      }
       renderNutritionPlan(res.data);
     } catch (err) {
       // A nutrition-plan load failure shouldn't break the rest of the dashboard.
     }
+  }
+
+  function showNutritionConciergeCTA() {
+    var cta = document.getElementById('nutritionConciergeCTA');
+    var content = document.getElementById('nutritionPlanContent');
+    if (!cta) return;
+    cta.style.display = accessTypeAllowsCTA() ? 'block' : 'none';
+    if (content) content.style.display = 'none';
+
+    var section = document.getElementById('nutritionSection');
+    var tabsEl = document.getElementById('planTabs');
+    if (section && (!tabsEl || tabsEl.style.display === 'none' || !tabsEl.style.display)) {
+      section.style.display = 'block';
+    }
+  }
+
+  function accessTypeAllowsCTA() {
+    return nutritionAccessType === 'concierge';
   }
 
   // ============================================================
@@ -404,6 +436,12 @@
   function renderNutritionPlan(plan) {
     var section = document.getElementById('nutritionSection');
     if (!section) return;
+
+    var cta = document.getElementById('nutritionConciergeCTA');
+    var content = document.getElementById('nutritionPlanContent');
+    if (cta) cta.style.display = 'none';
+    if (content) content.style.display = 'block';
+
     // If plan tabs are active, tab-switching owns this section's visibility —
     // don't fight it. Only force it visible for a nutrition-only client with
     // no tabs at all.

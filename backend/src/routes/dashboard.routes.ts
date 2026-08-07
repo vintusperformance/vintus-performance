@@ -64,9 +64,13 @@ router.post(
         return;
       }
 
-      const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
-      if (!nutritionSub) {
-        res.status(400).json({ success: false, error: "No active nutrition plan found for this account" });
+      const [nutritionSub, subscription] = await Promise.all([
+        prisma.nutritionSubscription.findUnique({ where: { userId } }),
+        prisma.subscription.findUnique({ where: { userId }, select: { planTier: true, status: true } }),
+      ]);
+      const isConciergeEligible = subscription?.planTier === "PRIVATE_COACHING" && subscription?.status === "ACTIVE";
+      if (!nutritionSub && !isConciergeEligible) {
+        res.status(400).json({ success: false, error: "No active nutrition plan or Private Coaching membership found for this account" });
         return;
       }
 

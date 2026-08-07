@@ -179,6 +179,11 @@ export async function getOverview(userId: string): Promise<unknown> {
     }
   }
 
+  const hasPurchasedNutrition = !!user.nutritionSubscription && user.nutritionSubscription.status !== "CANCELED";
+  // Private Coaching is a premier concierge service — nutrition guidance is
+  // bundled in, not a separate purchase, as long as the membership is active.
+  const isConciergeNutritionEligible = sub?.planTier === "PRIVATE_COACHING" && sub?.status === "ACTIVE";
+
   return {
     athlete: {
       firstName: profile.firstName,
@@ -192,8 +197,11 @@ export async function getOverview(userId: string): Promise<unknown> {
       planStartDate: sub?.currentPeriodStart
         ? new Date(sub.currentPeriodStart).toISOString().split("T")[0]
         : null,
-      hasNutritionPlan: !!user.nutritionSubscription && user.nutritionSubscription.status !== "CANCELED",
+      hasNutritionPlan: hasPurchasedNutrition || isConciergeNutritionEligible,
       nutritionTier: user.nutritionSubscription?.planTier ?? null,
+      // 'purchased' = separate NutritionSubscription; 'concierge' = bundled free
+      // with an active Private Coaching membership, no separate purchase.
+      nutritionAccessType: hasPurchasedNutrition ? "purchased" : isConciergeNutritionEligible ? "concierge" : null,
     },
     today: {
       workout: todayWorkout,
