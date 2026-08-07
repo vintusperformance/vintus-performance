@@ -461,6 +461,16 @@ model EscalationEvent {
 // SUBSCRIPTION & BILLING
 // ============================================================
 
+// Stripe webhook idempotency — the event.id itself is the dedup key, per
+// Stripe's own recommendation, rather than inferring "already processed"
+// from business-state comparisons (which incorrectly blocked legitimate
+// tier upgrades — see checkout.service.ts).
+model StripeWebhookEvent {
+  id          String   @id // Stripe event.id
+  type        String
+  processedAt DateTime @default(now())
+}
+
 model Subscription {
   id              String   @id @default(cuid())
   userId          String   @unique

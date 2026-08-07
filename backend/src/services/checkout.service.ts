@@ -99,6 +99,16 @@ export async function createCheckoutSession(
 // ============================================================
 
 export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
+  // Idempotency — Stripe can and does redeliver the same event. The event.id
+  // is the reliable dedup key (Stripe's own recommendation); a unique-
+  // constraint violation here means we've already processed it.
+  try {
+    await prisma.stripeWebhookEvent.create({ data: { id: event.id, type: event.type } });
+  } catch (err) {
+    logger.info({ eventId: event.id, eventType: event.type }, "Duplicate Stripe webhook delivery — skipping");
+    return;
+  }
+
   switch (event.type) {
     case "checkout.session.completed":
       await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
@@ -145,34 +155,11 @@ async function handleCheckoutCompleted(
 
   const isNutrition = NUTRITION_TIERS.has(tier);
 
-  // Nutrition tiers live in their own table so a client can hold a training/
-  // coaching plan and a nutrition plan at the same time — each table's
-  // overwrite guard only ever compares within its own category.
-  if (isNutrition) {
-    const existingNutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
-    if (existingNutritionSub) {
-      const activeStatuses = ["ACTIVE", "PENDING_APPROVAL", "TRIALING"];
-      if (activeStatuses.includes(existingNutritionSub.status) && existingNutritionSub.planTier !== tier) {
-        logger.warn(
-          { userId, existingTier: existingNutritionSub.planTier, newTier: tier },
-          "Checkout completed but user already has an active nutrition plan — skipping overwrite"
-        );
-        return;
-      }
-    }
-  } else {
-    const existingSub = await prisma.subscription.findUnique({ where: { userId } });
-    if (existingSub) {
-      const activeStatuses = ["ACTIVE", "PENDING_APPROVAL", "TRIALING"];
-      if (activeStatuses.includes(existingSub.status) && existingSub.planTier !== tier) {
-        logger.warn(
-          { userId, existingTier: existingSub.planTier, newTier: tier, existingStatus: existingSub.status },
-          "Checkout completed but user already has an active subscription — skipping overwrite"
-        );
-        return;
-      }
-    }
-  }
+  // A completed checkout for a tier that differs from the client's current
+  // one is a legitimate plan change (e.g. upgrading Training -> Private
+  // Coaching) and must be applied, not skipped — Stripe already charged
+  // them. Duplicate-delivery protection is handled once, up front, by the
+  // event.id dedup in handleWebhookEvent, not by comparing tiers here.
 
   const stripeCustomerId =
     typeof session.customer === "string"
