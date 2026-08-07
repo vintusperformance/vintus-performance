@@ -32,6 +32,20 @@ Claude (plan generation, intake analysis, and the client-facing coach "Jerry").
 All plans deliver through the client's private dashboard — **never** "PDF" or
 email attachment. Say "delivered through your private dashboard."
 
+**Private Coaching ($997/mo) includes, at no extra charge:**
+- Nutrition guidance bundled in — no separate Nutrition Plan purchase required
+  (see `nutrition-concierge.html` / `submitNutritionIntake`'s concierge path).
+- A direct text line to Anthony (`sms:+19084101311`, shown on the dashboard's
+  "Text Me Anytime" card) — separate from the Jerry AI chat.
+- One included 30-minute coaching call per week, booked at `/schedule-call`
+  (`PC_WEEKLY_CALL` in the `SessionBooking`/`PaidSessionType` model — $0,
+  capped at one upcoming call at a time). This is intentionally personal,
+  not a scaled feature — it's how Anthony builds real relationships with
+  Private Coaching clients.
+
+These are Private Coaching-only concierge benefits — never surface them on the
+one-time Training/Nutrition Plan tiers or the separately priced Paid Sessions.
+
 **Paid Sessions** — one-off bookable calls, separate from the subscription/plan
 tiers above. No client account or dashboard involved; booked at `/paid-session`
 (survey → calendar → Stripe checkout → confirmation email with meeting details

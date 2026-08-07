@@ -29,6 +29,7 @@ model User {
   deviceConnections DeviceConnection[]
   sessions        Session[]
   chatConversation ChatConversation?
+  sessionBookings SessionBooking[]
 }
 
 enum Role {
@@ -596,6 +597,12 @@ model SessionBooking {
   headcount         Int      @default(1)
   totalAmountCents  Int            // server-computed, never trust client input
 
+  // Set only for the free PC_WEEKLY_CALL type — an authenticated Private
+  // Coaching client booking their included weekly call. Null for every
+  // guest-booked paid session, which never requires an account.
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id])
+
   firstName         String
   lastName          String?
   email             String
@@ -615,6 +622,8 @@ model SessionBooking {
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([userId])
 }
 
 enum PaidSessionType {
@@ -622,6 +631,7 @@ enum PaidSessionType {
   SIXTY_MIN_1ON1    // $150 flat, 1 person
   SIXTY_MIN_1ON2    // $110/person, 1-2 people
   SIXTY_MIN_GROUP   // $65/person, 3-6 people
+  PC_WEEKLY_CALL    // Free, 1 person — included weekly call for Private Coaching members
 }
 
 enum SessionBookingStatus {

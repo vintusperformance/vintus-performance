@@ -11,6 +11,7 @@ import { createCalendarEvent } from "../lib/google-calendar.js";
 import { appendSheetRow } from "../lib/google-sheets.js";
 import { sendSMS } from "../lib/twilio.js";
 import type { CreateSessionBookingInput } from "../routes/schemas/session-booking.schemas.js";
+import type { SessionBooking } from "@prisma/client";
 
 // ============================================================
 // createSessionBooking — validate, price, create Stripe Checkout
@@ -228,4 +229,185 @@ export async function handlePaidSessionCompleted(session: Stripe.Checkout.Sessio
   }
 
   logger.info({ bookingId, sessionType: booking.sessionType }, "Paid session marked PAID, emails queued");
+}
+
+// ============================================================
+// Weekly Coaching Call — free, included with active Private Coaching.
+// Confirmed immediately (no Stripe checkout), capped at one upcoming
+// call at a time so the concierge relationship stays personal rather
+// than clients stacking multiple weeks of calls at once.
+// ============================================================
+
+const WEEKLY_CALL_DURATION_MINUTES = PAID_SESSION_CATALOG.PC_WEEKLY_CALL.durationMinutes;
+
+function todayDateStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+/** The client's next upcoming (not yet passed, not canceled) weekly call, if any. */
+export async function getUpcomingWeeklyCall(userId: string): Promise<SessionBooking | null> {
+  return prisma.sessionBooking.findFirst({
+    where: {
+      userId,
+      sessionType: "PC_WEEKLY_CALL",
+      status: "PAID",
+      scheduledDate: { gte: todayDateStr() },
+    },
+    orderBy: [{ scheduledDate: "asc" }, { scheduledTime: "asc" }],
+  });
+}
+
+async function requireActivePrivateCoachingClient(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { subscription: true, athleteProfile: true },
+  });
+
+  if (!user?.subscription || user.subscription.planTier !== "PRIVATE_COACHING" || user.subscription.status !== "ACTIVE") {
+    const err = new Error("Weekly coaching calls are included with an active Private Coaching membership.") as Error & { statusCode?: number };
+    err.statusCode = 403;
+    throw err;
+  }
+  if (!user.athleteProfile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return { user, profile: user.athleteProfile };
+}
+
+export async function bookWeeklyCoachingCall(
+  userId: string,
+  scheduledDate: string,
+  scheduledTime: string
+): Promise<SessionBooking> {
+  const { user, profile } = await requireActivePrivateCoachingClient(userId);
+
+  const existing = await getUpcomingWeeklyCall(userId);
+  if (existing) {
+    const err = new Error(
+      `You already have a call scheduled for ${existing.scheduledDate} at ${existing.scheduledTime}. Cancel it first if you'd like to pick a different time.`
+    ) as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  if (isClassScheduleBlocked(scheduledDate, scheduledTime)) {
+    const err = new Error("That time isn't available — please pick another.") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  // Same shared-calendar conflict check paid sessions use, so a weekly call
+  // can't double-book a slot a consultation or paid session already holds.
+  const [bookingConflict, leadConflict] = await Promise.all([
+    prisma.sessionBooking.findFirst({
+      where: {
+        scheduledDate,
+        scheduledTime,
+        OR: [
+          { status: "PAID" },
+          { status: "PENDING_PAYMENT", createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } },
+        ],
+      },
+    }),
+    prisma.lead.findFirst({
+      where: {
+        type: "CONSULTATION",
+        status: { in: ["NEW", "CONFIRMED"] },
+        preferredDate: scheduledDate,
+        preferredTime: scheduledTime,
+      },
+    }),
+  ]);
+  if (bookingConflict || leadConflict) {
+    const err = new Error("That time slot was just booked — please pick another.") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const booking = await prisma.sessionBooking.create({
+    data: {
+      sessionType: "PC_WEEKLY_CALL",
+      headcount: 1,
+      totalAmountCents: 0,
+      userId,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: user.email,
+      phone: profile.phone,
+      meetingPreference: "google-meet",
+      scheduledDate,
+      scheduledTime,
+      status: "PAID",
+      confirmationSentAt: new Date(),
+    },
+  });
+
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+
+  const meetLink = await createCalendarEvent({
+    summary: `Weekly Coaching Call — ${fullName}`,
+    description: `Private Coaching weekly call with ${fullName} (${user.email}).`,
+    scheduledDate,
+    scheduledTime,
+    durationMinutes: WEEKLY_CALL_DURATION_MINUTES,
+    attendeeEmail: user.email,
+  });
+
+  if (meetLink) {
+    await prisma.sessionBooking.update({ where: { id: booking.id }, data: { meetLink } });
+  }
+
+  const contactLines = [`<br><strong>Email:</strong> ${env.COACH_EMAIL}`];
+  if (env.COACH_PHONE) contactLines.push(`<br><strong>Phone:</strong> ${env.COACH_PHONE}`);
+
+  const clientBody = [
+    `Hi ${profile.firstName},`,
+    `<br><br>You're confirmed for your weekly coaching call on <strong>${scheduledDate}</strong> at <strong>${scheduledTime}</strong> (America/New_York).`,
+    meetLink ? `<br><br><strong>Google Meet link:</strong> <a href="${meetLink}">${meetLink}</a>` : "",
+    ...contactLines,
+    `<br><br>Anything you want to cover, text me beforehand and I'll come prepared.`,
+  ].join("");
+
+  sendEmail(user.email, "Your Weekly Call Is Confirmed — Vintus Performance", clientBody).catch((err) =>
+    logger.error({ err, bookingId: booking.id }, "Failed to send weekly-call client confirmation")
+  );
+
+  const adminBody = [
+    `Weekly coaching call booked: <strong>${fullName}</strong> (${user.email}).`,
+    `<br><br><strong>When:</strong> ${scheduledDate} at ${scheduledTime}`,
+    meetLink ? `<br><strong>Google Meet:</strong> <a href="${meetLink}">${meetLink}</a>` : "",
+  ].join("");
+
+  sendEmail(env.COACH_EMAIL, `Weekly Call Booked — ${fullName}`, adminBody).catch((err) =>
+    logger.error({ err, bookingId: booking.id }, "Failed to send weekly-call admin notification")
+  );
+
+  if (env.COACH_PHONE) {
+    const smsBody = `Vintus: ${fullName} booked their weekly call for ${scheduledDate} at ${scheduledTime}.${meetLink ? ` ${meetLink}` : ""}`;
+    sendSMS(env.COACH_PHONE, smsBody).catch((err) =>
+      logger.error({ err, bookingId: booking.id }, "Failed to send weekly-call admin SMS")
+    );
+  }
+
+  logger.info({ userId, bookingId: booking.id, scheduledDate, scheduledTime }, "Weekly coaching call booked");
+
+  return { ...booking, meetLink: meetLink ?? booking.meetLink };
+}
+
+export async function cancelWeeklyCoachingCall(userId: string, bookingId: string): Promise<void> {
+  const booking = await prisma.sessionBooking.findFirst({
+    where: { id: bookingId, userId, sessionType: "PC_WEEKLY_CALL" },
+  });
+  if (!booking) {
+    const err = new Error("Call not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+  if (booking.status === "CANCELED") return;
+
+  await prisma.sessionBooking.update({ where: { id: bookingId }, data: { status: "CANCELED" } });
+  logger.info({ userId, bookingId }, "Weekly coaching call canceled by client");
 }

@@ -157,6 +157,7 @@
         var directLineCard = document.getElementById('directLineCard');
         if (directLineCard) {
           directLineCard.style.display = currentTier === 'PRIVATE_COACHING' ? 'flex' : 'none';
+          if (currentTier === 'PRIVATE_COACHING') loadWeeklyCallStatus();
         }
       }
 
@@ -238,6 +239,26 @@
     document.getElementById('metricsRow').style.display = 'none';
     var trendsCard = document.getElementById('trendsChart');
     if (trendsCard) trendsCard.closest('.tp-trends').style.display = 'none';
+  }
+
+  // ============================================================
+  // Weekly Coaching Call status (button copy on the Direct Line card)
+  // ============================================================
+
+  async function loadWeeklyCallStatus() {
+    var btnText = document.getElementById('scheduleCallBtnText');
+    if (!btnText) return;
+    try {
+      var res = await apiGet('/api/v1/dashboard/weekly-call');
+      if (res.success && res.data && res.data.booking) {
+        var b = res.data.booking;
+        var d = new Date(b.scheduledDate + 'T12:00:00');
+        var dayLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        btnText.textContent = 'Next Call: ' + dayLabel;
+      }
+    } catch (err) {
+      // Leave the default "Book Weekly Call" label if this fails.
+    }
   }
 
   // ============================================================

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { authenticate } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
 import * as dashboardService from "../services/dashboard.service.js";
 import { prisma } from "../lib/prisma.js";
 import {
@@ -9,6 +10,12 @@ import {
   recordNutritionCheckIn,
   getNutritionProgress,
 } from "../services/nutrition.service.js";
+import {
+  getUpcomingWeeklyCall,
+  bookWeeklyCoachingCall,
+  cancelWeeklyCoachingCall,
+} from "../services/session-booking.service.js";
+import { bookWeeklyCallSchema } from "./schemas/session-booking.schemas.js";
 
 const router = Router();
 
@@ -122,6 +129,52 @@ router.post(
       }
 
       await recordNutritionCheckIn(userId, completedIndices, totalItems);
+
+      res.status(200).json({ success: true, data: {} });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /dashboard/weekly-call — the client's upcoming weekly coaching call, if any
+router.get(
+  "/weekly-call",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const booking = await getUpcomingWeeklyCall(userId);
+
+      res.status(200).json({ success: true, data: { booking } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/weekly-call — book the included weekly call (Private Coaching only)
+router.post(
+  "/weekly-call",
+  validate(bookWeeklyCallSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const booking = await bookWeeklyCoachingCall(userId, req.body.scheduledDate, req.body.scheduledTime);
+
+      res.status(201).json({ success: true, data: { booking } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// DELETE /dashboard/weekly-call/:id — cancel an upcoming weekly call
+router.delete(
+  "/weekly-call/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      await cancelWeeklyCoachingCall(userId, req.params.id as string);
 
       res.status(200).json({ success: true, data: {} });
     } catch (err) {
