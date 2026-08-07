@@ -151,6 +151,13 @@
         if (currentTier === 'PRIVATE_COACHING') {
           document.getElementById('manageSubBtn').style.display = 'inline-flex';
         }
+
+        // Direct text line to the coach — a Private Coaching concierge
+        // perk, not offered on the lower one-time-purchase tiers.
+        var directLineCard = document.getElementById('directLineCard');
+        if (directLineCard) {
+          directLineCard.style.display = currentTier === 'PRIVATE_COACHING' ? 'flex' : 'none';
+        }
       }
 
       if (d.athlete && d.athlete.dayNumber && d.athlete.totalDays) {
