@@ -145,6 +145,22 @@
     if (!tier) return;
     localStorage.removeItem('vintus_selected_tier');
 
+    // Someone who clicked "Apply for Private Coaching" already made their
+    // decision — show only the recommendation and analysis, not the full
+    // Training/Nutrition plan menu they never asked to compare against.
+    if (tier === 'PRIVATE_COACHING') {
+      document.querySelectorAll('.results-category-title').forEach(function (el) {
+        el.style.display = 'none';
+      });
+      var trainingCards = document.getElementById('trainingCards');
+      var nutritionCards = document.getElementById('nutritionCards');
+      var footerNote = document.querySelector('.results-footer-note');
+      if (trainingCards) trainingCards.style.display = 'none';
+      if (nutritionCards) nutritionCards.style.display = 'none';
+      if (footerNote) footerNote.style.display = 'none';
+      return;
+    }
+
     var card = document.querySelector('.plan-card[data-tier="' + tier + '"]');
     if (!card) return;
 
