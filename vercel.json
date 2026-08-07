@@ -12,6 +12,7 @@
     { "source": "/onboarding", "destination": "/onboarding.html" },
     { "source": "/nutrition-intake", "destination": "/nutrition-intake.html" },
     { "source": "/nutrition-concierge", "destination": "/nutrition-concierge.html" },
+    { "source": "/schedule-call", "destination": "/schedule-call.html" },
     { "source": "/login", "destination": "/login.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/calendar", "destination": "/calendar.html" },

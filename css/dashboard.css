@@ -205,6 +205,12 @@
   max-width: 480px;
 }
 
+.tp-direct-line__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .tp-direct-line__btn {
   display: inline-flex;
   align-items: center;
@@ -229,10 +235,25 @@
   transform: translateY(-1px);
 }
 
+.tp-direct-line__btn--outline {
+  background: transparent;
+  color: var(--silver);
+  border: 1px solid rgba(192,192,192,0.35);
+}
+
+.tp-direct-line__btn--outline:hover {
+  background: rgba(192,192,192,0.08);
+  color: var(--off-white);
+  box-shadow: none;
+}
+
 @media (max-width: 640px) {
   .tp-direct-line {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .tp-direct-line__actions {
+    width: 100%;
   }
   .tp-direct-line__btn {
     width: 100%;

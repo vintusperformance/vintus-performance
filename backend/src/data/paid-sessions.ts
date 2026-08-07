@@ -42,6 +42,13 @@ export const PAID_SESSION_CATALOG: Record<PaidSessionType, PaidSessionConfig> = 
     minHeadcount: 3,
     maxHeadcount: 6,
   },
+  PC_WEEKLY_CALL: {
+    label: "Weekly Coaching Call",
+    durationMinutes: 30,
+    perPersonCents: 0, // included with Private Coaching — never charged
+    minHeadcount: 1,
+    maxHeadcount: 1,
+  },
 };
 
 export function computeSessionTotalCents(sessionType: PaidSessionType, headcount: number): number {

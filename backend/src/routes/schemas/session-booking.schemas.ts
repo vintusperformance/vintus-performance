@@ -16,3 +16,10 @@ export const createSessionBookingSchema = z.object({
 });
 
 export type CreateSessionBookingInput = z.infer<typeof createSessionBookingSchema>;
+
+export const bookWeeklyCallSchema = z.object({
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD format"),
+  scheduledTime: z.string().min(1, "Scheduled time is required"),
+});
+
+export type BookWeeklyCallInput = z.infer<typeof bookWeeklyCallSchema>;
