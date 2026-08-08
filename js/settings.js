@@ -128,7 +128,14 @@
         'NUTRITION_8WEEK': '8-Week Nutrition Plan'
       };
       nutritionCard.style.display = 'block';
-      if (nutritionSub && nutritionSub.status !== 'CANCELED') {
+      // Private Coaching always wins the framing when active — nutrition
+      // guidance is simply part of the subscription, regardless of whether
+      // the client separately purchased (or once purchased) a Nutrition Plan.
+      if (sub && sub.planTier === 'PRIVATE_COACHING' && sub.status === 'ACTIVE') {
+        nutritionOwned.style.display = 'none';
+        nutritionOffer.style.display = 'none';
+        nutritionConcierge.style.display = 'block';
+      } else if (nutritionSub && nutritionSub.status !== 'CANCELED') {
         nutritionOwned.style.display = 'block';
         nutritionOffer.style.display = 'none';
         nutritionConcierge.style.display = 'none';
@@ -146,11 +153,6 @@
         } else {
           nutritionPeriodEnd.textContent = '--';
         }
-      } else if (sub && sub.planTier === 'PRIVATE_COACHING' && sub.status === 'ACTIVE') {
-        // Private Coaching bundles nutrition guidance in — no separate purchase needed.
-        nutritionOwned.style.display = 'none';
-        nutritionOffer.style.display = 'none';
-        nutritionConcierge.style.display = 'block';
       } else {
         nutritionOwned.style.display = 'none';
         nutritionOffer.style.display = 'block';

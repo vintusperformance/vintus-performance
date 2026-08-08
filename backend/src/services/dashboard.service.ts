@@ -199,9 +199,11 @@ export async function getOverview(userId: string): Promise<unknown> {
         : null,
       hasNutritionPlan: hasPurchasedNutrition || isConciergeNutritionEligible,
       nutritionTier: user.nutritionSubscription?.planTier ?? null,
-      // 'purchased' = separate NutritionSubscription; 'concierge' = bundled free
-      // with an active Private Coaching membership, no separate purchase.
-      nutritionAccessType: hasPurchasedNutrition ? "purchased" : isConciergeNutritionEligible ? "concierge" : null,
+      // Private Coaching always wins the framing when active — nutrition
+      // guidance is simply part of the subscription, not something that
+      // depends on whether the client separately purchased a Nutrition
+      // Plan at any point. 'purchased' only applies to non-PC clients.
+      nutritionAccessType: isConciergeNutritionEligible ? "concierge" : hasPurchasedNutrition ? "purchased" : null,
     },
     today: {
       workout: todayWorkout,
