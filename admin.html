@@ -66,6 +66,7 @@
             <button class="admin-tab" data-tab="upcomingCalls">Upcoming Calls</button>
             <button class="admin-tab" data-tab="crm">CRM</button>
             <button class="admin-tab" data-tab="exerciseVideos">Exercise Videos <span id="videoReviewBadge" class="admin-pending-badge" style="display:none;"></span></button>
+            <button class="admin-tab" data-tab="billingAudit">Billing Audit <span id="billingAuditBadge" class="admin-pending-badge" style="display:none;"></span></button>
         </div>
 
         <!-- Tab Content -->
@@ -304,6 +305,16 @@
             <!-- Upcoming Calls Tab -->
             <div class="admin-tab-content" id="tabUpcomingCalls">
                 <div id="upcomingCallsList" class="admin-esc-list"></div>
+            </div>
+
+            <!-- Billing Audit Tab -->
+            <div class="admin-tab-content" id="tabBillingAudit">
+                <p style="color:var(--admin-text-dim, #9ca3af);font-size:0.85rem;margin-bottom:1rem;max-width:640px;">
+                    Cross-checks every Private Coaching subscription in Stripe against what's stored in our database.
+                    Flags anyone Stripe shows as actively billing for Private Coaching whose account doesn't match —
+                    the fingerprint of a since-fixed bug where a plan upgrade could be charged but never saved.
+                </p>
+                <div id="billingAuditList" class="admin-esc-list"></div>
             </div>
 
             <!-- CRM Tab -->

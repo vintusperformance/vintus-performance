@@ -11,7 +11,7 @@
   }
 
   /* ── State ── */
-  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false, exerciseVideos: false };
+  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false, exerciseVideos: false, billingAudit: false };
   var clientsPage = 1;
   var clientsTotalPages = 1;
   var escalationsPage = 1;
@@ -151,6 +151,7 @@
     else if (name === 'upcomingCalls') loadUpcomingCalls();
     else if (name === 'crm') loadCrm();
     else if (name === 'exerciseVideos') loadExerciseVideos();
+    else if (name === 'billingAudit') loadBillingAudit();
   }
 
   /* ── Refresh Button ── */
@@ -1776,6 +1777,69 @@
           '</div>';
       }
       listEl.innerHTML = html;
+    } catch (err) {
+      listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+    }
+  }
+
+  /* ============================================================
+     BILLING AUDIT TAB — Stripe vs. DB plan-tier mismatches
+     ============================================================ */
+
+  var BILLING_AUDIT_REASON_LABELS = {
+    no_db_subscription: 'Stripe shows an active Private Coaching subscription, but this client has no Subscription record at all',
+    wrong_plan_tier: 'Stripe shows an active Private Coaching subscription, but this client\'s stored plan tier is different',
+    stripe_subscription_id_mismatch: 'Stripe subscription ID on file doesn\'t match the currently active one — likely a stale record from before a resubscribe'
+  };
+
+  async function loadBillingAudit() {
+    var listEl = document.getElementById('billingAuditList');
+    var badgeEl = document.getElementById('billingAuditBadge');
+    listEl.innerHTML = '<div class="admin-empty">Checking Stripe against our records — this can take a moment...</div>';
+    try {
+      var res = await apiGet('/api/v1/admin/audit/plan-tier-mismatches');
+      var mismatches = res.data.mismatches;
+
+      if (badgeEl) {
+        if (mismatches && mismatches.length) {
+          badgeEl.textContent = mismatches.length;
+          badgeEl.style.display = 'inline-block';
+        } else {
+          badgeEl.style.display = 'none';
+        }
+      }
+
+      if (!mismatches || !mismatches.length) {
+        listEl.innerHTML = '<div class="admin-empty">No mismatches found — every active Private Coaching subscription in Stripe matches our records.</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < mismatches.length; i++) {
+        var m = mismatches[i];
+        html += '<div class="admin-esc-card">' +
+          '<div class="admin-esc-card-header">' +
+          '<span class="admin-esc-client">' + esc(m.name || m.email) + '</span>' +
+          '<span class="admin-esc-date">Stripe sub since ' + fmtDate(m.stripeSubscriptionCreated) + '</span>' +
+          '</div>' +
+          '<div class="admin-esc-meta">' +
+          '<span>' + esc(m.email) + '</span>' +
+          '<span>DB tier: ' + esc(m.dbPlanTier ? fmtTier(m.dbPlanTier) : 'none') + '</span>' +
+          '<span>DB status: ' + esc(m.dbStatus || '--') + '</span>' +
+          '<span>Stripe sub status: ' + esc(m.stripeSubscriptionStatus) + '</span>' +
+          '</div>' +
+          '<div class="admin-esc-reason">' + esc(BILLING_AUDIT_REASON_LABELS[m.reason] || m.reason) + '</div>' +
+          (m.userId ? '<div style="margin-top:0.6rem;"><button class="admin-btn-secondary admin-btn-small ba-view-client" data-uid="' + esc(m.userId) + '">View Client</button></div>' : '') +
+          '</div>';
+      }
+      listEl.innerHTML = html;
+
+      document.querySelectorAll('.ba-view-client').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelector('.admin-tab[data-tab="clients"]').click();
+          openClientDetail(btn.getAttribute('data-uid'));
+        });
+      });
     } catch (err) {
       listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
     }
