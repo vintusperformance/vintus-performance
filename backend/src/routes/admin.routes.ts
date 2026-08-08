@@ -474,6 +474,25 @@ router.get(
   }
 );
 
+// GET /admin/audit/plan-tier-mismatches — flags clients whose stored
+// Subscription doesn't match what Stripe actually has on file for
+// Private Coaching (the fingerprint of the #73 checkout-webhook bug)
+router.get(
+  "/audit/plan-tier-mismatches",
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.getPlanTierMismatches();
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // ============================================================
 // CRM
 // ============================================================

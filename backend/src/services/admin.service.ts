@@ -1603,6 +1603,83 @@ export async function getUpcomingCalls(): Promise<{ calls: UpcomingCall[] }> {
 // or submitted a contact/consultation lead, in one view.
 // ============================================================
 
+// ============================================================
+// BILLING AUDIT — flags clients whose stored Subscription doesn't match
+// what Stripe actually has on file for Private Coaching. This is the
+// fingerprint of the checkout-webhook bug fixed in #73: a client could be
+// charged for a plan upgrade while our DB silently kept the old tier.
+// Stripe (not our DB) is the source of truth for what was actually paid.
+// ============================================================
+
+export interface PlanTierMismatch {
+  userId: string | null;
+  email: string;
+  name: string;
+  dbPlanTier: PlanTier | null;
+  dbStatus: SubscriptionStatus | null;
+  dbStripeSubscriptionId: string | null;
+  stripeSubscriptionId: string;
+  stripeSubscriptionStatus: string;
+  stripeSubscriptionCreated: Date;
+  reason: "no_db_subscription" | "wrong_plan_tier" | "stripe_subscription_id_mismatch";
+}
+
+export async function getPlanTierMismatches(): Promise<{ mismatches: PlanTierMismatch[] }> {
+  const mismatches: PlanTierMismatch[] = [];
+
+  // Every Stripe subscription ever created for the Private Coaching price —
+  // "all" status so a since-canceled one that was never correctly recorded
+  // still surfaces (it still represents money that was charged).
+  for await (const sub of stripe.subscriptions.list({
+    price: env.STRIPE_PRICE_PRIVATE_COACHING,
+    status: "all",
+    limit: 100,
+  })) {
+    // Only currently-billing states represent "this client should right now
+    // be on Private Coaching in our system" — a long-since-canceled test
+    // subscription isn't worth flagging.
+    if (!["active", "trialing", "past_due"].includes(sub.status)) continue;
+
+    const userId = sub.metadata?.userId;
+
+    const dbSub = userId ? await prisma.subscription.findUnique({ where: { userId } }) : null;
+    const user = userId
+      ? await prisma.user.findUnique({ where: { id: userId }, include: { athleteProfile: true } })
+      : null;
+
+    let reason: PlanTierMismatch["reason"] | null = null;
+    if (!dbSub) {
+      reason = "no_db_subscription";
+    } else if (dbSub.planTier !== "PRIVATE_COACHING") {
+      reason = "wrong_plan_tier";
+    } else if (dbSub.stripeSubscriptionId !== sub.id) {
+      reason = "stripe_subscription_id_mismatch";
+    }
+
+    if (reason) {
+      const name = user?.athleteProfile
+        ? [user.athleteProfile.firstName, user.athleteProfile.lastName].filter(Boolean).join(" ")
+        : "";
+      mismatches.push({
+        userId: userId ?? null,
+        email: user?.email ?? "(unknown — no userId in Stripe metadata)",
+        name,
+        dbPlanTier: dbSub?.planTier ?? null,
+        dbStatus: dbSub?.status ?? null,
+        dbStripeSubscriptionId: dbSub?.stripeSubscriptionId ?? null,
+        stripeSubscriptionId: sub.id,
+        stripeSubscriptionStatus: sub.status,
+        stripeSubscriptionCreated: new Date(sub.created * 1000),
+        reason,
+      });
+    }
+  }
+
+  logger.info({ mismatchCount: mismatches.length }, "Plan tier billing audit run");
+
+  return { mismatches };
+}
+
 interface CrmEntry {
   kind: "SURVEY" | "CONSULTATION" | "CONTACT";
   id: string;
