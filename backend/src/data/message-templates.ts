@@ -886,7 +886,7 @@ export const messageTemplates: Record<string, MessageTemplate[]> = {
     { id: "dwa-2", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "{{firstName}}, Day {{dayNumber}}. {{sessionTitle}} is loaded. {{duration}} minutes. Show up.", cooldownHours: 20, tags: ["daily", "training-day"] },
     { id: "dwa-3", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "Day {{dayNumber}} — {{sessionTitle}}. {{duration}} min. The plan works when you do.", cooldownHours: 20, tags: ["daily", "training-day"] },
     { id: "dwa-4", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "Training day, {{firstName}}. Day {{dayNumber}}: {{sessionTitle}}. Get it done.", cooldownHours: 20, tags: ["daily", "training-day"] },
-    { id: "dwa-5", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "Day {{dayNumber}} of {{totalDays}}. {{sessionTitle}} — {{duration}} min. No excuses.", cooldownHours: 20, tags: ["daily", "training-day"] },
+    { id: "dwa-5", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "Day {{dayNumber}} of {{totalDays}}. {{sessionTitle}} — {{duration}} min. The work is already decided.", cooldownHours: 20, tags: ["daily", "training-day"] },
     { id: "dwa-6", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "{{firstName}}, your Day {{dayNumber}} session is ready. {{sessionTitle}}. Time to work.", cooldownHours: 20, tags: ["daily", "training-day"] },
     { id: "dwa-7", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "Day {{dayNumber}}. {{sessionTitle}} — {{duration}} min. Consistency builds champions.", cooldownHours: 20, tags: ["daily", "training-day"] },
     { id: "dwa-8", category: "DAILY_WORKOUT_ALERT", channel: "SMS" as const, content: "{{sessionTitle}} today, {{firstName}}. Day {{dayNumber}} of {{totalDays}}. Lock in.", cooldownHours: 20, tags: ["daily", "training-day"] },
@@ -902,13 +902,14 @@ export const messageTemplates: Record<string, MessageTemplate[]> = {
   // today's training session and (when available) nutrition guidance.
   // ============================================================
   PC_DAILY_PUSH: [
-    { id: "pcdp-1", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Stay disciplined, stay dominant. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
-    { id: "pcdp-2", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, your only competition is yesterday. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
-    { id: "pcdp-3", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. Precision over guesswork, every day. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
-    { id: "pcdp-4", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, the standard doesn't move. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
-    { id: "pcdp-5", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Show up, execute, repeat. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
-    { id: "pcdp-6", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, consistency is the whole system. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
-    { id: "pcdp-7", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. You built this plan to remove the guesswork — trust it. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-1", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. Stay disciplined. Stay dominant. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-2", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Your only competition is yesterday. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-3", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. The plan is set. The thinking is already done. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-4", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Whatever yesterday looked like, this is a clean page. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-5", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. Precision over guesswork, every day. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-6", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, good morning. Glad to have you in this. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-7", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Steady beats dramatic, every time. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-8", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Your health is the asset the rest of it runs on. {{tasksLine}} {{dashboardLink}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
   ],
 
   // ============================================================
