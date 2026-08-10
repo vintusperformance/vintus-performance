@@ -180,7 +180,7 @@
     } else if (name === 'messaging') {
       var msgBody = document.getElementById('msgBody');
       if (msgBody && !msgBody.innerHTML.trim()) {
-        msgBody.innerHTML = '<tr><td colspan="6"><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div></td></tr>';
+        msgBody.innerHTML = '<tr><td colspan="7"><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div><div class="admin-loading" style="height:24px;margin:0.5rem 0;"></div></td></tr>';
       }
     } else if (name === 'adherence') {
       var adhBody = document.getElementById('adherenceBody');
@@ -1940,7 +1940,9 @@
         html += '<div class="admin-esc-card">' +
           '<div class="admin-esc-card-header">' +
           '<span class="admin-esc-client">' + esc(entry.name || '—') + crmKindBadge(entry.kind) + '</span>' +
-          '<span class="admin-esc-date">' + fmtDate(entry.createdAt) + '</span>' +
+          '<span class="admin-esc-date">' + fmtDate(entry.createdAt) +
+          (entry.kind !== 'SURVEY' ? ' <button class="admin-btn-secondary crm-delete-btn" data-id="' + esc(entry.id) + '" style="padding:0.25rem 0.55rem;font-size:0.65rem;margin-left:0.5rem;">Delete</button>' : '') +
+          '</span>' +
           '</div>' +
           '<div class="admin-esc-meta">' +
           '<span>' + esc(entry.email) + '</span>' +
@@ -1953,6 +1955,22 @@
           '</div>';
       }
       listEl.innerHTML = html;
+      listEl.querySelectorAll('.crm-delete-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function (e) {
+          e.stopPropagation();
+          if (!confirm('Delete this lead? This cannot be undone.')) return;
+          btn.disabled = true;
+          btn.textContent = '...';
+          try {
+            await apiDelete('/api/v1/admin/crm/' + btn.getAttribute('data-id'));
+            loadCrm();
+          } catch (err) {
+            alert('Failed: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+          }
+        });
+      });
       renderPagination('crmPagination', crmPage, crmTotalPages, function (pg) { crmPage = pg; loadCrm(); });
     } catch (err) {
       listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
@@ -2406,7 +2424,7 @@
       // Messages table
       var body = document.getElementById('msgBody');
       if (!messages.length) {
-        body.innerHTML = '<tr><td colspan="6" class="admin-empty">No messages today</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="admin-empty">No messages today</td></tr>';
       } else {
         var html = '';
         for (var i = 0; i < messages.length; i++) {
@@ -2422,13 +2440,32 @@
             '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + contentPreview + '</td>' +
             '<td>' + fmtDateTime(m.sentAt) + '</td>' +
             '<td><span class="admin-badge ' + statusCls + '">' + statusTxt + '</span></td>' +
+            '<td>' + (m.status === 'pending' ? '<button class="admin-btn-secondary msg-delete-btn" data-id="' + esc(m.id) + '" style="padding:0.3rem 0.6rem;font-size:0.7rem;">Delete</button>' : '') + '</td>' +
           '</tr>';
         }
         body.innerHTML = html;
         // Click to open client detail
         body.querySelectorAll('.admin-table-clickable').forEach(function (row) {
-          row.addEventListener('click', function () {
+          row.addEventListener('click', function (e) {
+            if (e.target.closest('.msg-delete-btn')) return;
             openClientDetail(row.getAttribute('data-userid'));
+          });
+        });
+        // Delete pending message
+        body.querySelectorAll('.msg-delete-btn').forEach(function (btn) {
+          btn.addEventListener('click', async function (e) {
+            e.stopPropagation();
+            if (!confirm('Delete this pending message? This cannot be undone.')) return;
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+              await apiDelete('/api/v1/admin/messages/' + btn.getAttribute('data-id'));
+              loadMessaging();
+            } catch (err) {
+              alert('Failed: ' + err.message);
+              btn.disabled = false;
+              btn.textContent = 'Delete';
+            }
           });
         });
       }
@@ -2439,7 +2476,7 @@
         loadMessaging();
       });
     } catch (err) {
-      document.getElementById('msgBody').innerHTML = '<tr><td colspan="6" class="admin-alert admin-alert--error">' + esc(err.message) + '</td></tr>';
+      document.getElementById('msgBody').innerHTML = '<tr><td colspan="7" class="admin-alert admin-alert--error">' + esc(err.message) + '</td></tr>';
     }
   }
 

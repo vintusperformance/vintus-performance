@@ -603,6 +603,33 @@ export async function dismissTrigger(messageLogId: string): Promise<{ success: b
 }
 
 /**
+ * Delete a MessageLog row from the Messaging tab. Scoped to pending
+ * triggers (awaiting approval, never sent) and already-dismissed ones —
+ * never a row with a real sentAt/externalId, since that's an actual
+ * communication record with a client and shouldn't be erasable from an
+ * admin list-cleanup action.
+ */
+export async function deleteMessageLog(messageLogId: string): Promise<{ success: boolean }> {
+  const log = await prisma.messageLog.findUnique({ where: { id: messageLogId } });
+  if (!log) {
+    const err = new Error("Message not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const isPendingOrDismissed =
+    log.failureReason?.startsWith("PENDING_TRIGGER:") || log.failureReason === "DISMISSED";
+  if (!isPendingOrDismissed) {
+    const err = new Error("Only pending or dismissed messages can be deleted") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await prisma.messageLog.delete({ where: { id: messageLogId } });
+  return { success: true };
+}
+
+/**
  * Get all items needing admin attention (action queue).
  */
 export async function getActionQueue(): Promise<{
@@ -1824,4 +1851,22 @@ export async function getCrmEntries(options: {
   const paged = filtered.slice((page_ - 1) * limit, page_ * limit);
 
   return { entries: paged, total, page: page_, totalPages };
+}
+
+/**
+ * Delete a Lead (CRM tab). Only ever targets the Lead table — the CRM tab
+ * also lists real client accounts (kind: "SURVEY", User-derived), and
+ * those are never deletable from here. If leadId doesn't match a Lead
+ * row (e.g. someone passed a User id instead), Prisma's delete throws
+ * "Record to delete does not exist," which surfaces as a 404 below.
+ */
+export async function deleteLead(leadId: string): Promise<{ success: boolean }> {
+  try {
+    await prisma.lead.delete({ where: { id: leadId } });
+    return { success: true };
+  } catch {
+    const err = new Error("Lead not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
 }

@@ -180,6 +180,23 @@ router.get(
   }
 );
 
+// DELETE /admin/messages/:id — remove a pending/dismissed message from the log
+router.delete(
+  "/messages/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.deleteMessageLog(req.params.id as string);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /admin/triggers — pending message triggers awaiting manual send
 router.get(
   "/triggers",
@@ -507,6 +524,23 @@ router.get(
       const search = (req.query.search as string) || undefined;
 
       const result = await adminService.getCrmEntries({ page, limit, search });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// DELETE /admin/crm/:id — remove a lead (never a real client account)
+router.delete(
+  "/crm/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.deleteLead(req.params.id as string);
 
       res.status(200).json({
         success: true,
