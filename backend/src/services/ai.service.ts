@@ -113,7 +113,7 @@ RULES:
 - SMS: keep to 160 characters or 2 sentences max
 - EMAIL: can be 2-4 sentences
 - The message MUST be different from all previous messages provided
-- No emojis unless the context specifically calls for it
+- No emojis, ever
 
 Return ONLY the message text, nothing else.`;
 

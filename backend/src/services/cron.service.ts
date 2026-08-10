@@ -42,6 +42,15 @@ const NOT_PENDING_TRIGGER = {
  * Admin can review and fire these from the admin dashboard.
  * If AUTO_MESSAGING_ENABLED is true, sends immediately (production mode).
  */
+// Daily SMS cap for triggerOrQueue's auto-send path — the daily-push
+// categories (PC_DAILY_PUSH etc.) bypass triggerOrQueue entirely and
+// aren't affected by this. Without a cap, a single bad week (missed
+// sessions + low adherence + no check-in) can independently trigger
+// WORKOUT_MISSED, RECOVERY_TIP, CHECK_IN, ESCALATION, and DAILY_WORKOUT_ALERT
+// the same morning — a notification-storm risk for a premium client and a
+// carrier spam-filtering risk for deliverability generally.
+const DAILY_SMS_CAP = 3;
+
 async function triggerOrQueue(
   userId: string,
   category: string,
@@ -50,6 +59,17 @@ async function triggerOrQueue(
   description?: string
 ): Promise<void> {
   if (isAutoMessagingEnabled()) {
+    if (channel === "SMS") {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const todaySmsCount = await prisma.messageLog.count({
+        where: { userId, channel: "SMS", sentAt: { gte: today }, ...NOT_PENDING_TRIGGER },
+      });
+      if (todaySmsCount >= DAILY_SMS_CAP) {
+        logger.info({ userId, category, todaySmsCount }, "Daily SMS cap reached — skipping additional automated send");
+        return;
+      }
+    }
     await messagingService.sendMessage(userId, category, channel, context);
     return;
   }
@@ -63,7 +83,19 @@ async function triggerOrQueue(
 
   // Resolve template content for preview
   const templates = (await import("../data/message-templates.js")).messageTemplates;
-  const pool = templates[category] || [];
+  let pool = templates[category] || [];
+
+  // Same dayType narrowing as sendMessage — without it, the queued
+  // preview Anthony reviews and approves can show a rest-day template on
+  // a training day (or vice versa) for DAILY_WORKOUT_ALERT.
+  const dayType = context?.dayType as string | undefined;
+  if (dayType && pool.length > 0) {
+    const dayTypeMatched = pool.filter(
+      (t) => t.tags.includes(dayType) || (!t.tags.includes("rest-day") && !t.tags.includes("training-day"))
+    );
+    if (dayTypeMatched.length > 0) pool = dayTypeMatched;
+  }
+
   const template = pool[Math.floor(Math.random() * pool.length)];
   let content = template ? template.content : `[${category}] message for ${user?.athleteProfile?.firstName || userId}`;
 
@@ -218,6 +250,11 @@ export function startCrons(): void {
       logger.error({ err }, "Daily review cron failed");
     }
     try {
+      await nutritionOnlyDailyPushCron();
+    } catch (err) {
+      logger.error({ err }, "Nutrition-only daily push cron failed");
+    }
+    try {
       await weeklyDigestCron();
     } catch (err) {
       logger.error({ err }, "Weekly digest cron failed");
@@ -336,6 +373,92 @@ async function dailyReviewCron(): Promise<void> {
       { processed, skipped, totalClients: activeClients.length },
       "Daily review cron completed"
     );
+  }
+}
+
+// ============================================================
+// nutritionOnlyDailyPushCron — clients whose ONLY active purchase is a
+// standalone nutrition plan (NUTRITION_4WEEK/8WEEK) never get a row in
+// the main Subscription table (checkout.service.ts writes those to
+// NutritionSubscription instead), so dailyReviewCron's Subscription-based
+// query above never sees them. This is a parallel, lightweight loop just
+// for that population — it doesn't touch workout/adherence/escalation
+// logic, none of which applies to a client with no WorkoutPlan.
+// ============================================================
+
+async function nutritionOnlyDailyPushCron(): Promise<void> {
+  if (!isPcDailyPushEnabled()) return;
+
+  const activeNutritionSubs = await prisma.nutritionSubscription.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      userId: true,
+      user: {
+        select: {
+          subscription: { select: { status: true } },
+          athleteProfile: { select: { timezone: true } },
+        },
+      },
+    },
+  });
+
+  const now = new Date();
+  for (const nutritionSub of activeNutritionSubs) {
+    // Skip anyone with an active main Subscription too — that's a combo
+    // client (e.g. Training + Nutrition), already handled by the PC_DAILY_PUSH
+    // combo branch inside dailyReviewForClient's Step 7.
+    if (nutritionSub.user.subscription?.status === "ACTIVE") continue;
+
+    const timezone = nutritionSub.user.athleteProfile?.timezone ?? "America/New_York";
+    const local = getLocalTime(now, timezone);
+    const isMorning = local.hour === 6 || (local.hour === 5 && local.minute >= 30);
+    if (!isMorning) continue;
+
+    const dedupKey = `${nutritionSub.userId}:${local.dateStr}:nutrition-only-morning`;
+    if (processedReviews.has(dedupKey)) continue;
+
+    try {
+      await nutritionOnlyDailyPushForClient(nutritionSub.userId);
+      processedReviews.set(dedupKey, true);
+    } catch (err) {
+      logger.error({ err, userId: nutritionSub.userId }, "Nutrition-only daily push failed for client — continuing to next");
+    }
+  }
+}
+
+async function nutritionOnlyDailyPushForClient(userId: string): Promise<void> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) return;
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const existing = await prisma.messageLog.findFirst({
+    where: { userId, category: "NUTRITION_DAILY_PUSH", sentAt: { gte: today }, ...NOT_PENDING_TRIGGER },
+  });
+  if (existing) return;
+
+  const nutritionPlan = await getActiveNutritionPlan(userId);
+  if (!nutritionPlan) return; // plan not generated yet — nothing to send
+
+  const nutritionSub = await prisma.nutritionSubscription.findUnique({ where: { userId } });
+  let tasksLine = `Today's target: ${nutritionPlan.dailyCalories} cal, ${nutritionPlan.proteinG}g protein, ${nutritionPlan.carbsG}g carbs, ${nutritionPlan.fatG}g fat.`;
+
+  if (nutritionSub?.currentPeriodStart && nutritionSub?.currentPeriodEnd) {
+    const dayNumber = Math.max(1, Math.ceil((today.getTime() - new Date(nutritionSub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000)) + 1);
+    const totalDays = Math.ceil((new Date(nutritionSub.currentPeriodEnd).getTime() - new Date(nutritionSub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000));
+    if (dayNumber > totalDays) return; // program already ended
+    tasksLine = `Day ${dayNumber} of ${totalDays}. ${tasksLine}`;
+  }
+
+  try {
+    await messagingService.sendMessage(userId, "NUTRITION_DAILY_PUSH", "SMS", {
+      firstName: profile.firstName,
+      tasksLine,
+      dashboardLink: `${env.FRONTEND_URL}/dashboard.html`,
+    });
+  } catch (err) {
+    logger.error({ err, userId }, "Failed to send NUTRITION_DAILY_PUSH message");
   }
 }
 
@@ -518,9 +641,16 @@ export async function dailyReviewForClient(
         where: { userId, category: "RECOVERY_TIP", sentAt: { gte: today }, ...NOT_PENDING_TRIGGER },
       });
       if (!existingRecoveryMsg) {
+        const todayHasSession = activePlan.sessions.some((s) => {
+          const sd = new Date(s.scheduledDate);
+          sd.setUTCHours(0, 0, 0, 0);
+          return sd.getTime() === today.getTime();
+        });
         try {
           await triggerOrQueue(userId, "RECOVERY_TIP", "SMS", {
             firstName: profile.firstName,
+            sleepScore: todayReadiness.sleepScore ?? undefined,
+            dayType: todayHasSession ? "training-day" : "rest-day",
           });
         } catch (err) {
           logger.error({ err, userId }, "Failed to send RECOVERY_TIP message");
@@ -587,8 +717,13 @@ export async function dailyReviewForClient(
   const consecutiveMissed = await adherenceService.getConsecutiveMissed(userId);
   const weekAdherence = await adherenceService.getCurrentWeekAdherence(userId);
 
-  // Escalation triggers: 3+ consecutive missed OR weekly adherence < 50%
-  if (consecutiveMissed >= 3 || weekAdherence.adherenceRate < 0.5) {
+  // Escalation triggers: 3+ consecutive missed OR weekly adherence < 50%.
+  // scheduledCount > 0 guard matches updateAdherence's own low-adherence
+  // check (adherence.service.ts) — without it, a client with sessions
+  // booked but not yet due (e.g. Monday morning, before the week's
+  // training days have happened) reads as 0% adherence and escalates on
+  // a client who hasn't done anything wrong.
+  if (consecutiveMissed >= 3 || (weekAdherence.scheduledCount > 0 && weekAdherence.adherenceRate < 0.5)) {
     // Check if escalation already created today (idempotent)
     const todayEscalation = await prisma.escalationEvent.findFirst({
       where: { userId, createdAt: { gte: today } },
@@ -632,7 +767,7 @@ export async function dailyReviewForClient(
         const channel: "SMS" | "EMAIL" = level >= 3 ? "EMAIL" : "SMS";
         await triggerOrQueue(userId, "ESCALATION", channel, {
           firstName: profile.firstName,
-          bookingLink: `${env.FRONTEND_URL}/book-consultation`,
+          bookingLink: `${env.FRONTEND_URL}/book`,
         });
 
         await prisma.escalationEvent.update({
@@ -704,11 +839,13 @@ export async function dailyReviewForClient(
   // ── Step 5: DAILY MOTIVATION ────────────────────────────────
 
   const planTier = user.subscription?.planTier;
-  // Private Coaching clients get their own daily encouragement via
-  // PC_DAILY_PUSH (Step 7 below) when that's enabled — skip this generic
-  // one for them so they don't get two "good morning" texts.
-  const skipMotivationForPc = planTier === "PRIVATE_COACHING" && isPcDailyPushEnabled();
-  if (planTier && !skipMotivationForPc) {
+  // Private Coaching and Training-tier clients get their own daily
+  // encouragement via PC_DAILY_PUSH / TRAINING_DAILY_PUSH (Step 7 below)
+  // when that's enabled — skip this generic one for them so they don't
+  // get two "good morning" texts.
+  const DAILY_PUSH_TIERS = new Set(["PRIVATE_COACHING", "TRAINING_30DAY", "TRAINING_60DAY", "TRAINING_90DAY"]);
+  const skipMotivationForDailyPush = planTier != null && DAILY_PUSH_TIERS.has(planTier) && isPcDailyPushEnabled();
+  if (planTier && !skipMotivationForDailyPush) {
     // 70% chance (prevents message fatigue)
     if (Math.random() < 0.7) {
       // Skip if too many messages already sent today
@@ -741,14 +878,24 @@ export async function dailyReviewForClient(
     const dayNumber = Math.max(1, Math.ceil((today.getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000)) + 1);
     const totalDays = Math.ceil((new Date(sub.currentPeriodEnd).getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000));
 
+    const TRAINING_TIERS = new Set(["TRAINING_30DAY", "TRAINING_60DAY", "TRAINING_90DAY"]);
     const isPrivateCoachingPush = sub.planTier === "PRIVATE_COACHING" && isPcDailyPushEnabled();
+    const isTrainingPush = TRAINING_TIERS.has(sub.planTier) && isPcDailyPushEnabled();
 
     // Check if we already sent a daily alert today (covers whichever
-    // category this tier/branch actually sends)
+    // category this tier/branch actually sends — a training-tier client
+    // with an active nutrition plan sends under PC_DAILY_PUSH, see below,
+    // so both categories are checked for that tier)
     const existingDailyAlert = await prisma.messageLog.findFirst({
       where: {
         userId,
-        category: { in: isPrivateCoachingPush ? ["PC_DAILY_PUSH"] : ["DAILY_WORKOUT_ALERT", "PLAN_MILESTONE"] },
+        category: {
+          in: isPrivateCoachingPush
+            ? ["PC_DAILY_PUSH"]
+            : isTrainingPush
+            ? ["TRAINING_DAILY_PUSH", "PC_DAILY_PUSH"]
+            : ["DAILY_WORKOUT_ALERT", "PLAN_MILESTONE"],
+        },
         sentAt: { gte: today },
         ...NOT_PENDING_TRIGGER,
       },
@@ -802,6 +949,43 @@ export async function dailyReviewForClient(
         } catch (err) {
           logger.error({ err, userId }, "Failed to send PC_DAILY_PUSH message");
         }
+      } else if (isTrainingPush) {
+        // Training tier (30/60/90-day): if the client also has an active
+        // nutrition plan (bought both, separately), send the exact same
+        // combined flow as Private Coaching — Anthony's explicit call,
+        // not worth building/maintaining a third copy of that content.
+        // Training-only clients get a training-specific push instead.
+        const nutritionPlan = await getActiveNutritionPlan(userId);
+
+        if (nutritionPlan) {
+          const tasksLine = isTrainingDay
+            ? `Today: ${sessionTitle} - ${duration || 0} min. Nutrition target: ${nutritionPlan.dailyCalories} cal, ${nutritionPlan.proteinG}g protein.`
+            : `Today is a rest day - recovery is part of the plan. Nutrition target: ${nutritionPlan.dailyCalories} cal, ${nutritionPlan.proteinG}g protein.`;
+
+          try {
+            await messagingService.sendMessage(userId, "PC_DAILY_PUSH", "SMS", {
+              firstName: profile.firstName,
+              tasksLine,
+              dashboardLink: `${env.FRONTEND_URL}/dashboard.html`,
+            });
+          } catch (err) {
+            logger.error({ err, userId }, "Failed to send PC_DAILY_PUSH message (training+nutrition combo)");
+          }
+        } else {
+          const tasksLine = isTrainingDay
+            ? `Day ${dayNumber} of ${totalDays}: ${sessionTitle} - ${duration || 0} min.`
+            : `Day ${dayNumber} of ${totalDays}: rest day - recovery is part of the program.`;
+
+          try {
+            await messagingService.sendMessage(userId, "TRAINING_DAILY_PUSH", "SMS", {
+              firstName: profile.firstName,
+              tasksLine,
+              dashboardLink: `${env.FRONTEND_URL}/dashboard.html`,
+            });
+          } catch (err) {
+            logger.error({ err, userId }, "Failed to send TRAINING_DAILY_PUSH message");
+          }
+        }
       } else {
         // Check for milestone day (overrides normal daily) — unchanged
         // behavior for all other tiers, still gated by triggerOrQueue's
@@ -831,6 +1015,7 @@ export async function dailyReviewForClient(
               sessionTitle: sessionTitle || "Rest",
               duration: duration || 0,
               planTierDisplay,
+              dayType: isTrainingDay ? "training-day" : "rest-day",
             });
           } catch (err) {
             logger.error({ err, userId }, "Failed to send DAILY_WORKOUT_ALERT message");
@@ -892,8 +1077,13 @@ export async function dailyReviewForClient(
   }
 
   // ── Step 8: PLAN ENDING WARNING ────────────────────────────
+  // Private Coaching is excluded — it's a recurring subscription, so
+  // currentPeriodEnd is just the next Stripe billing date, not a program
+  // finishing. Without this gate, every active PC client got a monthly
+  // "your program ends in 3 days" / "tomorrow is your last day" message —
+  // reading as a cancellation notice to the highest-value clients.
 
-  if (sub && sub.currentPeriodEnd) {
+  if (sub && sub.planTier !== "PRIVATE_COACHING" && sub.currentPeriodEnd) {
     const daysUntilEnd = Math.ceil((new Date(sub.currentPeriodEnd).getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
 
     if (daysUntilEnd === 3 || daysUntilEnd === 1) {
@@ -922,8 +1112,13 @@ export async function dailyReviewForClient(
   }
 
   // ── Step 9: PLAN COMPLETED — renewal prompt ────────────────
+  // Same Private Coaching exclusion as Step 8, and for higher stakes: this
+  // step also sets scheduledDeleteAt, which Step 10 uses to actually
+  // deactivate the subscription 4 days later. Without this gate, a PC
+  // client's real, currently-paying subscription could get scheduled for
+  // deletion every month.
 
-  if (sub && sub.currentPeriodEnd) {
+  if (sub && sub.planTier !== "PRIVATE_COACHING" && sub.currentPeriodEnd) {
     const periodEnd = new Date(sub.currentPeriodEnd);
     periodEnd.setUTCHours(0, 0, 0, 0);
 
@@ -944,6 +1139,7 @@ export async function dailyReviewForClient(
           await triggerOrQueue(userId, "PLAN_COMPLETED", "SMS", {
             firstName: profile.firstName,
             planTierDisplay: TIER_DISPLAY[sub.planTier] || sub.planTier,
+            renewalLink: `${env.FRONTEND_URL}/features`,
           });
           // Set renewal tracking fields
           await prisma.subscription.update({

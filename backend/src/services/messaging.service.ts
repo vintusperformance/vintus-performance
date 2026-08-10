@@ -32,6 +32,8 @@ interface MessageContext {
   sleepQualityManual?: number;
   readinessTone?: "supportive" | "energized" | "balanced";
   readinessFlags?: string[];
+  dayType?: "rest-day" | "training-day";
+  audience?: "nutrition";
   [key: string]: unknown;
 }
 
@@ -40,7 +42,12 @@ interface MessageContext {
 // skipped entirely in favor of reusing an existing template, since a
 // freeform AI-generated message isn't guaranteed to include content this
 // category's recipients depend on (e.g. PC_DAILY_PUSH's dashboard link).
-const NO_REVIEW_CATEGORIES = new Set(["PC_DAILY_PUSH", "PC_AFTERNOON_CHECKIN"]);
+const NO_REVIEW_CATEGORIES = new Set([
+  "PC_DAILY_PUSH",
+  "PC_AFTERNOON_CHECKIN",
+  "TRAINING_DAILY_PUSH",
+  "NUTRITION_DAILY_PUSH",
+]);
 
 interface SendResult {
   messageId: string;
@@ -149,6 +156,32 @@ export async function sendMessage(
       if (toneMatched.length > 0) {
         channelCompatible = toneMatched;
       }
+    }
+  }
+
+  // 1b2. Exclude training-specific WELCOME copy for nutrition-only buyers —
+  // "your first session is queued" etc. is false for someone who bought a
+  // Nutrition plan and has no WorkoutPlan.
+  if (fullContext.audience === "nutrition" && channelCompatible.length > 0) {
+    const nutritionSafe = channelCompatible.filter((t) => !t.tags.includes("training-specific"));
+    if (nutritionSafe.length > 0) {
+      channelCompatible = nutritionSafe;
+    }
+  }
+
+  // 1c. dayType-aware filtering — for categories with separate rest-day vs
+  // training-day templates (e.g. DAILY_WORKOUT_ALERT's dwa-rest-* pool).
+  // Without this, the pool was never actually narrowed by day type — a
+  // rest day could draw "Let's go" and a training day could draw "no
+  // session today," despite the tags existing on the templates already.
+  if (fullContext.dayType && channelCompatible.length > 0) {
+    const dayTypeMatched = channelCompatible.filter(
+      (t) =>
+        t.tags.includes(fullContext.dayType as string) ||
+        (!t.tags.includes("rest-day") && !t.tags.includes("training-day"))
+    );
+    if (dayTypeMatched.length > 0) {
+      channelCompatible = dayTypeMatched;
     }
   }
 
@@ -272,10 +305,10 @@ export async function sendMessage(
 // cron loop via checkWelcomeSequence() on subsequent ticks.
 // ============================================================
 
-export async function sendWelcomeSequence(userId: string): Promise<void> {
+export async function sendWelcomeSequence(userId: string, audience?: "nutrition"): Promise<void> {
   // 1. Immediate SMS welcome
   try {
-    await sendMessage(userId, "WELCOME", "SMS");
+    await sendMessage(userId, "WELCOME", "SMS", audience ? { audience } : undefined);
   } catch (err) {
     logger.error({ err, userId }, "Welcome SMS failed");
   }
