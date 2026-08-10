@@ -706,6 +706,31 @@ export async function getActionQueue(): Promise<{
 /**
  * Get paginated message feed for the admin messaging tab.
  */
+// A pending trigger is a MessageLog row created by triggerOrQueue when
+// auto-messaging is off — it has sentAt set (Prisma's @default(now())) but
+// was never actually sent; it's a queued preview awaiting admin approval
+// from the Actions tab. Marked via a "PENDING_TRIGGER:" prefix on
+// failureReason (no dedicated status column). Treating these as "Sent" is
+// what caused the Messaging tab to show 100% delivery on messages that
+// never left the building — see PENDING_TRIGGER_FILTER below.
+const PENDING_TRIGGER_PREFIX = "PENDING_TRIGGER:";
+
+// Null-safe "is a pending trigger" filter. Plain `{ startsWith }` is safe
+// here (NULL naturally fails startsWith), but the negation needs the same
+// null-safe OR treatment as cron.service.ts's NOT_PENDING_TRIGGER: bare
+// `NOT: { startsWith }` compiles to SQL that evaluates to NULL — not TRUE —
+// when failureReason is NULL, silently excluding every real (non-pending)
+// message from an "actually sent" filter.
+const IS_PENDING_TRIGGER: Prisma.MessageLogWhereInput = {
+  failureReason: { startsWith: PENDING_TRIGGER_PREFIX },
+};
+const NOT_PENDING_TRIGGER: Prisma.MessageLogWhereInput = {
+  OR: [
+    { failureReason: null },
+    { NOT: { failureReason: { startsWith: PENDING_TRIGGER_PREFIX } } },
+  ],
+};
+
 export async function getMessageFeed(options: {
   page: number;
   limit: number;
@@ -715,7 +740,7 @@ export async function getMessageFeed(options: {
   date?: string;
 }): Promise<{
   messages: unknown[];
-  stats: { totalToday: number; deliveredToday: number; failedToday: number; deliveryRate: number };
+  stats: { totalToday: number; pendingToday: number; deliveredToday: number; failedToday: number; deliveryRate: number };
   total: number;
   page: number;
   totalPages: number;
@@ -738,8 +763,11 @@ export async function getMessageFeed(options: {
 
   if (status === "failed") {
     where.failedAt = { not: null };
+  } else if (status === "pending") {
+    Object.assign(where, IS_PENDING_TRIGGER);
   } else if (status === "sent") {
     where.failedAt = null;
+    Object.assign(where, NOT_PENDING_TRIGGER);
   }
 
   if (search) {
@@ -752,7 +780,9 @@ export async function getMessageFeed(options: {
     };
   }
 
-  const [messages, total, todayTotal, todayFailed] = await Promise.all([
+  const dateRangeWhere = { sentAt: { gte: filterDate, lt: filterDateEnd } };
+
+  const [messagesRaw, total, todayTotal, todayFailed, todayPending] = await Promise.all([
     prisma.messageLog.findMany({
       where,
       skip: (page - 1) * limit,
@@ -777,16 +807,31 @@ export async function getMessageFeed(options: {
       },
     }),
     prisma.messageLog.count({ where }),
-    prisma.messageLog.count({ where: { sentAt: { gte: filterDate, lt: filterDateEnd } } }),
-    prisma.messageLog.count({ where: { sentAt: { gte: filterDate, lt: filterDateEnd }, failedAt: { not: null } } }),
+    prisma.messageLog.count({ where: dateRangeWhere }),
+    prisma.messageLog.count({ where: { ...dateRangeWhere, failedAt: { not: null } } }),
+    prisma.messageLog.count({ where: { ...dateRangeWhere, ...IS_PENDING_TRIGGER } }),
   ]);
 
-  const deliveredToday = todayTotal - todayFailed;
-  const deliveryRate = todayTotal > 0 ? Math.round((deliveredToday / todayTotal) * 100) : 100;
+  // Attach a real tri-state status so the admin UI can't mistake a queued,
+  // never-sent preview for a delivered message.
+  const messages = messagesRaw.map((m) => ({
+    ...m,
+    status: m.failureReason?.startsWith(PENDING_TRIGGER_PREFIX)
+      ? "pending"
+      : m.failedAt
+      ? "failed"
+      : "sent",
+  }));
+
+  // Delivery rate is measured against messages actually attempted —
+  // pending (not-yet-sent) rows shouldn't count toward or against it.
+  const attemptedToday = todayTotal - todayPending;
+  const deliveredToday = attemptedToday - todayFailed;
+  const deliveryRate = attemptedToday > 0 ? Math.round((deliveredToday / attemptedToday) * 100) : 100;
 
   return {
     messages,
-    stats: { totalToday: todayTotal, deliveredToday, failedToday: todayFailed, deliveryRate },
+    stats: { totalToday: todayTotal, pendingToday: todayPending, deliveredToday, failedToday: todayFailed, deliveryRate },
     total,
     page,
     totalPages: Math.ceil(total / limit),
