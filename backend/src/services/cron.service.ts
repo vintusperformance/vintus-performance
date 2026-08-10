@@ -297,14 +297,16 @@ async function dailyReviewCron(): Promise<void> {
 
     // Midnight window: local hour is 0
     // Morning window: local hour is 6 (or hour 5 + minute >= 30 for half-hour-offset timezones)
+    // Afternoon window: local hour is 14 (2pm) — PC afternoon check-in prompt
     // Evening window: local hour is 20 (8pm) — for "workout not logged" follow-ups
     const isMidnight = local.hour === 0;
     const isMorning = local.hour === 6 || (local.hour === 5 && local.minute >= 30);
+    const isAfternoon = local.hour === 14;
     const isEvening = local.hour === 20;
 
-    if (!isMidnight && !isMorning && !isEvening) continue;
+    if (!isMidnight && !isMorning && !isAfternoon && !isEvening) continue;
 
-    const reviewType = isEvening ? "evening" : isMidnight ? "midnight" : "morning";
+    const reviewType = isEvening ? "evening" : isAfternoon ? "afternoon" : isMidnight ? "midnight" : "morning";
     const dedupKey = `${client.userId}:${local.dateStr}:${reviewType}`;
 
     if (processedReviews.has(dedupKey)) {
@@ -314,7 +316,7 @@ async function dailyReviewCron(): Promise<void> {
 
     const start = Date.now();
     try {
-      await dailyReviewForClient(client.userId, isMorning, isEvening);
+      await dailyReviewForClient(client.userId, isMorning, isEvening, isAfternoon);
       processedReviews.set(dedupKey, true);
       processed++;
       logger.info(
@@ -344,7 +346,8 @@ async function dailyReviewCron(): Promise<void> {
 export async function dailyReviewForClient(
   userId: string,
   isMorningReview: boolean = false,
-  isEveningReview: boolean = false
+  isEveningReview: boolean = false,
+  isAfternoonReview: boolean = false
 ): Promise<void> {
   const startTime = Date.now();
 
@@ -861,6 +864,29 @@ export async function dailyReviewForClient(
         } catch (err) {
           logger.error({ err, userId }, "Failed to send WORKOUT_NOT_LOGGED message");
         }
+      }
+    }
+  }
+
+  // ── Step 7c: PC AFTERNOON CHECK-IN (~2pm) ───────────────────
+  // Private Coaching only, always-auto-send like PC_DAILY_PUSH — asks how
+  // the day went and links straight to today's check-in. Not conditional
+  // on whether they already logged this morning's readiness check-in;
+  // this is a separate afternoon touchpoint, not a duplicate reminder.
+
+  if (sub && sub.planTier === "PRIVATE_COACHING" && isPcDailyPushEnabled() && isAfternoonReview) {
+    const existingAfternoonCheckin = await prisma.messageLog.findFirst({
+      where: { userId, category: "PC_AFTERNOON_CHECKIN", sentAt: { gte: today }, ...NOT_PENDING_TRIGGER },
+    });
+
+    if (!existingAfternoonCheckin) {
+      try {
+        await messagingService.sendMessage(userId, "PC_AFTERNOON_CHECKIN", "SMS", {
+          firstName: profile.firstName,
+          checkInLink: `${env.FRONTEND_URL}/dashboard.html`,
+        });
+      } catch (err) {
+        logger.error({ err, userId }, "Failed to send PC_AFTERNOON_CHECKIN message");
       }
     }
   }

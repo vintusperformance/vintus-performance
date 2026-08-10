@@ -40,7 +40,7 @@ interface MessageContext {
 // skipped entirely in favor of reusing an existing template, since a
 // freeform AI-generated message isn't guaranteed to include content this
 // category's recipients depend on (e.g. PC_DAILY_PUSH's dashboard link).
-const NO_REVIEW_CATEGORIES = new Set(["PC_DAILY_PUSH"]);
+const NO_REVIEW_CATEGORIES = new Set(["PC_DAILY_PUSH", "PC_AFTERNOON_CHECKIN"]);
 
 interface SendResult {
   messageId: string;
