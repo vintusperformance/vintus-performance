@@ -564,7 +564,10 @@ router.post(
       const userId = req.params.userId as string;
       const start = Date.now();
 
-      await dailyReviewForClient(userId);
+      // Simulate a real morning review by default so admin-triggered test
+      // runs actually exercise the morning-only steps (DAILY_WORKOUT_ALERT /
+      // PC_DAILY_PUSH) instead of silently skipping them.
+      await dailyReviewForClient(userId, true, false);
 
       res.status(200).json({
         success: true,
