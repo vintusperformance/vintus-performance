@@ -14,7 +14,7 @@ import type { RoutineQuestionnaire, NutritionIntake } from "../routes/schemas/on
 
 const SALT_ROUNDS = 12;
 
-// Bump this whenever the waiver text at legal/private-coaching-waiver-DRAFT.md
+// Bump this whenever the waiver text at legal/private-coaching-waiver.md
 // changes, so acceptance records stay tied to the exact version agreed to.
 export const CURRENT_WAIVER_VERSION = "2026-07-28-refund-terms";
 
