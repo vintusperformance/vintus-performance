@@ -136,6 +136,66 @@
     display: none;
 }
 
+/* Primary/secondary nav grouping — primary row reuses .admin-tab's own
+   active styling (bordered underline) via .admin-tab-content--active
+   already applied through the shared .admin-tab class; this adds the
+   distinct "section" look plus the lighter secondary row underneath. */
+.admin-primary-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--gray);
+    padding: 0.85rem 1.1rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-normal);
+}
+
+.admin-primary-tab:hover {
+    color: var(--off-white);
+}
+
+.admin-primary-tab--active {
+    color: var(--silver);
+    border-bottom-color: var(--silver);
+}
+
+.admin-subtabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.admin-subtab.admin-tab {
+    padding: 0.4rem 0.85rem;
+    font-size: 0.7rem;
+    border: 1px solid var(--border-color-hover);
+    border-bottom: 1px solid var(--border-color-hover);
+    color: var(--gray);
+    background: transparent;
+}
+
+.admin-subtab.admin-tab:hover {
+    border-color: var(--silver);
+    color: var(--silver);
+}
+
+.admin-subtab.admin-tab.admin-tab--active {
+    background: var(--silver);
+    border-color: var(--silver);
+    color: var(--black);
+}
+
 .admin-tab-content--active {
     display: block;
     animation: adminFadeIn 0.3s ease;
