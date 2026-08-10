@@ -51,6 +51,14 @@ const NOT_PENDING_TRIGGER = {
 // carrier spam-filtering risk for deliverability generally.
 const DAILY_SMS_CAP = 3;
 
+// ESCALATION stays on manual review even when AUTO_MESSAGING_ENABLED is on.
+// It's the at-risk-client signal — Anthony sees each one in the Actions
+// queue and can call the client instead of just texting them. Every other
+// category is safe to fully automate (see the template audit from the
+// PC_DAILY_PUSH rollout); this one is a deliberate, standing exception,
+// not a bug.
+const ALWAYS_MANUAL_REVIEW = new Set(["ESCALATION"]);
+
 async function triggerOrQueue(
   userId: string,
   category: string,
@@ -58,7 +66,7 @@ async function triggerOrQueue(
   context: Record<string, unknown>,
   description?: string
 ): Promise<void> {
-  if (isAutoMessagingEnabled()) {
+  if (isAutoMessagingEnabled() && !ALWAYS_MANUAL_REVIEW.has(category)) {
     if (channel === "SMS") {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
