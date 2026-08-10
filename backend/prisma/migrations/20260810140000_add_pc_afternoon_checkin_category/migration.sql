@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "MessageCategory" ADD VALUE 'PC_AFTERNOON_CHECKIN';

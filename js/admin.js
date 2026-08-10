@@ -2342,9 +2342,10 @@
       // Stats bar
       var statsEl = document.getElementById('msgStats');
       statsEl.innerHTML =
-        '<div class="admin-kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem;">' +
-          '<div class="admin-kpi"><span class="admin-kpi-label">Sent Today</span><span class="admin-kpi-value">' + stats.totalToday + '</span></div>' +
+        '<div class="admin-kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1rem;">' +
+          '<div class="admin-kpi"><span class="admin-kpi-label">Total Today</span><span class="admin-kpi-value">' + stats.totalToday + '</span></div>' +
           '<div class="admin-kpi"><span class="admin-kpi-label">Delivered</span><span class="admin-kpi-value" style="color:#4ade80;">' + stats.deliveredToday + '</span></div>' +
+          '<div class="admin-kpi"><span class="admin-kpi-label">Pending Approval</span><span class="admin-kpi-value" style="color:' + (stats.pendingToday > 0 ? '#fbbf24' : '#4ade80') + ';">' + stats.pendingToday + '</span></div>' +
           '<div class="admin-kpi"><span class="admin-kpi-label">Failed</span><span class="admin-kpi-value" style="color:' + (stats.failedToday > 0 ? '#f87171' : '#4ade80') + ';">' + stats.failedToday + '</span></div>' +
           '<div class="admin-kpi"><span class="admin-kpi-label">Delivery Rate</span><span class="admin-kpi-value">' + stats.deliveryRate + '%</span></div>' +
         '</div>';
@@ -2358,9 +2359,8 @@
         for (var i = 0; i < messages.length; i++) {
           var m = messages[i];
           var mName = m.user && m.user.athleteProfile ? esc(m.user.athleteProfile.firstName || '') + ' ' + esc(m.user.athleteProfile.lastName || '') : (m.user ? esc(m.user.email) : '—');
-          var failed = m.failedAt ? true : false;
-          var statusCls = failed ? 'admin-badge--canceled' : 'admin-badge--active';
-          var statusTxt = failed ? 'Failed' : 'Sent';
+          var statusCls = m.status === 'pending' ? 'admin-badge--pending-approval' : m.status === 'failed' ? 'admin-badge--canceled' : 'admin-badge--active';
+          var statusTxt = m.status === 'pending' ? 'Pending Approval' : m.status === 'failed' ? 'Failed' : 'Sent';
           var contentPreview = esc((m.content || '').substring(0, 80)) + ((m.content || '').length > 80 ? '...' : '');
           html += '<tr class="admin-table-clickable" data-userid="' + esc(m.userId) + '">' +
             '<td>' + mName.trim() + '</td>' +

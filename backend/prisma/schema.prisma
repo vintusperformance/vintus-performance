@@ -436,6 +436,7 @@ enum MessageCategory {
   RENEWAL_FOLLOWUP
   COACH_APPROVAL_REQUEST
   PC_DAILY_PUSH
+  PC_AFTERNOON_CHECKIN
 }
 
 // ============================================================
