@@ -220,6 +220,14 @@ Route work to the specialist rather than doing it inline. Each is a subagent in
   `Lead` (type `CONSULTATION`). A repeat request gets a popup and is routed to the
   $85 30-Minute Meeting instead. See `leads.service.ts` and `book.html`.
 - Don't spawn an agent to answer something already answered in this file.
+- **The 30-day daily content push (Aug 2026):** when Anthony types `content`
+  (or similar — "today's content," "next day"), read
+  `content/vintus-30-day-content-engine.md` first — it has the target-audience
+  definition, the full 30-day pillar-mapped calendar, the repurposing plan for
+  real top-performing posts, and the exact hand-off protocol
+  (`content-strategist` → `script-writer` → `short-form-optimizer`). Don't
+  re-derive strategy from scratch; that file is the persistent memory across
+  sessions. Mark each day used there as it ships.
 
 ### Connectors available in session
 
