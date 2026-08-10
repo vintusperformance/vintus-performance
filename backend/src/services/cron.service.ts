@@ -778,9 +778,12 @@ export async function dailyReviewForClient(
         // for this to be fully automated, scoped to this tier only).
         // Combines encouragement with today's training task and, when the
         // client has an active nutrition plan, today's nutrition guidance.
+        // Plain hyphens, not em dashes — an em dash pushes the whole SMS out
+        // of the GSM-7 character set into UCS-2, cutting the per-segment
+        // limit from 160 to 70 chars and often adding a billable segment.
         let tasksLine = isTrainingDay
-          ? `Today: ${sessionTitle} — ${duration || 0} min.`
-          : "Today is a rest day — recovery is part of the plan.";
+          ? `Today: ${sessionTitle} - ${duration || 0} min.`
+          : "Today is a rest day - recovery is part of the plan.";
 
         const nutritionPlan = await getActiveNutritionPlan(userId);
         if (nutritionPlan) {
@@ -791,6 +794,7 @@ export async function dailyReviewForClient(
           await messagingService.sendMessage(userId, "PC_DAILY_PUSH", "SMS", {
             firstName: profile.firstName,
             tasksLine,
+            dashboardLink: `${env.FRONTEND_URL}/dashboard.html`,
           });
         } catch (err) {
           logger.error({ err, userId }, "Failed to send PC_DAILY_PUSH message");

@@ -35,6 +35,13 @@ interface MessageContext {
   [key: string]: unknown;
 }
 
+// Categories that always send immediately with no admin approval step —
+// see triggerOrQueue/cron.service.ts. For these, the AI fallback below is
+// skipped entirely in favor of reusing an existing template, since a
+// freeform AI-generated message isn't guaranteed to include content this
+// category's recipients depend on (e.g. PC_DAILY_PUSH's dashboard link).
+const NO_REVIEW_CATEGORIES = new Set(["PC_DAILY_PUSH"]);
+
 interface SendResult {
   messageId: string;
   content: string;
@@ -179,6 +186,15 @@ export async function sendMessage(
   } else if (notOnCooldown.length > 0) {
     // Cooldown-passed but content-duped — still better than AI
     const selected = notOnCooldown[Math.floor(Math.random() * notOnCooldown.length)];
+    messageContent = interpolateTemplate(selected.content, fullContext);
+    templateId = selected.id;
+  } else if (NO_REVIEW_CATEGORIES.has(category) && channelCompatible.length > 0) {
+    // Pool exhausted, but this category always sends immediately with no
+    // admin review — never fall through to freeform AI generation below,
+    // since it isn't guaranteed to include this category's required
+    // content (e.g. PC_DAILY_PUSH's dashboard link). Reuse any template
+    // from the category instead, ignoring cooldown/dedup as a last resort.
+    const selected = channelCompatible[Math.floor(Math.random() * channelCompatible.length)];
     messageContent = interpolateTemplate(selected.content, fullContext);
     templateId = selected.id;
   } else {
