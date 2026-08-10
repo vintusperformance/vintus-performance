@@ -1020,26 +1020,26 @@ export const messageTemplates: Record<string, MessageTemplate[]> = {
 
   // ============================================================
   // PC_AFTERNOON_CHECKIN — Private Coaching only. Always-auto-send
-  // afternoon message asking how the day went and prompting the client to
+  // ~7pm message asking how the day went and prompting the client to
   // log today's check-in. {{checkInLink}} points straight to the dashboard.
   // ============================================================
   PC_AFTERNOON_CHECKIN: [
-    { id: "pcac-1", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, how's the day going so far? Log a quick check-in so the plan can account for it: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-2", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, a quick read on today helps calibrate what's next. Check in here: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-3", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Afternoon, {{firstName}}. However today's going, log it. That's how the plan stays accurate: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-4", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, 30 seconds on how today's gone so far is all it takes. Check in: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-5", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, checking in on your day. A quick log when you get a minute: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-6", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, a day that isn't logged is a day the plan can't see. Quick check-in: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-7", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Afternoon check-in, {{firstName}}. However it's going, log it. Accurate beats flattering: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-8", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, strong day or hard one, the log matters the same. Quick check-in here: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-9", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, how's it going today? Log it so the plan stays current: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-10", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, a minute now saves guesswork later. Check in on today: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-11", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Afternoon, {{firstName}}. Worth a quick check-in on where today stands: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-12", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, how's today shaping up? A quick check-in keeps the plan accurate: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-13", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, whatever today looks like, it's worth logging. Check in here: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-14", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, before the day gets away from you, a quick check-in: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-15", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Afternoon, {{firstName}}. Take 30 seconds and log where today stands: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
-    { id: "pcac-16", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, the plan gets sharper with today's read. Log it here: {{checkInLink}}", cooldownHours: 20, tags: ["afternoon", "private-coaching"] },
+    { id: "pcac-1", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, how'd today go? Log a quick check-in so the plan can account for it: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-2", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, a quick read on today helps calibrate what's next. Check in here: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-3", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Evening, {{firstName}}. However today went, log it. That's how the plan stays accurate: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-4", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, 30 seconds on how today went is all it takes. Check in: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-5", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, checking in on your day. A quick log when you get a minute: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-6", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, a day that isn't logged is a day the plan can't see. Quick check-in: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-7", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Evening check-in, {{firstName}}. However today went, log it. Accurate beats flattering: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-8", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, strong day or hard one, the log matters the same. Quick check-in here: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-9", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, how's it going today? Log it so the plan stays current: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-10", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, a minute now saves guesswork later. Check in on today: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-11", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Evening, {{firstName}}. Worth a quick check-in on how today went: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-12", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, how's today shaping up? A quick check-in keeps the plan accurate: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-13", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Hey {{firstName}}, whatever today looks like, it's worth logging. Check in here: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-14", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, before the day gets away from you, a quick check-in: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-15", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "Evening, {{firstName}}. Take 30 seconds and log how today went: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
+    { id: "pcac-16", category: "PC_AFTERNOON_CHECKIN", channel: "SMS" as const, content: "{{firstName}}, the plan gets sharper with today's read. Log it here: {{checkInLink}}", cooldownHours: 20, tags: ["evening", "private-coaching"] },
   ],
 
   // ============================================================
