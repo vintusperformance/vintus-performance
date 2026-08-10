@@ -112,6 +112,59 @@
     });
   });
 
+  /* ── Primary/Secondary Nav Grouping ──
+     Purely a navigation-layer grouping on top of the tab logic above —
+     doesn't change which content loads or how, just organizes the 11
+     underlying tabs into 6 top-level destinations so there's less to
+     scan at a glance. */
+  var primaryTabs = document.querySelectorAll('.admin-primary-tab');
+  var subtabGroups = document.querySelectorAll('.admin-subtabs');
+
+  function setActivePrimary(groupName) {
+    primaryTabs.forEach(function (p) {
+      var isMatch = (p.getAttribute('data-group') === groupName) || (p.getAttribute('data-tab') === groupName);
+      p.classList.toggle('admin-primary-tab--active', isMatch);
+    });
+  }
+
+  function showSubgroup(groupName) {
+    subtabGroups.forEach(function (g) {
+      g.style.display = (g.getAttribute('data-subgroup') === groupName) ? '' : 'none';
+    });
+  }
+
+  // Group toggle buttons (Command / Clients / Tools)
+  document.querySelectorAll('.admin-primary-tab[data-group]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var group = btn.getAttribute('data-group');
+      setActivePrimary(group);
+      showSubgroup(group);
+      var groupEl = document.querySelector('.admin-subtabs[data-subgroup="' + group + '"]');
+      var alreadyActiveChild = groupEl && groupEl.querySelector('.admin-tab--active');
+      if (!alreadyActiveChild) {
+        var firstChild = groupEl && groupEl.querySelector('.admin-tab');
+        if (firstChild) firstChild.click();
+      }
+    });
+  });
+
+  // Single-tab primaries (Actions / Messaging / CRM) — hide whichever
+  // subgroup row was showing and sync the primary row's active state.
+  document.querySelectorAll('.admin-primary-tab.admin-tab[data-tab]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setActivePrimary(btn.getAttribute('data-tab'));
+      subtabGroups.forEach(function (g) { g.style.display = 'none'; });
+    });
+  });
+
+  // Any subtab click syncs its parent group's primary button to active.
+  document.querySelectorAll('.admin-subtab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var parentGroup = btn.closest('.admin-subtabs');
+      if (parentGroup) setActivePrimary(parentGroup.getAttribute('data-subgroup'));
+    });
+  });
+
   function showTabLoading(name) {
     var shimmerHtml = '<div class="admin-loading" style="height:40px;margin-bottom:0.75rem;"></div>' +
       '<div class="admin-loading" style="height:40px;margin-bottom:0.75rem;"></div>' +

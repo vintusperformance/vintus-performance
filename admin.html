@@ -54,19 +54,30 @@
             </div>
         </div>
 
-        <!-- Tabs -->
+        <!-- Primary Tabs -->
         <div class="admin-tabs">
-            <button class="admin-tab admin-tab--active" data-tab="command">Command</button>
-            <button class="admin-tab" data-tab="overview">Overview</button>
-            <button class="admin-tab" data-tab="actions">Actions <span id="actionBadge" class="admin-pending-badge" style="display:none;"></span></button>
-            <button class="admin-tab" data-tab="clients">Clients <span id="pendingBadge" class="admin-pending-badge" style="display:none;"></span></button>
-            <button class="admin-tab" data-tab="messaging">Messaging</button>
-            <button class="admin-tab" data-tab="adherence">Adherence</button>
-            <button class="admin-tab" data-tab="escalations">Escalations</button>
-            <button class="admin-tab" data-tab="upcomingCalls">Upcoming Calls</button>
-            <button class="admin-tab" data-tab="crm">CRM</button>
-            <button class="admin-tab" data-tab="exerciseVideos">Exercise Videos <span id="videoReviewBadge" class="admin-pending-badge" style="display:none;"></span></button>
-            <button class="admin-tab" data-tab="billingAudit">Billing Audit <span id="billingAuditBadge" class="admin-pending-badge" style="display:none;"></span></button>
+            <button class="admin-primary-tab admin-primary-tab--active" data-group="command">Command</button>
+            <button class="admin-tab admin-primary-tab" data-tab="actions">Actions <span id="actionBadge" class="admin-pending-badge" style="display:none;"></span></button>
+            <button class="admin-primary-tab" data-group="clients">Clients <span id="pendingBadge" class="admin-pending-badge" style="display:none;"></span></button>
+            <button class="admin-tab admin-primary-tab" data-tab="messaging">Messaging</button>
+            <button class="admin-tab admin-primary-tab" data-tab="crm">CRM</button>
+            <button class="admin-primary-tab" data-group="tools">Tools <span id="videoReviewBadge" class="admin-pending-badge" style="display:none;"></span> <span id="billingAuditBadge" class="admin-pending-badge" style="display:none;"></span></button>
+        </div>
+
+        <!-- Secondary Tabs (shown per primary group) -->
+        <div class="admin-subtabs" data-subgroup="command">
+            <button class="admin-tab admin-subtab admin-tab--active" data-tab="command">Today</button>
+            <button class="admin-tab admin-subtab" data-tab="overview">Business</button>
+        </div>
+        <div class="admin-subtabs" data-subgroup="clients" style="display:none;">
+            <button class="admin-tab admin-subtab" data-tab="clients">All Clients</button>
+            <button class="admin-tab admin-subtab" data-tab="adherence">Adherence</button>
+            <button class="admin-tab admin-subtab" data-tab="escalations">Escalations</button>
+            <button class="admin-tab admin-subtab" data-tab="upcomingCalls">Upcoming Calls</button>
+        </div>
+        <div class="admin-subtabs" data-subgroup="tools" style="display:none;">
+            <button class="admin-tab admin-subtab" data-tab="exerciseVideos">Exercise Videos</button>
+            <button class="admin-tab admin-subtab" data-tab="billingAudit">Billing Audit</button>
         </div>
 
         <!-- Tab Content -->
