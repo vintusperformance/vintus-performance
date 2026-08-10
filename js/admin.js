@@ -2180,10 +2180,11 @@
 
   async function loadActionQueue() {
     try {
-      // Load triggers and action queue in parallel
+      // Load triggers, action queue, and current auto-messaging state in parallel
       var results = await Promise.all([
         apiGet('/api/v1/admin/triggers'),
-        apiGet('/api/v1/admin/action-queue')
+        apiGet('/api/v1/admin/action-queue'),
+        apiGet('/api/v1/admin/feature-flags')
       ]);
       var triggers = (results[0].data && results[0].data.triggers) || [];
       var d = results[1].data || {};
@@ -2191,6 +2192,14 @@
       d.endingSoon = d.endingSoon || [];
       d.completedPlans = d.completedPlans || [];
       d.unresolvedEscalations = d.unresolvedEscalations || [];
+      var autoMessagingOn = results[2].data && results[2].data.autoMessagingEnabled;
+
+      var statusNoteEl = document.getElementById('triggersStatusNote');
+      if (statusNoteEl) {
+        statusNoteEl.textContent = autoMessagingOn
+          ? 'Auto-messaging is ON. Only Escalations still queue here for manual review — everything else sends automatically. Click Send to fire, or Dismiss to skip.'
+          : 'Auto-messaging is OFF. Messages are queued here for manual review. Click Send to fire, or Dismiss to skip.';
+      }
 
       // Message Triggers
       var tEl = document.getElementById('aqTriggers');
