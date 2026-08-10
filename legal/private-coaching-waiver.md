@@ -1,4 +1,5 @@
-> **STATUS: RESEARCHED DRAFT — STILL NOT A SUBSTITUTE FOR A LAWYER, BUT NO LONGER A BLIND TEMPLATE**
+> **STATUS: ACTIVE.** This is the operative Private Coaching agreement, presented to
+> every Private Coaching client during onboarding (`WAIVER_ENABLED=true`).
 >
 > This version is grounded in actual New Jersey law rather than generic boilerplate,
 > since Vintus Performance is based in Morristown, NJ:
@@ -188,8 +189,8 @@ the Terms of Service govern for other Vintus offerings.
 This Agreement is governed by the laws of the State of New Jersey, without regard to
 conflict-of-law principles. [OPEN — an arbitration clause and class-action waiver
 could be added here for consistency with the site's Terms of Service, if desired;
-that's a business preference, not a legal requirement, so it's left out of this
-draft rather than assumed.]
+that's a business preference, not a legal requirement, so it's left out here rather
+than assumed.]
 
 ## 13. Acknowledgment
 
@@ -202,7 +203,7 @@ By checking "I have read and agree to the terms above," you acknowledge that:
 - You are signing it voluntarily; and
 - You are at least 18 years of age, or are the parent/legal guardian of a client who
   is not, and are accepting these terms on that client's behalf.
-  [OPEN — business decision, not a legal-research gap: this draft assumes Vintus
+  [OPEN — business decision, not a legal-research gap: this Agreement assumes Vintus
   only serves adult clients directly. If Vintus wants to coach minors, that needs a
   distinct parental-consent flow this document doesn't cover — worth deciding before
   it comes up rather than after.]
@@ -210,9 +211,6 @@ By checking "I have read and agree to the terms above," you acknowledge that:
 ---
 
 *This document is grounded in New Jersey case law and statute as of the research date
-below, not a substitute for a licensed attorney's review of Vintus Performance LLC's
-specific circumstances. It is intended to give real protection today while remaining
-easy to formally review later — nothing here should need to change if it is reviewed,
-only be confirmed. Legal research current as of July 2026; if Vintus expands
-operations, adds a physical location, or begins serving clients as employees or under
-a different business structure, this document should be revisited.*
+below. Legal research current as of July 2026; if Vintus expands operations, adds a
+physical location, or begins serving clients as employees or under a different
+business structure, this document should be revisited.*

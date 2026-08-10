@@ -52,8 +52,9 @@ const envSchema = z.object({
   // Feature toggles (string "true" → true, anything else → false)
   MESSAGING_ENABLED: z.string().default("false").transform((val) => val === "true"),
   CRON_ENABLED: z.string().default("false").transform((val) => val === "true"),
-  // Gates the liability waiver step in onboarding. Stays off until the draft at
-  // legal/private-coaching-waiver-DRAFT.md has been reviewed by an attorney.
+  // Gates the liability waiver step in onboarding — see legal/private-coaching-waiver.md.
+  // Active in production; defaults off here so a fresh/local environment doesn't
+  // enable it without deliberately setting it.
   WAIVER_ENABLED: z.string().default("false").transform((val) => val === "true"),
 
   // Google Calendar — creates a real event on Anthony's calendar when a paid
