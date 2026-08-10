@@ -435,6 +435,7 @@ enum MessageCategory {
   PLAN_COMPLETED
   RENEWAL_FOLLOWUP
   COACH_APPROVAL_REQUEST
+  PC_DAILY_PUSH
 }
 
 // ============================================================

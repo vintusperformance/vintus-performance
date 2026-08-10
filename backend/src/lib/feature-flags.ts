@@ -11,6 +11,7 @@ interface FeatureFlags {
   cronEnabled: boolean;
   autoMessagingEnabled: boolean;
   waiverEnabled: boolean;
+  pcDailyPushEnabled: boolean;
 }
 
 const flags: FeatureFlags = {
@@ -18,6 +19,7 @@ const flags: FeatureFlags = {
   cronEnabled: process.env.CRON_ENABLED === "true",
   autoMessagingEnabled: process.env.AUTO_MESSAGING_ENABLED === "true",
   waiverEnabled: process.env.WAIVER_ENABLED === "true",
+  pcDailyPushEnabled: process.env.PC_DAILY_PUSH_ENABLED === "true",
 };
 
 export function getFlags(): FeatureFlags {
@@ -57,4 +59,14 @@ export function isAutoMessagingEnabled(): boolean {
  */
 export function isWaiverEnabled(): boolean {
   return flags.waiverEnabled;
+}
+
+/**
+ * Check if the automatic Private Coaching daily morning push is enabled
+ * (used by cron.service.ts). When on, this message always sends immediately
+ * for PRIVATE_COACHING clients — it does not go through triggerOrQueue's
+ * manual-approval gate.
+ */
+export function isPcDailyPushEnabled(): boolean {
+  return flags.pcDailyPushEnabled;
 }

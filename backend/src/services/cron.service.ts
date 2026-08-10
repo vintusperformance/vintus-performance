@@ -12,8 +12,9 @@ import * as readinessService from "./readiness.service.js";
 import * as adminService from "./admin.service.js";
 import { sendSMS } from "../lib/twilio.js";
 import { PAID_SESSION_CATALOG } from "../data/paid-sessions.js";
+import { getActiveNutritionPlan } from "./nutrition.service.js";
 
-import { isAutoMessagingEnabled, isCronEnabled } from "../lib/feature-flags.js";
+import { isAutoMessagingEnabled, isCronEnabled, isPcDailyPushEnabled } from "../lib/feature-flags.js";
 
 // ============================================================
 // Auto-messaging toggle — when false, messages are queued as
@@ -22,8 +23,19 @@ import { isAutoMessagingEnabled, isCronEnabled } from "../lib/feature-flags.js";
 // ============================================================
 
 // Exclude pending triggers from dedup queries — pending triggers have sentAt set
-// by Prisma's @default(now()) but haven't actually been sent yet
-const NOT_PENDING_TRIGGER = { NOT: { failureReason: { startsWith: "PENDING_TRIGGER:" } } } as const;
+// by Prisma's @default(now()) but haven't actually been sent yet.
+// Must explicitly allow failureReason IS NULL (the normal case for a message
+// that sent successfully): `NOT { startsWith }` alone compiles to SQL
+// `NOT (failureReason LIKE 'PENDING_TRIGGER:%')`, which evaluates to NULL —
+// not TRUE — for a NULL column, so it would silently exclude every
+// successfully-sent message from these "already sent today" dedup checks
+// and cause duplicate sends on every cron tick.
+const NOT_PENDING_TRIGGER = {
+  OR: [
+    { failureReason: null },
+    { NOT: { failureReason: { startsWith: "PENDING_TRIGGER:" } } },
+  ],
+};
 
 /**
  * Queue a message as a pending trigger instead of sending immediately.
@@ -689,7 +701,11 @@ export async function dailyReviewForClient(
   // ── Step 5: DAILY MOTIVATION ────────────────────────────────
 
   const planTier = user.subscription?.planTier;
-  if (planTier) {
+  // Private Coaching clients get their own daily encouragement via
+  // PC_DAILY_PUSH (Step 7 below) when that's enabled — skip this generic
+  // one for them so they don't get two "good morning" texts.
+  const skipMotivationForPc = planTier === "PRIVATE_COACHING" && isPcDailyPushEnabled();
+  if (planTier && !skipMotivationForPc) {
     // 70% chance (prevents message fatigue)
     if (Math.random() < 0.7) {
       // Skip if too many messages already sent today
@@ -722,9 +738,17 @@ export async function dailyReviewForClient(
     const dayNumber = Math.max(1, Math.ceil((today.getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000)) + 1);
     const totalDays = Math.ceil((new Date(sub.currentPeriodEnd).getTime() - new Date(sub.currentPeriodStart).getTime()) / (24 * 60 * 60 * 1000));
 
-    // Check if we already sent a daily alert today
+    const isPrivateCoachingPush = sub.planTier === "PRIVATE_COACHING" && isPcDailyPushEnabled();
+
+    // Check if we already sent a daily alert today (covers whichever
+    // category this tier/branch actually sends)
     const existingDailyAlert = await prisma.messageLog.findFirst({
-      where: { userId, category: "DAILY_WORKOUT_ALERT", sentAt: { gte: today }, ...NOT_PENDING_TRIGGER },
+      where: {
+        userId,
+        category: { in: isPrivateCoachingPush ? ["PC_DAILY_PUSH"] : ["DAILY_WORKOUT_ALERT", "PLAN_MILESTONE"] },
+        sentAt: { gte: today },
+        ...NOT_PENDING_TRIGGER,
+      },
     });
 
     if (!existingDailyAlert && dayNumber <= totalDays) {
@@ -738,46 +762,72 @@ export async function dailyReviewForClient(
       };
       const planTierDisplay = TIER_DISPLAY[sub.planTier] || sub.planTier;
 
-      // Check for milestone day (overrides normal daily)
-      const quarter = Math.round(totalDays * 0.25);
-      const half = Math.round(totalDays * 0.5);
-      const threeQuarter = Math.round(totalDays * 0.75);
-      const isMilestone = dayNumber === 1 || dayNumber === quarter || dayNumber === half || dayNumber === threeQuarter || dayNumber === totalDays - 1 || dayNumber === totalDays;
+      const todaySessions = activePlan?.sessions.filter((s) => {
+        const sd = new Date(s.scheduledDate);
+        sd.setUTCHours(0, 0, 0, 0);
+        return sd.getTime() === today.getTime();
+      }) ?? [];
 
-      if (isMilestone) {
+      const isTrainingDay = todaySessions.length > 0;
+      const sessionTitle = isTrainingDay ? todaySessions[0].title : undefined;
+      const duration = isTrainingDay ? todaySessions[0].prescribedDuration : undefined;
+
+      if (isPrivateCoachingPush) {
+        // Private Coaching: one automatic morning SMS, every day (no
+        // milestone branching, no manual-approval queue — Anthony asked
+        // for this to be fully automated, scoped to this tier only).
+        // Combines encouragement with today's training task and, when the
+        // client has an active nutrition plan, today's nutrition guidance.
+        let tasksLine = isTrainingDay
+          ? `Today: ${sessionTitle} — ${duration || 0} min.`
+          : "Today is a rest day — recovery is part of the plan.";
+
+        const nutritionPlan = await getActiveNutritionPlan(userId);
+        if (nutritionPlan) {
+          tasksLine += ` Nutrition target: ${nutritionPlan.dailyCalories} cal, ${nutritionPlan.proteinG}g protein.`;
+        }
+
         try {
-          await triggerOrQueue(userId, "PLAN_MILESTONE", "SMS", {
+          await messagingService.sendMessage(userId, "PC_DAILY_PUSH", "SMS", {
             firstName: profile.firstName,
-            dayNumber,
-            totalDays,
-            planTierDisplay,
+            tasksLine,
           });
         } catch (err) {
-          logger.error({ err, userId }, "Failed to send PLAN_MILESTONE message");
+          logger.error({ err, userId }, "Failed to send PC_DAILY_PUSH message");
         }
       } else {
-        // Regular daily alert — training day or rest day
-        const todaySessions = activePlan?.sessions.filter((s) => {
-          const sd = new Date(s.scheduledDate);
-          sd.setUTCHours(0, 0, 0, 0);
-          return sd.getTime() === today.getTime();
-        }) ?? [];
+        // Check for milestone day (overrides normal daily) — unchanged
+        // behavior for all other tiers, still gated by triggerOrQueue's
+        // manual-approval flag.
+        const quarter = Math.round(totalDays * 0.25);
+        const half = Math.round(totalDays * 0.5);
+        const threeQuarter = Math.round(totalDays * 0.75);
+        const isMilestone = dayNumber === 1 || dayNumber === quarter || dayNumber === half || dayNumber === threeQuarter || dayNumber === totalDays - 1 || dayNumber === totalDays;
 
-        const isTrainingDay = todaySessions.length > 0;
-        const sessionTitle = isTrainingDay ? todaySessions[0].title : undefined;
-        const duration = isTrainingDay ? todaySessions[0].prescribedDuration : undefined;
-
-        try {
-          await triggerOrQueue(userId, "DAILY_WORKOUT_ALERT", "SMS", {
-            firstName: profile.firstName,
-            dayNumber,
-            totalDays,
-            sessionTitle: sessionTitle || "Rest",
-            duration: duration || 0,
-            planTierDisplay,
-          });
-        } catch (err) {
-          logger.error({ err, userId }, "Failed to send DAILY_WORKOUT_ALERT message");
+        if (isMilestone) {
+          try {
+            await triggerOrQueue(userId, "PLAN_MILESTONE", "SMS", {
+              firstName: profile.firstName,
+              dayNumber,
+              totalDays,
+              planTierDisplay,
+            });
+          } catch (err) {
+            logger.error({ err, userId }, "Failed to send PLAN_MILESTONE message");
+          }
+        } else {
+          try {
+            await triggerOrQueue(userId, "DAILY_WORKOUT_ALERT", "SMS", {
+              firstName: profile.firstName,
+              dayNumber,
+              totalDays,
+              sessionTitle: sessionTitle || "Rest",
+              duration: duration || 0,
+              planTierDisplay,
+            });
+          } catch (err) {
+            logger.error({ err, userId }, "Failed to send DAILY_WORKOUT_ALERT message");
+          }
         }
       }
     }

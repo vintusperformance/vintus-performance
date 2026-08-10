@@ -57,6 +57,13 @@ const envSchema = z.object({
   // enable it without deliberately setting it.
   WAIVER_ENABLED: z.string().default("false").transform((val) => val === "true"),
 
+  // Gates the automatic daily morning SMS push for Private Coaching clients
+  // (see cron.service.ts dailyReviewForClient, Step 7). Unlike other message
+  // categories, this one always sends immediately — it does not queue for
+  // admin approval — so it defaults off here and must be deliberately
+  // enabled in Railway.
+  PC_DAILY_PUSH_ENABLED: z.string().default("false").transform((val) => val === "true"),
+
   // Google Calendar — creates a real event on Anthony's calendar when a paid
   // session's payment clears. Stays off until the one-time OAuth authorization
   // (GET /api/v1/admin/google-calendar/auth) has been completed and the
