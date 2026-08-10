@@ -437,6 +437,8 @@ enum MessageCategory {
   COACH_APPROVAL_REQUEST
   PC_DAILY_PUSH
   PC_AFTERNOON_CHECKIN
+  TRAINING_DAILY_PUSH
+  NUTRITION_DAILY_PUSH
 }
 
 // ============================================================

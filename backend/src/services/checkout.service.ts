@@ -267,7 +267,7 @@ async function handleCheckoutCompleted(
     const isFirstPurchase = !existingProfile || (!existingProfile.wakeTime && !existingProfile.mealsPerDay);
     if (isFirstPurchase) {
       try {
-        await sendWelcomeSequence(userId);
+        await sendWelcomeSequence(userId, "nutrition");
       } catch (err) {
         logger.error({ err, userId }, "Welcome sequence failed after nutrition checkout");
       }
