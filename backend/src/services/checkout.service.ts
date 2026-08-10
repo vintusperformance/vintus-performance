@@ -458,21 +458,63 @@ export async function createPortalSession(
     where: { userId },
   });
 
-  if (!subscription?.stripeCustomerId) {
+  if (!subscription) {
     const err = new Error("No active subscription found") as Error & { statusCode?: number };
     err.statusCode = 404;
     throw err;
   }
 
-  // Portal only available for recurring subscriptions (Private Coaching)
-  if (!subscription.stripeSubscriptionId) {
+  // Portal only available for recurring subscriptions (Private Coaching) —
+  // gated on the actual product tier, not on whether a Stripe ID happens to
+  // be saved (that can be missing for reasons unrelated to which tier this is).
+  if (subscription.planTier !== "PRIVATE_COACHING") {
     const err = new Error("Subscription management is only available for Private Coaching") as Error & { statusCode?: number };
     err.statusCode = 400;
     throw err;
   }
 
+  let stripeCustomerId = subscription.stripeCustomerId;
+
+  // Self-heal: the customer ID should always have been saved from the
+  // original checkout, but a client can end up without one (e.g. a plan
+  // change applied by an admin action that never went through a real
+  // checkout). Stripe remains the source of truth regardless — look the
+  // customer up by account email rather than leaving a real, paying client
+  // unable to manage or cancel their own billing.
+  if (!stripeCustomerId) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        stripeCustomerId = customers.data[0].id;
+
+        // Backfill so this lookup isn't needed again — also grab the
+        // matching active subscription ID while we're at it, if one exists.
+        const activeSubs = await stripe.subscriptions.list({
+          customer: stripeCustomerId,
+          status: "active",
+          limit: 1,
+        });
+        await prisma.subscription.update({
+          where: { userId },
+          data: {
+            stripeCustomerId,
+            ...(activeSubs.data[0] ? { stripeSubscriptionId: activeSubs.data[0].id } : {}),
+          },
+        });
+        logger.info({ userId, stripeCustomerId }, "Backfilled missing Stripe customer ID for billing portal");
+      }
+    }
+  }
+
+  if (!stripeCustomerId) {
+    const err = new Error("No active subscription found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
   const session = await stripe.billingPortal.sessions.create({
-    customer: subscription.stripeCustomerId,
+    customer: stripeCustomerId,
     return_url: env.FRONTEND_URL,
   });
 
