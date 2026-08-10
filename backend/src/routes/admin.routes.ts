@@ -126,12 +126,12 @@ router.put(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { flag, value } = req.body;
-      const validFlags = ["messagingEnabled", "cronEnabled", "autoMessagingEnabled"];
+      const validFlags = ["messagingEnabled", "cronEnabled", "autoMessagingEnabled", "pcDailyPushEnabled"];
       if (!validFlags.includes(flag) || typeof value !== "boolean") {
         res.status(400).json({ success: false, error: "Invalid flag or value" });
         return;
       }
-      setFlag(flag as "messagingEnabled" | "cronEnabled" | "autoMessagingEnabled", value);
+      setFlag(flag as "messagingEnabled" | "cronEnabled" | "autoMessagingEnabled" | "pcDailyPushEnabled", value);
       res.status(200).json({ success: true, data: getFlags() });
     } catch (err) {
       next(err);

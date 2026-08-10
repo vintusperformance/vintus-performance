@@ -897,6 +897,21 @@ export const messageTemplates: Record<string, MessageTemplate[]> = {
   ],
 
   // ============================================================
+  // PC_DAILY_PUSH — Private Coaching only. Always-auto-send morning
+  // message: encouragement + {{tasksLine}}, a pre-built sentence covering
+  // today's training session and (when available) nutrition guidance.
+  // ============================================================
+  PC_DAILY_PUSH: [
+    { id: "pcdp-1", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Stay disciplined, stay dominant. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-2", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, your only competition is yesterday. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-3", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. Precision over guesswork, every day. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-4", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, the standard doesn't move. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-5", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Morning, {{firstName}}. Show up, execute, repeat. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-6", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "{{firstName}}, consistency is the whole system. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+    { id: "pcdp-7", category: "PC_DAILY_PUSH", channel: "SMS" as const, content: "Good morning, {{firstName}}. You built this plan to remove the guesswork — trust it. {{tasksLine}}", cooldownHours: 20, tags: ["morning", "private-coaching"] },
+  ],
+
+  // ============================================================
   // WORKOUT_NOT_LOGGED — evening follow-up nudges
   // ============================================================
   WORKOUT_NOT_LOGGED: [
