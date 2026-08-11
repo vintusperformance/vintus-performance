@@ -198,11 +198,13 @@ comes from viewing his actual posts — only from public search results
 
 ---
 
-## 7. Andre Contreras ("Dre" Contreras)
+## 7. Andre Contreras ("Dre" Contreras) — dropped
 
-**Access level: very low — still flagging explicitly.** No handle provided
-yet. Multiple people share this name across Instagram/TikTok (a baker with
-500K+ followers under a similar handle, several unrelated Andre/Andres
+**Out of scope per Anthony (Aug 11): "that's all that matters, let's move
+forward."** Left unresolved by choice, not by access failure. Original
+access note preserved below for the record. Multiple people share this name
+across Instagram/TikTok (a baker with 500K+ followers under a similar
+handle, several unrelated Andre/Andres
 Contrerases), but none of the profiles surfaced match a major
 fitness/performance creator. **Recommend Anthony supply the exact handle**
 if this creator matters enough to the 30-day push to warrant a real
