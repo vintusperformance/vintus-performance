@@ -165,41 +165,72 @@ this profile.
 
 ---
 
-## 6. Sam Stoffel
+## 6. Sam Stoffel (@samstoffel)
 
-**Access level: low — flagging explicitly.** Search surfaced a "Sam Stoffel"
-associated with personal-branding and online-wealth content on TikTok, but I
-could not confirm this is a fitness-niche creator, could not confirm follower
-scale, and could not surface any specific hooks, captions, or sales
-mechanics attributable to this person with confidence. If Anthony has a
-specific account in mind, it isn't meaningfully indexed in public search
-results I have access to. **No claims below this line for this creator** —
-better to say the data isn't there than to guess.
+**Access level: moderate — handle confirmed by Anthony, identity resolved.**
+~350K followers. Not a fitness creator — a matched-betting entrepreneur who
+sold his business for an 8-figure exit and now teaches personal branding and
+content-to-business strategy, active across IG, TikTok, X, LinkedIn, and a
+Beehiiv newsletter ("helping you get rich with social media").
+
+- **Hook style:** Not directly observable (Instagram itself is network-blocked
+  for direct fetch in this environment — see note below), but his public X
+  posts show a consistent device: leading with failure/loss before the win
+  ("I lost millions on 4 failed business ventures before my 8-figure exit"),
+  i.e. vulnerability-as-hook, positioned against the highlight-reel norm.
+- **Psychology tactics:** Contrarian honesty (openly detailing what went
+  wrong, specific dollar figures on the losses too, not just the win) as a
+  credibility/differentiation device — most creators in his niche only show
+  the win. Same specificity-as-trust-lever pattern as Hormozi, applied to
+  failure narratives instead of frameworks.
+- **CTA pattern / sales mechanics:** Same structural shape as Hormozi and
+  Georgas — free personal-brand/storytelling content on social feeds a
+  separate owned funnel (the newsletter, paid courses). Content markets the
+  person; the newsletter and courses monetize the audience.
+- **Relevance flag:** Like Georgas, this is a creator-economy/personal-brand
+  comp, not a fitness comp. Useful for hook/CTA structure, not for anything
+  fitness-content-specific.
+
+**Note on access:** direct fetch of instagram.com is blocked at the network
+level in this environment (confirmed by a failed request), so nothing above
+comes from viewing his actual posts — only from public search results
+(his own X account, his newsletter landing page, third-party mentions).
 
 ---
 
 ## 7. Andre Contreras ("Dre" Contreras)
 
-**Access level: very low — flagging explicitly.** Multiple people share this
-name across Instagram/TikTok (a baker with 500K+ followers under a similar
-handle, several unrelated Andre/Andres Contrerases), but none of the profiles
-surfaced match a major fitness/performance creator. I could not identify the
-specific account Anthony means with any confidence. Rather than attribute a
-generic fitness-influencer playbook to an unverified identity, this section
-is intentionally left thin. **Recommend Anthony supply the exact handle** if
-this creator matters enough to the 30-day push to warrant a real breakdown.
+**Access level: very low — still flagging explicitly.** No handle provided
+yet. Multiple people share this name across Instagram/TikTok (a baker with
+500K+ followers under a similar handle, several unrelated Andre/Andres
+Contrerases), but none of the profiles surfaced match a major
+fitness/performance creator. **Recommend Anthony supply the exact handle**
+if this creator matters enough to the 30-day push to warrant a real
+breakdown.
 
 ---
 
-## 8. "It's Joao" (itsjoao)
+## 8. "It Is Joao" (@it.is.joao)
 
-**Access level: very low — flagging explicitly.** The only clearly indexed
-`@itsjoao` account (João Zuzarte, ~32K followers) is positioned around
-fashion, swimwear branding, and modeling — not fitness content in the sense
-relevant to Vintus. There may be a different, larger fitness-focused "itsjoao"
-account that simply isn't well indexed in public search, but I found no
-evidence of one. **Same recommendation as above** — confirm the exact handle
-before this gets weight in strategy decisions.
+**Access level: low — handle confirmed, content niche still unresolved.**
+Anthony's corrected handle (`it.is.joao`, not `itsjoao`) ruled out the
+wrong matches from the first pass (a Brazilian Roblox/gaming YouTuber, an
+unrelated swimwear/modeling account) and confirmed a real, distinct account
+exists — bio shows Brazilian/American flags, with reels as recently as
+April 2026. But repeated search could not surface a reliable third-party
+description of this specific account's content niche, hook style, or
+audience — it isn't well covered by press or breakdown content the way the
+other 7 are.
+
+**Direct access attempted and blocked:** I tried fetching the profile
+directly to read the bio/content myself; `instagram.com` is blocked at the
+network egress level in this environment, so that path is closed for every
+creator on this list, not just this one.
+
+**What would actually resolve this:** since search and direct fetch are both
+exhausted, the only way to get a real read on this account is for Anthony to
+paste 2-3 actual reel transcripts, screenshots, or send saved video files —
+then this section can get a genuine breakdown instead of staying a gap.
 
 ---
 
@@ -208,14 +239,17 @@ before this gets weight in strategy decisions.
 ### What's actually verifiable vs. not
 
 Of the 8, three are well-documented enough to draw real structural
-conclusions (**Hormozi**, **Sapp**, **Eubank**), two are moderately
-documented (**Pruett**, **Georgas** — though Georgas is likely a
-content-strategy comp, not a fitness comp), and three are effectively
-unverifiable through public search (**Stoffel**, **Contreras**, **itsjoao**).
-That last group shouldn't silently disappear from the plan — but nothing
-below should be attributed to their specific accounts. If they matter,
-Anthony should hand over exact handles/links next session so they can be
-looked at directly rather than searched for blind.
+conclusions (**Hormozi**, **Sapp**, **Eubank**), three are moderately
+documented (**Pruett**, **Georgas**, **Stoffel** — Georgas and Stoffel are
+both likely creator-economy/personal-brand comps, not fitness comps), and
+two remain effectively unverifiable (**Contreras** — no handle supplied yet;
+**itsjoao** — handle confirmed but content niche unresolved, and direct
+Instagram fetch is blocked at the network level in this environment, so
+search is the only path and it's now exhausted). Nothing above is attributed
+to Contreras or itsjoao's specific accounts. If they matter to the push,
+Anthony supplying Contreras's exact handle, or pasting actual reel
+transcripts/screenshots from @it.is.joao, is the only way either section
+gets real content instead of staying a gap.
 
 ### Cross-cutting patterns (the actual creator-economy playbook, structurally)
 
