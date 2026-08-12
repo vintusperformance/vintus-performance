@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 /**
  * Rate limiters for sensitive endpoints.
@@ -14,13 +14,20 @@ function getClientIp(req: Request): string {
   return req.ip || req.socket.remoteAddress || "unknown";
 }
 
+// Normalize IPv6 addresses to a /56 subnet key so an attacker can't bypass
+// the limit by rotating the suffix of their own address block — IPv4
+// addresses pass through unchanged. See express-rate-limit's ERR_ERL_KEY_GEN_IPV6.
+function rateLimitKey(req: Request): string {
+  return ipKeyGenerator(getClientIp(req));
+}
+
 /** POST /auth/login — 10 attempts per 15 min per IP */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getClientIp,
+  keyGenerator: rateLimitKey,
   message: { success: false, error: "Too many login attempts. Please try again in 15 minutes." },
 });
 
@@ -30,7 +37,7 @@ export const forgotPasswordLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getClientIp,
+  keyGenerator: rateLimitKey,
   message: { success: false, error: "Too many password reset requests. Please try again in 15 minutes." },
 });
 
@@ -40,7 +47,7 @@ export const chatSendLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getClientIp,
+  keyGenerator: rateLimitKey,
   message: { success: false, error: "Too many messages. Please slow down and try again shortly." },
 });
 
@@ -50,6 +57,6 @@ export const intakeFullLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getClientIp,
+  keyGenerator: rateLimitKey,
   message: { success: false, error: "Too many submissions. Please try again in 15 minutes." },
 });
