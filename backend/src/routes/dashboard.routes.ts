@@ -191,10 +191,12 @@ router.get(
       const userId = req.user!.userId;
       const weekOffset = parseInt(req.params.weekOffset as string, 10);
 
-      if (isNaN(weekOffset) || weekOffset < -52 || weekOffset > 4) {
+      // 12 weeks ahead covers a full 90-day Training plan generated upfront
+      // at purchase -- keep in sync with calendar.js's matching cap.
+      if (isNaN(weekOffset) || weekOffset < -52 || weekOffset > 12) {
         res.status(400).json({
           success: false,
-          error: "weekOffset must be a number between -52 and 4",
+          error: "weekOffset must be a number between -52 and 12",
         });
         return;
       }

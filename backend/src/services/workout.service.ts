@@ -83,6 +83,29 @@ function getBlockType(weekNumber: number): string {
   return "base"; // cycle restarts
 }
 
+// Fixed-duration Training tiers get their entire term generated upfront (see
+// generateInitialPlan) so a client can see every workout through their actual
+// finish date, not just the current week. PRIVATE_COACHING has no fixed end
+// date -- it stays on the existing weekly-rolling cron generation.
+function getTotalWeeksForTier(planTier: string | undefined): number | null {
+  switch (planTier) {
+    case "TRAINING_30DAY": return 4;
+    case "TRAINING_60DAY": return 8;
+    case "TRAINING_90DAY": return 12;
+    default: return null;
+  }
+}
+
+// Progressive-overload volume for a week that hasn't happened yet -- there's
+// no real adherence/readiness signal to react to (unlike generateNextWeek,
+// which adapts to how the *previous* week actually went), so this uses pure
+// periodization: a gentle ramp within each 4-week block, reset at deload.
+function getUpfrontVolumeMultiplier(weekNumber: number, blockType: string): number {
+  if (blockType === "deload") return 0.60;
+  const weekInBlock = ((weekNumber - 1) % 4) + 1; // 1, 2, 3 for base/build weeks (4 is always deload)
+  return 1 + (weekInBlock - 1) * 0.03;
+}
+
 // ============================================================
 // Helper: build session schedule from goal + training days
 // ============================================================
@@ -413,7 +436,101 @@ export async function generateInitialPlan(
     "Initial workout plan saved"
   );
 
-  return { planId: plan.id, sessionCount: sessionData.length, source, fallbackReason };
+  // Fixed-duration Training tiers get the rest of their term generated now,
+  // so the client can see every workout through their actual finish date
+  // instead of only the current week. Week 1 (above) stays the one AI/fallback
+  // call and the only isActive plan -- weeks 2+ are rule-based (periodization
+  // only, no adherence signal exists yet for weeks that haven't happened) and
+  // created inactive; cron.service.ts's weekly check activates each in turn
+  // as real time reaches it.
+  const totalWeeks = getTotalWeeksForTier(subscription?.planTier);
+  let totalSessionCount = sessionData.length;
+  if (totalWeeks && totalWeeks > 1) {
+    totalSessionCount += await generateUpfrontRemainingWeeks(profileId, profile, totalWeeks, endDate);
+  }
+
+  return { planId: plan.id, sessionCount: totalSessionCount, source, fallbackReason };
+}
+
+// ============================================================
+// generateUpfrontRemainingWeeks — weeks 2..N for fixed-duration tiers
+// ============================================================
+
+async function generateUpfrontRemainingWeeks(
+  profileId: string,
+  profile: { trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string },
+  totalWeeks: number,
+  week1EndDate: Date
+): Promise<number> {
+  const usedTemplateIds: string[] = [];
+  let sessionCount = 0;
+  let previousWeekStart = new Date(week1EndDate);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 6); // back to week 1's Monday
+
+  for (let weekNumber = 2; weekNumber <= totalWeeks; weekNumber++) {
+    const blockType = getBlockType(weekNumber);
+    const volumeMultiplier = getUpfrontVolumeMultiplier(weekNumber, blockType);
+
+    const weekStart = new Date(previousWeekStart);
+    weekStart.setDate(weekStart.getDate() + 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+    const sessionData = sessionSpecs.map((spec, index) => {
+      const { content, templateId } = buildSessionContent(
+        spec.type,
+        profile.equipmentAccess,
+        profile.experienceLevel,
+        usedTemplateIds,
+        volumeMultiplier
+      );
+      usedTemplateIds.push(templateId);
+
+      const dayGap = Math.floor(7 / sessionSpecs.length);
+      const sessionDate = new Date(weekStart);
+      sessionDate.setDate(sessionDate.getDate() + Math.min(index * dayGap, 6));
+
+      return {
+        scheduledDate: sessionDate,
+        scheduledOrder: index + 1,
+        sessionType: spec.type as SessionType,
+        title: spec.title,
+        description: `Week ${weekNumber}, Session ${index + 1} — ${spec.title}.${blockType === "deload" ? " Deload week: reduced volume and intensity." : ""}`,
+        prescribedDuration: content.estimatedDuration,
+        prescribedTSS: content.estimatedTSS,
+        content: { ...content, templateId } as unknown as Prisma.InputJsonValue,
+        status: "SCHEDULED" as const,
+      };
+    });
+
+    const plannedTSS = sessionData.reduce((sum, s) => sum + (s.prescribedTSS ?? 0), 0);
+    const blockLabel = blockType === "deload" ? "Deload" : blockType === "build" ? "Build Phase" : "Base Phase";
+
+    await prisma.workoutPlan.create({
+      data: {
+        athleteProfileId: profileId,
+        name: `Week ${weekNumber} — ${blockLabel}`,
+        weekNumber,
+        blockType,
+        startDate: weekStart,
+        endDate: weekEnd,
+        isActive: false,
+        plannedTSS,
+        sessions: { create: sessionData },
+      },
+    });
+
+    sessionCount += sessionData.length;
+    previousWeekStart = weekStart;
+  }
+
+  logger.info(
+    { profileId, totalWeeks, sessionCount },
+    "Upfront weeks 2+ generated for fixed-duration plan"
+  );
+
+  return sessionCount;
 }
 
 // ============================================================

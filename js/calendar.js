@@ -361,7 +361,9 @@
   });
 
   document.getElementById('calNext').addEventListener('click', function () {
-    if (currentWeekOffset < 4) loadWeek(currentWeekOffset + 1);
+    // 12 weeks ahead covers a full 90-day Training plan generated upfront at
+    // purchase -- keep in sync with dashboard.routes.ts's matching cap.
+    if (currentWeekOffset < 12) loadWeek(currentWeekOffset + 1);
   });
 
   // ── Helpers ──
