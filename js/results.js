@@ -216,6 +216,108 @@
     });
   });
 
+  // ── "What's Included" preview modal ──
+  var PREVIEW_CONFIG = {
+    PRIVATE_COACHING: {
+      title: 'Inside Private Coaching',
+      subtitle: "Nutrition guidance, a direct line to Anthony, and one weekly coaching call are all included at no extra charge — everything lives in your private dashboard.",
+      show: ['training', 'nutrition', 'progress', 'jerry', 'pc-text', 'pc-call'],
+      cta: 'Continue to Checkout'
+    },
+    TRAINING_30DAY: {
+      title: 'Inside Your 30-Day Training Plan',
+      subtitle: 'A look at your private dashboard — everything delivered there, never a PDF or email attachment.',
+      show: ['training', 'progress', 'jerry'],
+      cta: 'Select Plan'
+    },
+    TRAINING_60DAY: {
+      title: 'Inside Your 60-Day Training Plan',
+      subtitle: 'A look at your private dashboard — everything delivered there, never a PDF or email attachment.',
+      show: ['training', 'progress', 'jerry'],
+      cta: 'Select Plan'
+    },
+    TRAINING_90DAY: {
+      title: 'Inside Your 90-Day Training Plan',
+      subtitle: 'A look at your private dashboard — everything delivered there, never a PDF or email attachment.',
+      show: ['training', 'progress', 'jerry'],
+      cta: 'Select Plan'
+    },
+    NUTRITION_4WEEK: {
+      title: 'Inside Your 4-Week Nutrition Plan',
+      subtitle: 'A look at your private dashboard — everything delivered there, never a PDF or email attachment.',
+      show: ['nutrition', 'jerry'],
+      cta: 'Select Plan'
+    },
+    NUTRITION_8WEEK: {
+      title: 'Inside Your 8-Week Nutrition Plan',
+      subtitle: 'A look at your private dashboard — everything delivered there, never a PDF or email attachment.',
+      show: ['nutrition', 'jerry'],
+      cta: 'Select Plan'
+    }
+  };
+
+  var previewOverlay = document.getElementById('previewModalOverlay');
+  var previewTitle = document.getElementById('previewModalTitle');
+  var previewSubtitle = document.getElementById('previewModalSubtitle');
+  var previewCta = document.getElementById('previewModalCta');
+  var previewClose = document.getElementById('previewModalClose');
+  var allPreviewCards = document.querySelectorAll('.preview-card');
+  var activePreviewTier = null;
+
+  function openPreview(tier) {
+    var config = PREVIEW_CONFIG[tier];
+    if (!config || !previewOverlay) return;
+
+    activePreviewTier = tier;
+    previewTitle.textContent = config.title;
+    previewSubtitle.textContent = config.subtitle;
+    previewCta.textContent = config.cta;
+
+    allPreviewCards.forEach(function (card) {
+      var key = card.getAttribute('data-preview');
+      var visible = config.show.indexOf(key) !== -1;
+      card.classList.toggle('preview-card--visible', visible);
+      // Non-PC-only cards use plain display via the visible class too,
+      // so both card types share one visibility mechanism.
+      card.style.display = visible ? '' : 'none';
+    });
+
+    previewOverlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePreview() {
+    if (!previewOverlay) return;
+    previewOverlay.classList.remove('active');
+    document.body.style.overflow = '';
+    activePreviewTier = null;
+  }
+
+  document.querySelectorAll('.plan-preview-link').forEach(function (link) {
+    link.addEventListener('click', function () {
+      openPreview(this.getAttribute('data-tier'));
+    });
+  });
+
+  if (previewClose) previewClose.addEventListener('click', closePreview);
+  if (previewOverlay) {
+    previewOverlay.addEventListener('click', function (e) {
+      if (e.target === previewOverlay) closePreview();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePreview();
+  });
+
+  if (previewCta) {
+    previewCta.addEventListener('click', function () {
+      if (!activePreviewTier) return;
+      var targetBtn = document.querySelector('.plan-select[data-tier="' + activePreviewTier + '"]');
+      closePreview();
+      if (targetBtn) targetBtn.click();
+    });
+  }
+
   function showError(msg) {
     loadingEl.style.display = 'none';
     errorMsg.textContent = msg;

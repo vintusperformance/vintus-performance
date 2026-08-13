@@ -54,11 +54,11 @@ export const routineQuestionnaireSchema = z.object({
   exercisesHated: z.string().max(500).optional(),
 
   // Lifestyle
-  workType: z.enum(["desk", "on-feet", "physical-labor", "mixed", "remote"]).optional(),
+  workType: z.enum(["desk", "on-feet", "physical-labor", "mixed", "remote", "student"]).optional(),
   sessionLength: z.number().int().min(15).max(120).optional(),
   dietaryApproach: z.enum(["no-restriction", "high-protein", "keto", "vegan", "vegetarian", "paleo", "iifym"]).optional(),
-  alcoholFrequency: z.enum(["never", "rare", "1-2-per-week", "3-5-per-week", "daily"]).optional(),
-  caffeineDaily: z.enum(["none", "1-cup", "2-3-cups", "4-plus-cups"]).optional(),
+  alcoholFrequency: z.enum(["none", "rare", "occasional", "regular", "frequent", "prefer-not-to-say"]).optional(),
+  caffeineDaily: z.enum(["none", "low", "moderate", "high"]).optional(),
 
   // Nutrition Profile
   activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very-active"]).optional(),
@@ -78,7 +78,7 @@ export const routineQuestionnaireSchema = z.object({
 
   // Goal Specifics
   targetWeight: z.number().min(50).max(600).optional(),
-  goalTimeline: z.enum(["no-rush", "3-months", "6-months", "12-months", "event-date"]).optional(),
+  goalTimeline: z.enum(["30-days", "60-days", "90-days", "4-months", "6-months", "12-months", "event-date"]).optional(),
   eventDate: z.string().optional(), // ISO date string
   eventDescription: z.string().max(500).optional(),
 });
