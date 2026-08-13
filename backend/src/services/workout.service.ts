@@ -534,6 +534,239 @@ async function generateUpfrontRemainingWeeks(
 }
 
 // ============================================================
+// rebuildPlanFromPreferences — client-driven "Edit My Preferences"
+// ============================================================
+
+// Distributes `count` sessions across the calendar days of the week
+// starting at `weekStart` (a Monday), skipping any weekday in `restDays`
+// (Date.getDay() convention: 0=Sun..6=Sat). Returns the chosen dates.
+function placeSessionsOnAvailableWeekdays(weekStart: Date, count: number, restDays: number[]): Date[] {
+  const weekDates: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    weekDates.push(d);
+  }
+  const available = weekDates.filter((d) => !restDays.includes(d.getDay()));
+  if (available.length === 0 || count <= 0) return [];
+
+  const n = Math.min(count, available.length);
+  const gap = available.length / n;
+  const chosen: Date[] = [];
+  for (let i = 0; i < n; i++) {
+    chosen.push(available[Math.min(Math.floor(i * gap), available.length - 1)]);
+  }
+  return chosen;
+}
+
+export async function rebuildPlanFromPreferences(
+  profileId: string,
+  options: { restDays?: number[]; swapDateA?: string; swapDateB?: string }
+): Promise<{ regeneratedSessionCount: number; swapped: boolean }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { id: profileId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (!options.restDays && !(options.swapDateA && options.swapDateB)) {
+    const err = new Error("Provide restDays and/or a pair of days to swap") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  let restDays = profile.restDayPreferences;
+  if (options.restDays) {
+    restDays = [...new Set(options.restDays)].filter((d) => d >= 0 && d <= 6);
+    await prisma.athleteProfile.update({
+      where: { id: profileId },
+      data: { restDayPreferences: restDays },
+    });
+  }
+
+  let swapped = false;
+  let regenerateFrom = today;
+
+  if (options.swapDateA && options.swapDateB) {
+    const dateA = new Date(options.swapDateA + "T00:00:00.000Z");
+    const dateB = new Date(options.swapDateB + "T00:00:00.000Z");
+
+    if (dateA.getTime() === dateB.getTime()) {
+      const err = new Error("Pick two different days to swap") as Error & { statusCode?: number };
+      err.statusCode = 400;
+      throw err;
+    }
+    if (dateA < today || dateB < today) {
+      const err = new Error("Can't swap a day that's already passed") as Error & { statusCode?: number };
+      err.statusCode = 409;
+      throw err;
+    }
+
+    const [sessionA, sessionB] = await Promise.all([
+      prisma.workoutSession.findFirst({
+        where: { workoutPlan: { athleteProfileId: profileId }, scheduledDate: dateA },
+      }),
+      prisma.workoutSession.findFirst({
+        where: { workoutPlan: { athleteProfileId: profileId }, scheduledDate: dateB },
+      }),
+    ]);
+    if (!sessionA || !sessionB) {
+      const err = new Error("One or both selected days don't have a scheduled session to swap") as Error & { statusCode?: number };
+      err.statusCode = 404;
+      throw err;
+    }
+    if (sessionA.status === "COMPLETED" || sessionB.status === "COMPLETED") {
+      const err = new Error("Can't swap a day that's already been completed") as Error & { statusCode?: number };
+      err.statusCode = 409;
+      throw err;
+    }
+
+    await prisma.$transaction([
+      prisma.workoutSession.update({
+        where: { id: sessionA.id },
+        data: {
+          sessionType: sessionB.sessionType,
+          title: sessionB.title,
+          description: sessionB.description,
+          prescribedDuration: sessionB.prescribedDuration,
+          prescribedTSS: sessionB.prescribedTSS,
+          content: sessionB.content as Prisma.InputJsonValue,
+        },
+      }),
+      prisma.workoutSession.update({
+        where: { id: sessionB.id },
+        data: {
+          sessionType: sessionA.sessionType,
+          title: sessionA.title,
+          description: sessionA.description,
+          prescribedDuration: sessionA.prescribedDuration,
+          prescribedTSS: sessionA.prescribedTSS,
+          content: sessionA.content as Prisma.InputJsonValue,
+        },
+      }),
+    ]);
+    swapped = true;
+
+    // Everything through the swapped days themselves is settled; only the
+    // days strictly after the swap get reflowed, per Anthony's own framing
+    // ("readjust all of the future days so the plan remains tailored
+    // towards their ultimate end goal") -- the swap itself is the client's
+    // explicit choice, not something to regenerate away.
+    const laterDate = dateA > dateB ? dateA : dateB;
+    const dayAfter = new Date(laterDate);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+    if (dayAfter > regenerateFrom) regenerateFrom = dayAfter;
+  }
+
+  const allPlans = await prisma.workoutPlan.findMany({
+    where: { athleteProfileId: profileId },
+    orderBy: { weekNumber: "asc" },
+    include: { sessions: { select: { id: true, scheduledDate: true, status: true } } },
+  });
+  if (allPlans.length === 0) {
+    return { regeneratedSessionCount: 0, swapped };
+  }
+
+  const planEnd = allPlans.reduce((max, p) => (p.endDate > max ? p.endDate : max), allPlans[0].endDate);
+  if (regenerateFrom > planEnd) {
+    return { regeneratedSessionCount: 0, swapped };
+  }
+
+  // Seed the avoid-list from recent history so regenerated sessions don't
+  // immediately repeat what the client just did.
+  const usedTemplateIds = await getRecentTemplateIds(profileId, 2);
+
+  // Delete future, non-completed sessions from regenerateFrom onward across
+  // every week -- completed history is never touched, and the swap above
+  // (if any) already happened before this cutoff was raised past it.
+  const sessionIdsToDelete = allPlans
+    .flatMap((p) => p.sessions)
+    .filter((s) => s.scheduledDate >= regenerateFrom && s.status !== "COMPLETED")
+    .map((s) => s.id);
+  if (sessionIdsToDelete.length > 0) {
+    await prisma.workoutSession.deleteMany({ where: { id: { in: sessionIdsToDelete } } });
+  }
+
+  let regeneratedCount = 0;
+  for (const plan of allPlans) {
+    if (plan.endDate < regenerateFrom) continue; // this whole week is in the past -- untouched
+
+    const volumeMultiplier = getUpfrontVolumeMultiplier(plan.weekNumber, plan.blockType);
+    const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+    const placements = placeSessionsOnAvailableWeekdays(plan.startDate, sessionSpecs.length, restDays);
+
+    const newSessionData = placements
+      .map((sessionDate, index) => {
+        if (sessionDate < regenerateFrom) return null; // this specific day is in the past, or was just swapped -- leave it
+        const spec = sessionSpecs[index];
+        const { content, templateId } = buildSessionContent(
+          spec.type,
+          profile.equipmentAccess,
+          profile.experienceLevel,
+          usedTemplateIds,
+          volumeMultiplier
+        );
+        usedTemplateIds.push(templateId);
+        return {
+          workoutPlanId: plan.id,
+          scheduledDate: sessionDate,
+          scheduledOrder: index + 1,
+          sessionType: spec.type as SessionType,
+          title: spec.title,
+          description: `Week ${plan.weekNumber}, Session ${index + 1} — ${spec.title}.${plan.blockType === "deload" ? " Deload week: reduced volume and intensity." : ""} Rebuilt around your updated preferences.`,
+          prescribedDuration: content.estimatedDuration,
+          prescribedTSS: content.estimatedTSS,
+          content: { ...content, templateId } as unknown as Prisma.InputJsonValue,
+          status: "SCHEDULED" as const,
+        };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
+
+    if (newSessionData.length > 0) {
+      await prisma.workoutSession.createMany({ data: newSessionData });
+      regeneratedCount += newSessionData.length;
+    }
+
+    const weekSessions = await prisma.workoutSession.findMany({
+      where: { workoutPlanId: plan.id },
+      select: { prescribedTSS: true },
+    });
+    const plannedTSS = weekSessions.reduce((sum, s) => sum + (s.prescribedTSS ?? 0), 0);
+    await prisma.workoutPlan.update({ where: { id: plan.id }, data: { plannedTSS } });
+  }
+
+  // Audit trail, same pattern as executeJerryAdjustment -- log against the
+  // plan covering "today" if one exists, otherwise the earliest touched plan.
+  const logTargetPlan =
+    allPlans.find((p) => p.startDate <= today && p.endDate >= today) ??
+    allPlans.find((p) => p.endDate >= regenerateFrom) ??
+    allPlans[0];
+  if (logTargetPlan) {
+    await prisma.adjustmentLog.create({
+      data: {
+        workoutPlanId: logTargetPlan.id,
+        triggerEvent: "client_preference_change",
+        triggerData: { restDays: options.restDays ?? null, swapDateA: options.swapDateA ?? null, swapDateB: options.swapDateB ?? null } as unknown as Prisma.InputJsonValue,
+        adjustmentType: swapped && options.restDays ? "swap_session_and_rest_days" : swapped ? "swap_session" : "update_rest_days",
+        description: `Client updated training preferences via "Edit My Preferences"${swapped ? ` (swapped ${options.swapDateA} <-> ${options.swapDateB})` : ""}${options.restDays ? `, rest days set to [${restDays.join(", ")}]` : ""}. ${regeneratedCount} upcoming session(s) rebuilt around it.`,
+        affectedSessions: [],
+      },
+    });
+  }
+
+  logger.info(
+    { profileId, regeneratedCount, swapped, restDays },
+    "Plan rebuilt from client preferences"
+  );
+
+  return { regeneratedSessionCount: regeneratedCount, swapped };
+}
+
+// ============================================================
 // Claude-powered plan generation
 // ============================================================
 
