@@ -372,3 +372,179 @@
         padding: 1.75rem 1.5rem;
     }
 }
+
+/* ── "What's Included" preview link ── */
+
+.plan-preview-link {
+    background: none;
+    border: none;
+    color: var(--gray);
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition: color var(--transition-normal);
+    padding: 0;
+}
+
+.plan-preview-link:hover {
+    color: var(--silver);
+}
+
+/* ── Dashboard preview modal ── */
+
+.preview-modal {
+    max-width: 720px;
+}
+
+.preview-modal-content {
+    padding: 2.5rem 2.5rem 2rem;
+}
+
+.preview-modal-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.preview-modal-header h3 {
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0.5rem 0 0.75rem;
+}
+
+.preview-modal-subtitle {
+    color: var(--gray);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.preview-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.preview-card {
+    background: var(--black);
+    border: 1px solid var(--border-color);
+    padding: 1.25rem 1.4rem;
+    transition: border-color var(--transition-normal);
+}
+
+.preview-card:hover {
+    border-color: var(--border-color-hover);
+}
+
+.preview-card-label {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--silver);
+    margin-bottom: 0.85rem;
+}
+
+.preview-card-foot {
+    font-size: 0.78rem;
+    color: var(--gray);
+    line-height: 1.5;
+    margin-top: 0.85rem;
+}
+
+.preview-workout-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.preview-workout-list li {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--off-white);
+}
+
+.preview-workout-list li span:last-child {
+    color: var(--gray);
+}
+
+.preview-macro-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.preview-macro-value {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--off-white);
+}
+
+.preview-macro-unit {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-top: 0.2rem;
+}
+
+.preview-progress-bar {
+    height: 8px;
+    background: rgba(192, 192, 192, 0.1);
+    overflow: hidden;
+}
+
+.preview-progress-fill {
+    height: 100%;
+    background: var(--accent);
+}
+
+.preview-chat-bubble {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--off-white);
+    line-height: 1.5;
+}
+
+.preview-chat-bubble--direct {
+    font-style: normal;
+    color: var(--gray);
+}
+
+.preview-card--pc-only {
+    display: none;
+}
+
+.preview-card--pc-only.preview-card--visible {
+    display: block;
+}
+
+.preview-modal-cta {
+    width: 100%;
+}
+
+@media (max-width: 640px) {
+    .preview-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-modal-content {
+        padding: 2rem 1.5rem 1.5rem;
+    }
+}

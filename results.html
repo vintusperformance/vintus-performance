@@ -124,6 +124,7 @@
                     </ul>
                     <div class="plan-decision">
                         <button class="plan-select plan-select--checkout" data-tier="PRIVATE_COACHING">Continue to Checkout</button>
+                        <button type="button" class="plan-preview-link" data-tier="PRIVATE_COACHING">What's Included — Preview Your Dashboard</button>
                         <a href="/book?tier=PRIVATE_COACHING" class="plan-decision__call-link">Schedule a Call First</a>
                     </div>
                 </div>
@@ -145,7 +146,10 @@
                         <li>Progress tracking dashboard with real-time metrics</li>
                         <li>Built to create lasting habits in just 30 days</li>
                     </ul>
-                    <button class="plan-select" data-tier="TRAINING_30DAY">Select Plan</button>
+                    <div class="plan-decision">
+                        <button class="plan-select" data-tier="TRAINING_30DAY">Select Plan</button>
+                        <button type="button" class="plan-preview-link" data-tier="TRAINING_30DAY">What's Included — Preview Your Dashboard</button>
+                    </div>
                 </div>
 
                 <div class="plan-card" data-tier="TRAINING_60DAY">
@@ -161,7 +165,10 @@
                         <li>Designed for measurable, visible results you can see</li>
                         <li>The sweet spot for serious progress</li>
                     </ul>
-                    <button class="plan-select" data-tier="TRAINING_60DAY">Select Plan</button>
+                    <div class="plan-decision">
+                        <button class="plan-select" data-tier="TRAINING_60DAY">Select Plan</button>
+                        <button type="button" class="plan-preview-link" data-tier="TRAINING_60DAY">What's Included — Preview Your Dashboard</button>
+                    </div>
                 </div>
 
                 <div class="plan-card" data-tier="TRAINING_90DAY">
@@ -177,7 +184,10 @@
                         <li>The complete transformation &mdash; this is where it clicks</li>
                         <li>Our most popular plan for committed athletes</li>
                     </ul>
-                    <button class="plan-select" data-tier="TRAINING_90DAY">Select Plan</button>
+                    <div class="plan-decision">
+                        <button class="plan-select" data-tier="TRAINING_90DAY">Select Plan</button>
+                        <button type="button" class="plan-preview-link" data-tier="TRAINING_90DAY">What's Included — Preview Your Dashboard</button>
+                    </div>
                 </div>
             </div>
 
@@ -197,7 +207,10 @@
                         <li>Weekly check-ins &mdash; your coach adjusts as you progress</li>
                         <li>Pairs with any training plan for maximum results</li>
                     </ul>
-                    <button class="plan-select" data-tier="NUTRITION_4WEEK">Select Plan</button>
+                    <div class="plan-decision">
+                        <button class="plan-select" data-tier="NUTRITION_4WEEK">Select Plan</button>
+                        <button type="button" class="plan-preview-link" data-tier="NUTRITION_4WEEK">What's Included — Preview Your Dashboard</button>
+                    </div>
                 </div>
 
                 <div class="plan-card" data-tier="NUTRITION_8WEEK">
@@ -213,7 +226,10 @@
                         <li>8 weeks of hands-on guidance for lasting change</li>
                         <li>The gold standard for body transformation</li>
                     </ul>
-                    <button class="plan-select" data-tier="NUTRITION_8WEEK">Select Plan</button>
+                    <div class="plan-decision">
+                        <button class="plan-select" data-tier="NUTRITION_8WEEK">Select Plan</button>
+                        <button type="button" class="plan-preview-link" data-tier="NUTRITION_8WEEK">What's Included — Preview Your Dashboard</button>
+                    </div>
                 </div>
             </div>
 
@@ -246,6 +262,68 @@
             </div>
         </div>
     </footer>
+
+    <!-- Dashboard Preview Modal -->
+    <div class="modal-overlay" id="previewModalOverlay">
+        <div class="modal preview-modal" id="previewModal">
+            <button class="modal-close" id="previewModalClose" aria-label="Close preview">&times;</button>
+            <div class="modal-content preview-modal-content">
+                <div class="preview-modal-header">
+                    <div class="section-label">What's Included</div>
+                    <h3 id="previewModalTitle">Inside Your Dashboard</h3>
+                    <p id="previewModalSubtitle" class="preview-modal-subtitle">A look at what you get the moment you check out — everything lives in your private dashboard, never a PDF or email attachment.</p>
+                </div>
+
+                <div class="preview-cards">
+                    <div class="preview-card" data-preview="training">
+                        <div class="preview-card-label">Today's Training</div>
+                        <ul class="preview-workout-list">
+                            <li><span>Back Squat</span><span>4 &times; 6</span></li>
+                            <li><span>Romanian Deadlift</span><span>3 &times; 8</span></li>
+                            <li><span>Walking Lunge</span><span>3 &times; 12</span></li>
+                            <li><span>Fat-Loss Interval Finisher</span><span>10 min</span></li>
+                        </ul>
+                        <div class="preview-card-foot">Adjusts automatically based on how you log each session</div>
+                    </div>
+
+                    <div class="preview-card" data-preview="nutrition">
+                        <div class="preview-card-label">Nutrition & Macros</div>
+                        <div class="preview-macro-row">
+                            <div class="preview-macro"><span class="preview-macro-value">2,450</span><span class="preview-macro-unit">calories</span></div>
+                            <div class="preview-macro"><span class="preview-macro-value">185g</span><span class="preview-macro-unit">protein</span></div>
+                            <div class="preview-macro"><span class="preview-macro-value">220g</span><span class="preview-macro-unit">carbs</span></div>
+                            <div class="preview-macro"><span class="preview-macro-value">70g</span><span class="preview-macro-unit">fat</span></div>
+                        </div>
+                        <div class="preview-card-foot">Targets built around your goals, schedule, and food preferences</div>
+                    </div>
+
+                    <div class="preview-card" data-preview="progress">
+                        <div class="preview-card-label">This Week's Progress</div>
+                        <div class="preview-progress-bar"><div class="preview-progress-fill" style="width: 80%;"></div></div>
+                        <div class="preview-card-foot">4 of 5 sessions complete &mdash; full adherence and trend history, always visible</div>
+                    </div>
+
+                    <div class="preview-card" data-preview="jerry">
+                        <div class="preview-card-label">Jerry, Your AI Coach</div>
+                        <div class="preview-chat-bubble">"Missed yesterday's session — want me to fold it into today's plan or push the week back a day?"</div>
+                        <div class="preview-card-foot">Available in your dashboard any time you have a question</div>
+                    </div>
+
+                    <div class="preview-card preview-card--pc-only" data-preview="pc-text" data-tier-only="PRIVATE_COACHING">
+                        <div class="preview-card-label">Text Me Anytime</div>
+                        <div class="preview-chat-bubble preview-chat-bubble--direct">A direct line to Anthony — separate from Jerry, for when you want the coach himself.</div>
+                    </div>
+
+                    <div class="preview-card preview-card--pc-only" data-preview="pc-call" data-tier-only="PRIVATE_COACHING">
+                        <div class="preview-card-label">Weekly Coaching Call</div>
+                        <div class="preview-card-foot">One included 30-minute call every week, booked directly from your dashboard.</div>
+                    </div>
+                </div>
+
+                <button type="button" class="plan-select preview-modal-cta" id="previewModalCta">Continue to Checkout</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="js/main.js?v=2"></script>
