@@ -138,7 +138,7 @@ model AthleteProfile {
 
   // Goal Specifics
   targetWeight      Float?
-  goalTimeline      String?       // no-rush | 3-months | 6-months | 12-months | event-date
+  goalTimeline      String?       // 30-days | 60-days | 90-days | 4-months | 6-months | 12-months | event-date
   eventDate         DateTime?
   eventDescription  String?
 
@@ -150,6 +150,11 @@ model AthleteProfile {
   // Private Coaching liability waiver (see legal/private-coaching-waiver-DRAFT.md)
   waiverAcceptedAt  DateTime?
   waiverVersion     String?
+
+  // Client-editable training preferences (post-purchase, via dashboard's
+  // "Edit My Preferences") — standing rest days the plan rebuilds around
+  // going forward. JS Date.getDay() convention: 0=Sunday .. 6=Saturday.
+  restDayPreferences Int[] @default([])
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

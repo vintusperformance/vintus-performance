@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import type { Prisma } from "@prisma/client";
 import { authenticate } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
-import { completeSessionSchema, skipSessionSchema, rescheduleSessionSchema, swapExerciseSchema } from "./schemas/workout.schemas.js";
+import { completeSessionSchema, skipSessionSchema, rescheduleSessionSchema, swapExerciseSchema, rebuildPreferencesSchema } from "./schemas/workout.schemas.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { updateAdherence } from "../services/adherence.service.js";
@@ -12,6 +12,7 @@ import {
   adjustForMissedEnduranceDay,
   getSwapAlternatives,
   applyExerciseSwap,
+  rebuildPlanFromPreferences,
 } from "../services/workout.service.js";
 import { getWeekView } from "../services/dashboard.service.js";
 import { getApprovedVideoMap } from "../services/exercise-video.service.js";
@@ -400,6 +401,39 @@ router.post(
       const updated = await applyExerciseSwap(userId, sessionId, index, req.body.exercise);
 
       res.status(200).json({ success: true, data: updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /workout/rebuild-preferences — "Edit My Preferences": set standing
+// rest days and/or swap two upcoming days, then rebuild the remaining plan
+// around it so it still tracks toward the client's actual goal.
+router.post(
+  "/rebuild-preferences",
+  validate(rebuildPreferencesSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+
+      if (!profile) {
+        res.status(404).json({ success: false, error: "Athlete profile not found" });
+        return;
+      }
+
+      const result = await rebuildPlanFromPreferences(profile.id, req.body);
+
+      logger.info(
+        { userId, profileId: profile.id, ...result },
+        "Client rebuilt plan from Edit My Preferences"
+      );
+
+      // Return updated week data so the frontend can re-render immediately
+      const weekData = await getWeekView(userId, 0);
+
+      res.status(200).json({ success: true, data: { ...result, week: weekData } });
     } catch (err) {
       next(err);
     }

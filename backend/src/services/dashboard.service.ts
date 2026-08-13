@@ -204,6 +204,7 @@ export async function getOverview(userId: string): Promise<unknown> {
       // depends on whether the client separately purchased a Nutrition
       // Plan at any point. 'purchased' only applies to non-PC clients.
       nutritionAccessType: isConciergeNutritionEligible ? "concierge" : hasPurchasedNutrition ? "purchased" : null,
+      restDayPreferences: profile.restDayPreferences,
     },
     today: {
       workout: todayWorkout,

@@ -1040,6 +1040,92 @@
   });
 
   // ============================================================
+  // Edit My Preferences — standing rest days + swap two upcoming days
+  // ============================================================
+
+  var selectedRestDays = [];
+
+  function openPrefsModal() {
+    selectedRestDays = (overviewData && overviewData.athlete && overviewData.athlete.restDayPreferences) || [];
+    document.querySelectorAll('.prefs-day').forEach(function (btn) {
+      var day = parseInt(btn.getAttribute('data-day'), 10);
+      btn.classList.toggle('prefs-day--active', selectedRestDays.indexOf(day) !== -1);
+    });
+    document.getElementById('prefsSwapDateA').value = '';
+    document.getElementById('prefsSwapDateB').value = '';
+    document.getElementById('prefsError').style.display = 'none';
+    document.getElementById('prefsModalOverlay').style.display = 'flex';
+  }
+
+  function closePrefsModal() {
+    document.getElementById('prefsModalOverlay').style.display = 'none';
+  }
+
+  var editPrefsBtn = document.getElementById('editPreferencesBtn');
+  if (editPrefsBtn) editPrefsBtn.addEventListener('click', openPrefsModal);
+
+  document.getElementById('prefsModalClose').addEventListener('click', closePrefsModal);
+  document.getElementById('prefsModalCancel').addEventListener('click', closePrefsModal);
+  document.getElementById('prefsModalOverlay').addEventListener('click', function (e) {
+    if (e.target === this) closePrefsModal();
+  });
+
+  document.querySelectorAll('.prefs-day').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var day = parseInt(this.getAttribute('data-day'), 10);
+      var idx = selectedRestDays.indexOf(day);
+      if (idx === -1) {
+        selectedRestDays.push(day);
+      } else {
+        selectedRestDays.splice(idx, 1);
+      }
+      this.classList.toggle('prefs-day--active');
+    });
+  });
+
+  document.getElementById('prefsModalSave').addEventListener('click', async function () {
+    var btn = this;
+    var errorEl = document.getElementById('prefsError');
+    errorEl.style.display = 'none';
+
+    var dateA = document.getElementById('prefsSwapDateA').value;
+    var dateB = document.getElementById('prefsSwapDateB').value;
+
+    if ((dateA && !dateB) || (!dateA && dateB)) {
+      errorEl.textContent = 'Pick both days to swap, or leave both blank.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    var payload = { restDays: selectedRestDays };
+    if (dateA && dateB) {
+      payload.swapDateA = dateA;
+      payload.swapDateB = dateB;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Rebuilding...';
+
+    try {
+      var res = await apiPost('/api/v1/workout/rebuild-preferences', payload);
+      if (res.success) {
+        closePrefsModal();
+        await loadOverview();
+        await loadWeek(currentWeekOffset);
+      } else {
+        errorEl.textContent = res.error || 'Failed to update preferences.';
+        errorEl.style.display = 'block';
+      }
+    } catch (err) {
+      errorEl.textContent = (err && err.message) || 'Failed to update preferences.';
+      errorEl.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Save & Rebuild Plan';
+  });
+
+  // ============================================================
   // 14-Day Performance — Clickable Bar Chart + Detail Panel
   // ============================================================
 

@@ -102,6 +102,12 @@
 
             <!-- 3. Weekly Calendar -->
             <div class="tp-week" id="weekSection">
+                <div class="tp-week__prefs-row">
+                    <button class="tp-week__prefs-btn" id="editPreferencesBtn" type="button">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        Edit My Preferences
+                    </button>
+                </div>
                 <div class="tp-week__nav">
                     <button class="tp-week__nav-btn" id="weekPrev" title="Previous week">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -342,6 +348,51 @@
             <div class="tp-modal__footer">
                 <button class="tp-modal__btn tp-modal__btn--cancel" id="skipModalCancel">Cancel</button>
                 <button class="tp-modal__btn tp-modal__btn--confirm" id="skipModalConfirm">Skip Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit My Preferences Modal -->
+    <div class="tp-modal-overlay" id="prefsModalOverlay" style="display:none;">
+        <div class="tp-modal tp-modal--wide">
+            <div class="tp-modal__header">
+                <h3>Edit My Preferences</h3>
+                <button class="tp-modal__close" id="prefsModalClose">&times;</button>
+            </div>
+            <div class="tp-modal__body">
+                <div class="prefs-section">
+                    <p class="prefs-section__label">Standing rest days</p>
+                    <p class="prefs-section__hint">Pick the days that should always be rest days going forward. We'll rebuild the rest of your plan around it.</p>
+                    <div class="prefs-daypicker" id="prefsRestDays">
+                        <button type="button" class="prefs-day" data-day="0">Sun</button>
+                        <button type="button" class="prefs-day" data-day="1">Mon</button>
+                        <button type="button" class="prefs-day" data-day="2">Tue</button>
+                        <button type="button" class="prefs-day" data-day="3">Wed</button>
+                        <button type="button" class="prefs-day" data-day="4">Thu</button>
+                        <button type="button" class="prefs-day" data-day="5">Fri</button>
+                        <button type="button" class="prefs-day" data-day="6">Sat</button>
+                    </div>
+                </div>
+                <div class="prefs-section">
+                    <p class="prefs-section__label">Swap two upcoming days</p>
+                    <p class="prefs-section__hint">Want today's session on a different day instead? Pick the two dates and we'll swap them and readjust everything after.</p>
+                    <div class="prefs-swap-row">
+                        <div class="prefs-swap-field">
+                            <label for="prefsSwapDateA">Day A</label>
+                            <input type="date" id="prefsSwapDateA">
+                        </div>
+                        <div class="prefs-swap-arrow">&harr;</div>
+                        <div class="prefs-swap-field">
+                            <label for="prefsSwapDateB">Day B</label>
+                            <input type="date" id="prefsSwapDateB">
+                        </div>
+                    </div>
+                </div>
+                <p class="prefs-error" id="prefsError" style="display:none;"></p>
+            </div>
+            <div class="tp-modal__footer">
+                <button class="tp-modal__btn tp-modal__btn--cancel" id="prefsModalCancel">Cancel</button>
+                <button class="tp-modal__btn tp-modal__btn--confirm" id="prefsModalSave">Save & Rebuild Plan</button>
             </div>
         </div>
     </div>
