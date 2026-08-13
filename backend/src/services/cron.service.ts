@@ -818,14 +818,14 @@ export async function dailyReviewForClient(
     const nextMonday = getWeekStart(new Date());
     nextMonday.setDate(nextMonday.getDate() + 7);
 
-    const existingNextPlan = await prisma.workoutPlan.findFirst({
+    const nextWeekPlan = await prisma.workoutPlan.findFirst({
       where: {
         athleteProfileId: profile.id,
-        startDate: { gte: nextMonday },
+        startDate: nextMonday,
       },
     });
 
-    if (!existingNextPlan) {
+    if (!nextWeekPlan) {
       try {
         await workoutService.generateNextWeek(profile.id);
 
@@ -840,6 +840,30 @@ export async function dailyReviewForClient(
         }
       } catch (err) {
         logger.error({ err, userId }, "Failed to generate next week plan");
+      }
+    } else if (!nextWeekPlan.isActive) {
+      // Fixed-duration Training plans (see generateInitialPlan /
+      // getTotalWeeksForTier) pre-generate every week upfront -- there's
+      // nothing new to create here, just advance which week is "active" so
+      // today-scoped queries (dashboard's Today's Workout card, Jerry's
+      // chat context, escalation checks) point at the right week as real
+      // time reaches it. No "plan ready" message -- the client could
+      // already see this week in their calendar.
+      try {
+        await prisma.workoutPlan.updateMany({
+          where: { athleteProfileId: profile.id, isActive: true },
+          data: { isActive: false },
+        });
+        await prisma.workoutPlan.update({
+          where: { id: nextWeekPlan.id },
+          data: { isActive: true },
+        });
+        logger.info(
+          { userId, planId: nextWeekPlan.id, weekNumber: nextWeekPlan.weekNumber },
+          "Activated next pre-generated week"
+        );
+      } catch (err) {
+        logger.error({ err, userId }, "Failed to activate next pre-generated week");
       }
     }
   }
