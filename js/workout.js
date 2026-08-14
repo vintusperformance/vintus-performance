@@ -237,15 +237,18 @@
   skipBtn.addEventListener('click', function () {
     document.getElementById('skipReason').value = '';
     skipModal.classList.add('active');
+    lockBodyScroll();
   });
 
   skipModalClose.addEventListener('click', function () {
     skipModal.classList.remove('active');
+    unlockBodyScroll();
   });
 
   skipModal.addEventListener('click', function (e) {
     if (e.target === skipModal) {
       skipModal.classList.remove('active');
+      unlockBodyScroll();
     }
   });
 
@@ -260,6 +263,7 @@
       var res = await apiPost('/api/v1/workout/' + encodeURIComponent(sessionId) + '/skip', payload);
       if (res.success) {
         skipModal.classList.remove('active');
+        unlockBodyScroll();
         document.getElementById('completeWrap').style.display = 'none';
         window.location.href = '/dashboard';
       } else {
@@ -284,6 +288,7 @@
     swapCurrentName.textContent = currentName;
     swapOptionsList.innerHTML = '<div class="swap-loading">Loading alternatives...</div>';
     swapModal.classList.add('active');
+    lockBodyScroll();
 
     apiGet('/api/v1/workout/' + encodeURIComponent(sessionId) + '/main/' + index + '/alternatives')
       .then(function (res) {
@@ -316,6 +321,7 @@
           var nameEls = document.querySelectorAll('#mainList .exercise-name');
           if (nameEls[index]) nameEls[index].textContent = newExercise;
           swapModal.classList.remove('active');
+          unlockBodyScroll();
         } else {
           alert('Failed to swap exercise: ' + (res.error || 'Unknown error'));
           swapOptionsList.querySelectorAll('.swap-option-pill').forEach(function (p) { p.disabled = false; });
@@ -329,11 +335,13 @@
 
   swapModalClose.addEventListener('click', function () {
     swapModal.classList.remove('active');
+    unlockBodyScroll();
   });
 
   swapModal.addEventListener('click', function (e) {
     if (e.target === swapModal) {
       swapModal.classList.remove('active');
+      unlockBodyScroll();
     }
   });
 
@@ -357,17 +365,20 @@
       document.getElementById('actualDuration').value = sessionData.prescribedDuration;
     }
     modal.classList.add('active');
+    lockBodyScroll();
   });
 
   // Close modal
   modalClose.addEventListener('click', function () {
     modal.classList.remove('active');
+    unlockBodyScroll();
   });
 
   // Close modal on overlay click
   modal.addEventListener('click', function (e) {
     if (e.target === modal) {
       modal.classList.remove('active');
+      unlockBodyScroll();
     }
   });
 
@@ -403,6 +414,7 @@
 
       if (res.success) {
         modal.classList.remove('active');
+        unlockBodyScroll();
 
         // Hide complete button, show success
         document.getElementById('completeWrap').style.display = 'none';
@@ -511,11 +523,13 @@
     videoModalTitle.textContent = exerciseName;
     videoModalPlayer.src = videoUrl;
     videoModal.classList.add('active');
+    lockBodyScroll();
     videoModalPlayer.play().catch(function () {});
   }
 
   function closeVideoModal() {
     videoModal.classList.remove('active');
+    unlockBodyScroll();
     videoModalPlayer.pause();
     videoModalPlayer.removeAttribute('src');
     videoModalPlayer.load();

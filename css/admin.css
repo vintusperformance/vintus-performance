@@ -465,7 +465,7 @@
     border: 1px solid var(--border-color);
     color: var(--white);
     font-family: var(--font-body);
-    font-size: 0.85rem;
+    font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
     padding: 0.7rem 0.85rem;
     color-scheme: dark;
     cursor: pointer;
@@ -478,6 +478,7 @@
 
 .admin-table-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid var(--border-color);
 }
 
@@ -795,6 +796,7 @@
 .admin-chart-wrap {
     width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ── Messaging thread ── */
@@ -809,6 +811,7 @@
     gap: 0.6rem;
     max-height: 340px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .admin-msg-item {
@@ -903,6 +906,7 @@
     transform: translateX(100%);
     transition: transform 0.35s ease;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .admin-detail-panel--open {
@@ -1018,7 +1022,7 @@
     border: 1px solid var(--border-color);
     color: var(--white);
     font-family: var(--font-body);
-    font-size: 0.88rem;
+    font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
     padding: 0.65rem 0.85rem;
     color-scheme: dark;
 }
@@ -1141,6 +1145,7 @@
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: var(--black-light);
     border: 1px solid var(--border-color-hover);
 }

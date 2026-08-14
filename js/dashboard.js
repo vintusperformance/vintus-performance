@@ -628,9 +628,11 @@
       report.completedCount + ' of ' + report.scheduledCount + ' sessions completed (' + Math.round(report.adherenceRate * 100) + '%)';
     document.getElementById('milestoneModalMessage').textContent = report.message;
     document.getElementById('milestoneModalOverlay').style.display = 'flex';
+    lockBodyScroll();
 
     function dismiss() {
       document.getElementById('milestoneModalOverlay').style.display = 'none';
+      unlockBodyScroll();
       apiPost('/api/v1/dashboard/milestone/acknowledge', { milestoneDay: report.milestoneDay }).catch(function () {
         // Non-critical — worst case it reappears next visit, which is fine.
       });
@@ -1043,11 +1045,13 @@
     skipSessionId = sessionId;
     document.getElementById('skipReason').value = '';
     document.getElementById('skipModalOverlay').style.display = 'flex';
+    lockBodyScroll();
   }
 
   function closeSkipModal() {
     skipSessionId = null;
     document.getElementById('skipModalOverlay').style.display = 'none';
+    unlockBodyScroll();
   }
 
   document.getElementById('skipModalClose').addEventListener('click', closeSkipModal);
@@ -1105,13 +1109,18 @@
     addonsBtn.addEventListener('click', function () {
       document.getElementById('addonError').style.display = 'none';
       addonModalOverlay.style.display = 'flex';
+      lockBodyScroll();
     });
   }
   document.getElementById('addonModalClose').addEventListener('click', function () {
     addonModalOverlay.style.display = 'none';
+    unlockBodyScroll();
   });
   addonModalOverlay.addEventListener('click', function (e) {
-    if (e.target === this) addonModalOverlay.style.display = 'none';
+    if (e.target === this) {
+      addonModalOverlay.style.display = 'none';
+      unlockBodyScroll();
+    }
   });
 
   document.getElementById('addonBuyMacroCalcBtn').addEventListener('click', async function () {
@@ -1249,10 +1258,12 @@
     document.getElementById('prefsTargetWeight').value = '';
     document.getElementById('prefsError').style.display = 'none';
     document.getElementById('prefsModalOverlay').style.display = 'flex';
+    lockBodyScroll();
   }
 
   function closePrefsModal() {
     document.getElementById('prefsModalOverlay').style.display = 'none';
+    unlockBodyScroll();
   }
 
   var editPrefsBtn = document.getElementById('editPreferencesBtn');
@@ -1720,7 +1731,7 @@
   function openChat() {
     chatPanel.classList.add('open');
     chatOverlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
 
     if (!chatHistoryLoaded) {
       loadChatHistory();
@@ -1732,7 +1743,7 @@
   function closeChat() {
     chatPanel.classList.remove('open');
     chatOverlay.classList.remove('open');
-    document.body.style.overflow = '';
+    unlockBodyScroll();
   }
 
   chatOpenBtn.addEventListener('click', openChat);

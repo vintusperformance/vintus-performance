@@ -319,8 +319,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 6px;
@@ -1724,7 +1724,7 @@
   padding: 0.65rem 0.85rem;
   color: var(--off-white);
   font-family: var(--font-body);
-  font-size: 0.88rem;
+  font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
   resize: vertical;
   outline: none;
   transition: border-color 0.15s;
@@ -1919,7 +1919,7 @@
   padding: 0.5rem 0.6rem;
   color: var(--off-white);
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
   outline: none;
   transition: border-color 0.15s;
   color-scheme: dark;
@@ -2017,7 +2017,7 @@
   padding: 0.55rem 0.65rem;
   color: var(--off-white);
   font-family: var(--font-body);
-  font-size: 0.88rem;
+  font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
   outline: none;
   transition: border-color 0.15s;
   color-scheme: dark;
@@ -2131,6 +2131,7 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
@@ -2237,7 +2238,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
 }
@@ -2250,7 +2251,7 @@
   padding: 0.65rem 1rem;
   color: var(--off-white);
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
   outline: none;
   transition: border-color 0.15s;
 }
@@ -2262,8 +2263,8 @@
 }
 
 .chat-send-btn {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2360,7 +2361,11 @@
 
 @media (max-width: 768px) {
   .tp-dashboard {
-    padding: 5rem 4% 7rem;
+    /* Top padding must clear the fixed site nav (60px logo + 48px padding =
+       108px) -- it doesn't shrink at mobile widths, so header controls
+       (Edit Preferences, Add-Ons, Settings) were rendering underneath it
+       and were untappable. */
+    padding: 7.5rem 4% 7rem;
   }
 
   .tp-header__name {
@@ -2452,7 +2457,7 @@
     right: 0;
     background: #0a0a0a;
     border-top: 1px solid rgba(255,255,255,0.06);
-    padding: 0.75rem 4%;
+    padding: 0.75rem 4% calc(0.75rem + env(safe-area-inset-bottom));
     margin-bottom: 0;
     z-index: 90;
     justify-content: center;
@@ -2507,7 +2512,7 @@
 
 @media (max-width: 480px) {
   .tp-dashboard {
-    padding: 4.5rem 3% 7rem;
+    padding: 7rem 3% 7rem;
   }
 
   .tp-header__name {

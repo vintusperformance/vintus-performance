@@ -341,6 +341,7 @@
       btn.addEventListener('click', function () {
         var targetDate = this.getAttribute('data-date');
         modal.style.display = 'none';
+        unlockBodyScroll();
         rescheduleSession(sessionId, targetDate);
       });
 
@@ -348,10 +349,12 @@
     }
 
     modal.style.display = 'flex';
+    lockBodyScroll();
   }
 
   document.getElementById('calMoveCancel').addEventListener('click', function () {
     document.getElementById('calMoveModal').style.display = 'none';
+    unlockBodyScroll();
   });
 
   // ── Week Navigation ──

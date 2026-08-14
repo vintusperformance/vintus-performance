@@ -236,7 +236,11 @@ function throttle(func, limit) {
         mobileMenu.addEventListener('click', function() {
             mobileMenu.classList.toggle('active');
             mobileNav.classList.toggle('active');
-            document.body.style.overflow = mobileNav.classList.contains('active') ? 'hidden' : '';
+            if (mobileNav.classList.contains('active')) {
+                lockBodyScroll();
+            } else {
+                unlockBodyScroll();
+            }
         });
 
         // Close mobile nav when clicking a link
@@ -244,7 +248,7 @@ function throttle(func, limit) {
             link.addEventListener('click', function() {
                 mobileMenu.classList.remove('active');
                 mobileNav.classList.remove('active');
-                document.body.style.overflow = '';
+                unlockBodyScroll();
             });
         });
 
@@ -253,7 +257,7 @@ function throttle(func, limit) {
             if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
                 mobileMenu.classList.remove('active');
                 mobileNav.classList.remove('active');
-                document.body.style.overflow = '';
+                unlockBodyScroll();
             }
         });
     }
@@ -982,13 +986,13 @@ function throttle(func, limit) {
         `;
 
         modalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        lockBodyScroll();
     }
 
     function closeModal() {
         if (modalOverlay) {
             modalOverlay.classList.remove('active');
-            document.body.style.overflow = '';
+            unlockBodyScroll();
         }
     }
 
