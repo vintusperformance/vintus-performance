@@ -675,9 +675,19 @@ export async function rebuildPlanFromPreferences(
   let restDays = profile.restDayPreferences;
   if (options.restDays) {
     restDays = [...new Set(options.restDays)].filter((d) => d >= 0 && d <= 6);
+
+    // Rest days are the authoritative signal for how many days a week the
+    // client actually wants to train -- every non-rest day should get a
+    // session. Without this, trainingDaysPerWeek stays stuck at whatever
+    // was set at onboarding (e.g. 5), so picking "only Sunday off" (6
+    // available days) would still leave one of those 6 days empty, since
+    // placeSessionsOnAvailableWeekdays only fills as many days as
+    // trainingDaysPerWeek asks for -- not every available day.
+    profile.trainingDaysPerWeek = Math.min(Math.max(7 - restDays.length, 2), 6);
+
     await prisma.athleteProfile.update({
       where: { id: profileId },
-      data: { restDayPreferences: restDays },
+      data: { restDayPreferences: restDays, trainingDaysPerWeek: profile.trainingDaysPerWeek },
     });
   }
 
