@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { authenticate } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
-import { createCheckoutSchema } from "./schemas/checkout.schemas.js";
+import { createCheckoutSchema, createAddonCheckoutSchema } from "./schemas/checkout.schemas.js";
 import * as checkoutService from "../services/checkout.service.js";
 import { prisma } from "../lib/prisma.js";
 import { verifyToken } from "../services/auth.service.js";
@@ -123,6 +123,24 @@ router.get(
         success: true,
         data: result,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /checkout/addon/macro-calculator — $23 Calorie & Macro Calculator,
+// Training Plan clients only (gating enforced in the service)
+router.post(
+  "/addon/macro-calculator",
+  validate(createAddonCheckoutSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const { successUrl, cancelUrl } = req.body;
+      const result = await checkoutService.createMacroCalculatorAddonCheckout(userId, successUrl, cancelUrl);
+
+      res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);
     }

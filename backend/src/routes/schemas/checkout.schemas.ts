@@ -14,4 +14,10 @@ export const createCheckoutSchema = z.object({
   profileId: z.string().min(1).optional(),
 });
 
+export const createAddonCheckoutSchema = z.object({
+  successUrl: z.string().url("successUrl must be a valid URL"),
+  cancelUrl: z.string().url("cancelUrl must be a valid URL"),
+});
+
 export type CreateCheckout = z.infer<typeof createCheckoutSchema>;
+export type CreateAddonCheckout = z.infer<typeof createAddonCheckoutSchema>;

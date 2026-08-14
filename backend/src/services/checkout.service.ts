@@ -95,6 +95,87 @@ export async function createCheckoutSession(
 }
 
 // ============================================================
+// createMacroCalculatorAddonCheckout — $23 one-time add-on, Training Plan
+// clients only. Uses inline price_data (like session-booking.service.ts)
+// instead of a pre-created Stripe Price ID / TIER_PRICE_MAP entry, since
+// this isn't a PlanTier -- no new required env var, no enum/migration.
+// ============================================================
+
+const MACRO_ADDON_PRICE_CENTS = 2300;
+
+export async function createMacroCalculatorAddonCheckout(
+  userId: string,
+  successUrl: string,
+  cancelUrl: string
+): Promise<{ sessionId: string; url: string }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { subscription: true, nutritionSubscription: true, macroCalculatorAddon: true },
+  });
+
+  if (!user) {
+    const err = new Error("User not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (user.macroCalculatorAddon) {
+    const err = new Error("You already have the Calorie & Macro Calculator") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  if (user.nutritionSubscription && user.nutritionSubscription.status !== "CANCELED") {
+    const err = new Error("Your Nutrition Plan already includes full calorie and macro targets") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const isTrainingTier =
+    user.subscription?.planTier === "TRAINING_30DAY" ||
+    user.subscription?.planTier === "TRAINING_60DAY" ||
+    user.subscription?.planTier === "TRAINING_90DAY";
+
+  if (!isTrainingTier || user.subscription?.status !== "ACTIVE") {
+    const err = new Error("The Calorie & Macro Calculator add-on is only available for active Training Plan clients") as Error & { statusCode?: number };
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    mode: "payment",
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          unit_amount: MACRO_ADDON_PRICE_CENTS,
+          product_data: {
+            name: "Calorie & Macro Calculator Add-On",
+            description: "Your personal daily calorie and macro targets, added to your Vintus dashboard.",
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: cancelUrl,
+    metadata: { userId, addonType: "macro_calculator" },
+  };
+
+  if (user.subscription?.stripeCustomerId) {
+    sessionParams.customer = user.subscription.stripeCustomerId;
+  } else {
+    sessionParams.customer_email = user.email;
+  }
+
+  const stripeSession = await stripe.checkout.sessions.create(sessionParams);
+
+  logger.info({ userId, sessionId: stripeSession.id }, "Macro calculator add-on checkout session created");
+
+  return { sessionId: stripeSession.id, url: stripeSession.url! };
+}
+
+// ============================================================
 // handleWebhookEvent
 // ============================================================
 
@@ -142,6 +223,11 @@ async function handleCheckoutCompleted(
   // metadata shape and fulfillment path entirely — no User/Subscription involved.
   if (session.metadata?.sessionBookingId) {
     await handlePaidSessionCompleted(session);
+    return;
+  }
+
+  if (session.metadata?.addonType === "macro_calculator") {
+    await handleMacroCalculatorAddonCompleted(session);
     return;
   }
 
@@ -276,6 +362,31 @@ async function handleCheckoutCompleted(
 
   // Admin notification is sent AFTER onboarding completion (not here),
   // so the admin has a complete profile to review before approving.
+}
+
+// ============================================================
+// handleMacroCalculatorAddonCompleted — $23 add-on fulfillment
+// ============================================================
+
+async function handleMacroCalculatorAddonCompleted(
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const userId = session.metadata?.userId;
+  if (!userId) {
+    logger.warn({ sessionId: session.id }, "Macro calculator add-on checkout completed but missing userId in metadata");
+    return;
+  }
+
+  const stripeSessionId = session.id;
+  const amountPaidCents = session.amount_total ?? MACRO_ADDON_PRICE_CENTS;
+
+  await prisma.macroCalculatorAddon.upsert({
+    where: { userId },
+    create: { userId, stripeSessionId, amountPaidCents },
+    update: { stripeSessionId, amountPaidCents },
+  });
+
+  logger.info({ userId, stripeSessionId }, "Macro calculator add-on purchase fulfilled");
 }
 
 // Subscription lifecycle events — only apply to PRIVATE_COACHING (recurring)

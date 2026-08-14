@@ -30,6 +30,7 @@ model User {
   sessions        Session[]
   chatConversation ChatConversation?
   sessionBookings SessionBooking[]
+  macroCalculatorAddon MacroCalculatorAddon?
 }
 
 enum Role {
@@ -254,6 +255,13 @@ model WorkoutSession {
 
   // Workout content (JSON — exercises, sets, reps, zones, etc.)
   content         Json           // structured workout data
+
+  // Per-exercise check-off state as the client works through the session --
+  // { warmup: number[], main: number[], cooldown: number[] } of checked
+  // indices into that section's content array. Separate from `status`
+  // (whole-session completion) and from `content` itself so swapping an
+  // exercise never risks clobbering check-off progress.
+  completedExercises Json?
 
   // Completion tracking
   status          SessionStatus @default(SCHEDULED)
@@ -530,6 +538,40 @@ model NutritionSubscription {
   renewalPromptedAt  DateTime?
   renewalResponseAt  DateTime?
   scheduledDeleteAt  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// $23 one-time add-on for Training Plan clients (30/60/90-day) who want
+// calorie/macro targets without the full Nutrition Plan tier's meal plans
+// and check-ins -- deliberately a flat number-only utility, not a
+// subscription, so no periodEnd/status lifecycle like the models above.
+// Gated at checkout/purchase time to Training Plan tiers only (Private
+// Coaching and Nutrition Plan clients already have real nutrition guidance
+// bundled in, so this would be redundant for them).
+model MacroCalculatorAddon {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  purchasedAt     DateTime @default(now())
+  stripeSessionId String?
+  amountPaidCents Int      @default(2300)
+
+  // Latest computed targets -- recalculable anytime from the dashboard tab
+  calories        Int?
+  proteinGrams    Int?
+  carbGrams       Int?
+  fatGrams        Int?
+
+  // Inputs last used to compute the targets above, so the form can pre-fill
+  weightLbs       Float?
+  heightInches    Int?
+  age             Int?
+  gender          String?
+  activityLevel   String?
+  goalDirection   String?  // lose | maintain | gain
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

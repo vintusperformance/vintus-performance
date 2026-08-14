@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import type { Prisma } from "@prisma/client";
 import { authenticate } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
-import { completeSessionSchema, skipSessionSchema, rescheduleSessionSchema, swapExerciseSchema, rebuildPreferencesSchema } from "./schemas/workout.schemas.js";
+import { completeSessionSchema, skipSessionSchema, rescheduleSessionSchema, swapExerciseSchema, rebuildPreferencesSchema, exerciseToggleSchema } from "./schemas/workout.schemas.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { updateAdherence } from "../services/adherence.service.js";
@@ -130,6 +130,61 @@ router.post(
         success: true,
         data: updated,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /workout/:sessionId/exercise-toggle — check/uncheck a single exercise
+// as the client works through the session. Independent of /complete (whole
+// session) and of `content` (the exercise data itself), so swapping an
+// exercise or completing the session never disturbs check-off state.
+router.post(
+  "/:sessionId/exercise-toggle",
+  validate(exerciseToggleSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const sessionId = req.params.sessionId as string;
+      const { section, index, completed } = req.body;
+
+      const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+      if (!profile) {
+        res.status(404).json({ success: false, error: "Athlete profile not found" });
+        return;
+      }
+
+      const session = await prisma.workoutSession.findFirst({
+        where: { id: sessionId, workoutPlan: { athleteProfileId: profile.id } },
+        select: { id: true, completedExercises: true },
+      });
+      if (!session) {
+        res.status(404).json({ success: false, error: "Workout session not found" });
+        return;
+      }
+
+      const existing = (session.completedExercises as { warmup?: number[]; main?: number[]; cooldown?: number[] } | null) ?? {};
+      const current = new Set(existing[section as "warmup" | "main" | "cooldown"] ?? []);
+      if (completed) {
+        current.add(index);
+      } else {
+        current.delete(index);
+      }
+
+      const updated = {
+        warmup: existing.warmup ?? [],
+        main: existing.main ?? [],
+        cooldown: existing.cooldown ?? [],
+        [section]: Array.from(current).sort((a, b) => a - b),
+      };
+
+      await prisma.workoutSession.update({
+        where: { id: sessionId },
+        data: { completedExercises: updated as unknown as Prisma.InputJsonValue },
+      });
+
+      res.status(200).json({ success: true, data: updated });
     } catch (err) {
       next(err);
     }

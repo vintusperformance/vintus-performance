@@ -236,6 +236,56 @@ export function calculateNutritionTargets(
   return { dailyCalories, proteinG, carbsG, fatG, usedDefaults };
 }
 
+// ============================================================
+// Macro Calculator add-on ($23, Training Plan clients) — targets only, no
+// meal plan/checklist. Deterministic and AI-free by design: a lightweight
+// tool a client can recalculate instantly shouldn't depend on an AI call
+// the way the full Nutrition Plan tiers' goal classification does. Reuses
+// calculateNutritionTargets (same BMR/TDEE math the real Nutrition Plans
+// use) by building a GoalClassification directly from simple form inputs
+// instead of classifying free text.
+export interface MacroCalculatorInput {
+  weightLbs: number;
+  heightInches: number;
+  age: number;
+  gender: "male" | "female";
+  activityLevel: string; // sedentary | light | moderate | active | very-active
+  goalDirection: "lose" | "maintain" | "gain";
+}
+
+export function calculateMacroCalculatorTargets(
+  input: MacroCalculatorInput
+): { dailyCalories: number; proteinG: number; carbsG: number; fatG: number } {
+  const directionMap: Record<MacroCalculatorInput["goalDirection"], GoalClassification["calorieDirection"]> = {
+    lose: "deficit",
+    maintain: "maintenance",
+    gain: "surplus",
+  };
+  const calorieDirection = directionMap[input.goalDirection];
+
+  const classification: GoalClassification = {
+    calorieDirection,
+    magnitude: "moderate",
+    proteinEmphasis: calorieDirection === "deficit",
+    rationale: `${input.goalDirection} weight at a moderate, sustainable pace`,
+  };
+
+  const approxDateOfBirth = new Date(Date.now() - input.age * 365.25 * 24 * 60 * 60 * 1000);
+
+  const { dailyCalories, proteinG, carbsG, fatG } = calculateNutritionTargets(
+    {
+      gender: input.gender,
+      heightInches: input.heightInches,
+      weightLbs: input.weightLbs,
+      dateOfBirth: approxDateOfBirth,
+      activityLevel: input.activityLevel,
+    },
+    classification
+  );
+
+  return { dailyCalories, proteinG, carbsG, fatG };
+}
+
 interface ChecklistItem {
   time: string; // e.g. "6:30 AM" or "Post-Workout" — anchored to their actual wake/bed time when known
   type: "breakfast" | "lunch" | "dinner" | "snack";

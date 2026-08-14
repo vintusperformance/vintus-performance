@@ -42,6 +42,7 @@ export async function getOverview(userId: string): Promise<unknown> {
       athleteProfile: true,
       subscription: { select: { planTier: true, status: true, currentPeriodStart: true, currentPeriodEnd: true } },
       nutritionSubscription: { select: { planTier: true, status: true } },
+      macroCalculatorAddon: true,
     },
   });
 
@@ -184,6 +185,11 @@ export async function getOverview(userId: string): Promise<unknown> {
   // bundled in, not a separate purchase, as long as the membership is active.
   const isConciergeNutritionEligible = sub?.planTier === "PRIVATE_COACHING" && sub?.status === "ACTIVE";
 
+  // Macro Calculator add-on ($23) — Training Plan clients only, and only
+  // when they don't already have real macros from a Nutrition Plan/PC.
+  const isTrainingTier = sub?.planTier === "TRAINING_30DAY" || sub?.planTier === "TRAINING_60DAY" || sub?.planTier === "TRAINING_90DAY";
+  const macroCalculatorAddonEligible = isTrainingTier && sub?.status === "ACTIVE" && !hasPurchasedNutrition && !isConciergeNutritionEligible;
+
   return {
     athlete: {
       firstName: profile.firstName,
@@ -205,6 +211,8 @@ export async function getOverview(userId: string): Promise<unknown> {
       // Plan at any point. 'purchased' only applies to non-PC clients.
       nutritionAccessType: isConciergeNutritionEligible ? "concierge" : hasPurchasedNutrition ? "purchased" : null,
       restDayPreferences: profile.restDayPreferences,
+      macroCalculatorAddonEligible,
+      macroCalculatorAddon: user.macroCalculatorAddon,
     },
     today: {
       workout: todayWorkout,
@@ -260,7 +268,14 @@ export async function getWeekView(
   const plan = await prisma.workoutPlan.findFirst({
     where: {
       athleteProfileId: profile.id,
-      startDate: { lte: weekEnd },
+      // Exclusive upper bound, matching how weekEnd is used for the session
+      // date filter below (scheduledDate: { lt: weekEnd }). With upfront
+      // generation now creating every week's plan at once (not just the
+      // active one), an inclusive `lte` here always matched the *next*
+      // week's plan too -- its startDate lands exactly on this week's
+      // weekEnd -- and orderBy: createdAt desc picked that newer plan over
+      // the actual current one, silently emptying "This Week" every week.
+      startDate: { lt: weekEnd },
       endDate: { gte: weekStart },
     },
     orderBy: { createdAt: "desc" },
@@ -390,7 +405,14 @@ async function getWeekSessions(profileId: string, weekOffset: number): Promise<u
   const plan = await prisma.workoutPlan.findFirst({
     where: {
       athleteProfileId: profileId,
-      startDate: { lte: weekEnd },
+      // Exclusive upper bound, matching how weekEnd is used for the session
+      // date filter below (scheduledDate: { lt: weekEnd }). With upfront
+      // generation now creating every week's plan at once (not just the
+      // active one), an inclusive `lte` here always matched the *next*
+      // week's plan too -- its startDate lands exactly on this week's
+      // weekEnd -- and orderBy: createdAt desc picked that newer plan over
+      // the actual current one, silently emptying "This Week" every week.
+      startDate: { lt: weekEnd },
       endDate: { gte: weekStart },
     },
     orderBy: { createdAt: "desc" },

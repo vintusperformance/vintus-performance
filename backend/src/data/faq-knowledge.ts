@@ -16,6 +16,9 @@ PLANS & PRICING:
 - 8-Week Nutrition Plan: $399 one-time.
 - All plans are delivered digitally through the client's private Vintus Performance dashboard — not a PDF, not email attachments.
 
+ADD-ONS:
+- Calorie & Macro Calculator: $23 one-time, Training Plan clients only (30/60/90-Day). Delivers daily calorie and macro targets as a new dashboard tab — numbers only, no meal plan, no check-ins, recalculable anytime. Not available to Private Coaching or Nutrition Plan clients, who already have full nutrition guidance bundled in or purchased. Bought from the "Add-Ons" button on the dashboard.
+
 PAID SESSIONS (one-off, no subscription — booked via /paid-session, not the dashboard):
 - 30-Minute Meeting: $85/person, 1-6 people, video call.
 - 60-Min Training Session (1-on-1): $150 flat, 1 person, video call.
@@ -30,7 +33,7 @@ MANAGING A SUBSCRIPTION:
 - If a one-time plan is ending, the client will be prompted about renewal; there is no automatic charge for one-time plans.
 
 REFUNDS:
-- All Vintus purchases are final — Private Coaching, one-time Training/Nutrition Plans, and Paid Sessions alike. No refunds, in whole or in part, regardless of reason or how much was used/attended.
+- All Vintus purchases are final — Private Coaching, one-time Training/Nutrition Plans, Add-Ons, and Paid Sessions alike. No refunds, in whole or in part, regardless of reason or how much was used/attended.
 - Private Coaching: canceling in Settings stops future billing only — it does not refund the current or any prior billing period. This is stated in the waiver clients accept during onboarding.
 - Never imply a refund is possible or "case by case" — the policy is settled: no refunds.
 

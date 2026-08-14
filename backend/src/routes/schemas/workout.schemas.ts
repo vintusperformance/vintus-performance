@@ -38,8 +38,15 @@ export const rebuildPreferencesSchema = z
     message: "swapDateA and swapDateB must be provided together",
   });
 
+export const exerciseToggleSchema = z.object({
+  section: z.enum(["warmup", "main", "cooldown"]),
+  index: z.number().int().min(0).max(50),
+  completed: z.boolean(),
+});
+
 export type CompleteSession = z.infer<typeof completeSessionSchema>;
 export type SkipSession = z.infer<typeof skipSessionSchema>;
 export type RescheduleSession = z.infer<typeof rescheduleSessionSchema>;
 export type SwapExercise = z.infer<typeof swapExerciseSchema>;
 export type RebuildPreferences = z.infer<typeof rebuildPreferencesSchema>;
+export type ExerciseToggle = z.infer<typeof exerciseToggleSchema>;

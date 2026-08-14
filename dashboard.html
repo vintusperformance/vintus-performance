@@ -56,6 +56,10 @@
                 <span class="tp-header__tier-badge" id="tierBadge" style="display:none;"></span>
             </div>
             <div class="tp-header__right">
+                <button class="tp-header__prefs-btn" id="addonsBtn" type="button" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Add-Ons
+                </button>
                 <button class="tp-header__prefs-btn" id="editPreferencesBtn" type="button" style="display:none;">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                     Edit My Preferences
@@ -70,7 +74,8 @@
              plan and a Nutrition Plan) -->
         <div class="tp-plan-tabs" id="planTabs" style="display:none;">
             <button class="tp-plan-tab tp-plan-tab--active" id="tabTraining" data-tab="training"></button>
-            <button class="tp-plan-tab" id="tabNutrition" data-tab="nutrition"></button>
+            <button class="tp-plan-tab" id="tabNutrition" data-tab="nutrition" style="display:none;"></button>
+            <button class="tp-plan-tab" id="tabMacroCalc" data-tab="macro" style="display:none;">Macro Calculator</button>
         </div>
 
         <!-- 1c. Direct Line to Coach — Private Coaching only, a concierge touch,
@@ -229,6 +234,58 @@
                     <div class="tp-trends__chart" id="nutritionTrendsChart"></div>
                 </div>
             </div>
+        </div>
+
+        <!-- Macro Calculator Add-On Tab Content -->
+        <div class="tp-nutrition" id="macroCalcSection" style="display:none;">
+            <h3 class="tp-section-title" style="margin-bottom:0.5rem;">Calorie &amp; Macro Calculator</h3>
+            <p style="color:var(--gray);font-size:0.9rem;margin-bottom:1.25rem;max-width:520px;">Your daily targets — calories, protein, carbs, fat. Update your stats anytime and recalculate.</p>
+
+            <div class="macro-calc-form">
+                <div class="macro-calc-field">
+                    <label for="mcWeight">Weight (lbs)</label>
+                    <input type="number" id="mcWeight" min="1" max="1000" placeholder="e.g., 180">
+                </div>
+                <div class="macro-calc-field">
+                    <label for="mcHeight">Height (inches)</label>
+                    <input type="number" id="mcHeight" min="1" max="120" placeholder="e.g., 70">
+                </div>
+                <div class="macro-calc-field">
+                    <label for="mcAge">Age</label>
+                    <input type="number" id="mcAge" min="13" max="100" placeholder="e.g., 32">
+                </div>
+                <div class="macro-calc-field">
+                    <label for="mcGender">Sex</label>
+                    <select id="mcGender">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                <div class="macro-calc-field">
+                    <label for="mcActivity">Activity Level</label>
+                    <select id="mcActivity">
+                        <option value="sedentary">Sedentary (little exercise)</option>
+                        <option value="light">Light (1-3 days/week)</option>
+                        <option value="moderate" selected>Moderate (3-5 days/week)</option>
+                        <option value="active">Active (6-7 days/week)</option>
+                        <option value="very-active">Very Active (physical job + training)</option>
+                    </select>
+                </div>
+                <div class="macro-calc-field">
+                    <label for="mcGoal">Goal</label>
+                    <select id="mcGoal">
+                        <option value="lose">Lose Weight</option>
+                        <option value="maintain">Maintain Weight</option>
+                        <option value="gain">Build Muscle</option>
+                    </select>
+                </div>
+            </div>
+            <button class="tp-workout-card__start-btn" id="mcCalculateBtn" style="border:none;cursor:pointer;">
+                <span>Calculate My Targets</span>
+            </button>
+            <p class="prefs-error" id="mcError" style="display:none;margin-top:1rem;"></p>
+
+            <div class="tp-nutrition__macros" id="mcResults" style="display:none;margin-top:1.5rem;"></div>
         </div>
 
         <!-- 6. Daily Check-in (shared across tabs — general wellness data, not tied to training or nutrition specifically) -->
@@ -406,6 +463,28 @@
             <div class="tp-modal__footer">
                 <button class="tp-modal__btn tp-modal__btn--cancel" id="prefsModalCancel">Cancel</button>
                 <button class="tp-modal__btn tp-modal__btn--confirm" id="prefsModalSave">Save Preferences</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add-Ons Modal -->
+    <div class="tp-modal-overlay" id="addonModalOverlay" style="display:none;">
+        <div class="tp-modal">
+            <div class="tp-modal__header">
+                <h3>Add-Ons</h3>
+                <button class="tp-modal__close" id="addonModalClose">&times;</button>
+            </div>
+            <div class="tp-modal__body">
+                <div class="addon-card">
+                    <div class="addon-card__top">
+                        <p class="addon-card__name">Calorie &amp; Macro Calculator</p>
+                        <p class="addon-card__price">$23</p>
+                    </div>
+                    <p class="addon-card__desc">Your daily calorie and macro targets, calculated and delivered as a new tab on your dashboard. No meal plan. No check-ins. Just the numbers to hit, recalculable anytime.</p>
+                    <button class="tp-modal__btn tp-modal__btn--confirm" id="addonBuyMacroCalcBtn" style="width:100%;">Add for $23</button>
+                    <p style="font-size:0.72rem;color:var(--gray);text-align:center;margin-top:0.6rem;">All sales are final.</p>
+                </div>
+                <p class="prefs-error" id="addonError" style="display:none;"></p>
             </div>
         </div>
     </div>
