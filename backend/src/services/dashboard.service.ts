@@ -322,9 +322,9 @@ export async function getFullPlan(userId: string): Promise<unknown> {
     return { available: false };
   }
 
-  const plans = await prisma.workoutPlan.findMany({
+  const allPlans = await prisma.workoutPlan.findMany({
     where: { athleteProfileId: profile.id },
-    orderBy: { weekNumber: "asc" },
+    orderBy: [{ weekNumber: "asc" }, { createdAt: "desc" }],
     include: {
       sessions: {
         orderBy: [{ scheduledDate: "asc" }, { scheduledOrder: "asc" }],
@@ -344,6 +344,19 @@ export async function getFullPlan(userId: string): Promise<unknown> {
       },
     },
   });
+
+  // A plan can be regenerated (e.g. the admin "Regenerate AI Plan" action),
+  // which deactivates the old row for a weekNumber and creates a fresh one
+  // rather than deleting it -- same reason getWeekSessions/getWeekView key
+  // off the newest match instead of returning every row. Without this, a
+  // regenerated client would show duplicate "Week N" sections here.
+  const plans: typeof allPlans = [];
+  const seenWeekNumbers = new Set<number>();
+  for (const plan of allPlans) {
+    if (seenWeekNumbers.has(plan.weekNumber)) continue;
+    seenWeekNumbers.add(plan.weekNumber);
+    plans.push(plan);
+  }
 
   const allSessions = plans.flatMap((p) => p.sessions);
   const completedCount = allSessions.filter((s) => s.status === "COMPLETED").length;

@@ -1021,6 +1021,29 @@ export async function regeneratePlan(
 }
 
 /**
+ * Fills in any missing weeks for a fixed-term Training client stuck short
+ * of their tier's full term (e.g. upfront generation partly failed at
+ * purchase). Unlike regeneratePlan, this never touches existing weeks or
+ * their logged history -- it only adds what's missing.
+ */
+export async function backfillPlanWeeks(
+  userId: string
+): Promise<{ weeksExpected: number; sessionsAdded: number }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const { backfillUpfrontWeeks } = await import("./workout.service.js");
+  const result = await backfillUpfrontWeeks(profile.id);
+
+  logger.info({ userId, ...result }, "Admin triggered plan backfill");
+  return result;
+}
+
+/**
  * Permanently delete a client and all associated data.
  * Prisma cascade deletes handle related records (profile, subscription, messages, etc.).
  */

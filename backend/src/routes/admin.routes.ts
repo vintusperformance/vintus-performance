@@ -341,6 +341,20 @@ router.post(
   }
 );
 
+// POST /admin/clients/:userId/backfill-plan-weeks — fill in missing weeks
+// for a fixed-term Training client without touching existing weeks/history
+router.post(
+  "/clients/:userId/backfill-plan-weeks",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.backfillPlanWeeks(req.params.userId as string);
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /admin/escalations/:id/resolve — resolve an escalation
 router.post(
   "/escalations/:id/resolve",

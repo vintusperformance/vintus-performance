@@ -333,7 +333,12 @@
 }
 
 .cal-full-plan__week {
-    margin-bottom: 1.75rem;
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+}
+
+.cal-full-plan__week:nth-child(even) {
+    background: rgba(255, 255, 255, 0.012);
 }
 
 .cal-full-plan__week:last-child {
@@ -341,15 +346,27 @@
 }
 
 .cal-full-plan__week-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
     font-family: var(--font-heading);
     font-size: 0.85rem;
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
     color: var(--silver);
-    padding-bottom: 0.6rem;
-    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
+}
+
+.cal-full-plan__week-header::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--silver);
+    border-radius: 1px;
 }
 
 /* ── Mobile move modal ── */
