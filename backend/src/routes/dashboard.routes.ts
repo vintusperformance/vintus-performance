@@ -9,7 +9,9 @@ import {
   generateNutritionPlan,
   recordNutritionCheckIn,
   getNutritionProgress,
+  executeNutritionGoalUpdate,
 } from "../services/nutrition.service.js";
+import { nutritionGoalUpdateSchema } from "./schemas/nutrition.schemas.js";
 import {
   getUpcomingWeeklyCall,
   bookWeeklyCoachingCall,
@@ -87,6 +89,30 @@ router.post(
         success: true,
         data: result,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/update-goal — "Edit My Preferences" for
+// nutrition clients: same executeNutritionGoalUpdate the Jerry chat tool
+// already uses, so the client-facing form and the AI adjustment path share
+// one code path instead of drifting apart.
+router.post(
+  "/nutrition/update-goal",
+  validate(nutritionGoalUpdateSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const result = await executeNutritionGoalUpdate(userId, req.body);
+
+      if (!result.ok) {
+        res.status(400).json({ success: false, error: result.message });
+        return;
+      }
+
+      res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);
     }

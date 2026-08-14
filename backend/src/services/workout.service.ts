@@ -87,11 +87,39 @@ function getBlockType(weekNumber: number): string {
 // generateInitialPlan) so a client can see every workout through their actual
 // finish date, not just the current week. PRIVATE_COACHING has no fixed end
 // date -- it stays on the existing weekly-rolling cron generation.
-function getTotalWeeksForTier(planTier: string | undefined): number | null {
+const FIXED_DURATION_TRAINING_TIERS = new Set(["TRAINING_30DAY", "TRAINING_60DAY", "TRAINING_90DAY"]);
+
+// Derived from the subscription's actual currentPeriodStart/End -- the same
+// totalDays math dashboard.service.ts uses for the "Day X of Y" / "Week X of
+// Y" display -- rather than a hardcoded per-tier week count. A 60-day tier's
+// billed period is exactly 60 real days (checkout.service.ts), which isn't a
+// clean multiple of 7, so a fixed "8 weeks" constant undershoots by 4 days
+// and leaves the end of the term with no generated workouts.
+//
+// Rounding totalDays up to the nearest week isn't quite enough on its own:
+// week 1 always starts on the Monday of the purchase week (getWeekStart),
+// which can be up to 6 days *before* the actual purchase moment that
+// currentPeriodStart/End are measured from. A client who buys on a Sunday
+// loses nearly a full week of generated coverage to that offset. Adding one
+// extra week absorbs the worst case (7 days of buffer against a max 6-day
+// loss) so the plan always reaches the real end date regardless of which day
+// of the week someone happens to buy on -- a little pre-generated slack at
+// the tail is harmless; a gap with no workouts in it isn't.
+function getTotalWeeksForTier(
+  planTier: string | undefined,
+  periodStart?: Date | null,
+  periodEnd?: Date | null
+): number | null {
+  if (!planTier || !FIXED_DURATION_TRAINING_TIERS.has(planTier)) return null;
+  if (periodStart && periodEnd) {
+    const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.max(1, Math.ceil(totalDays / 7) + 1);
+  }
+  // Fallback if period dates are somehow missing
   switch (planTier) {
-    case "TRAINING_30DAY": return 4;
-    case "TRAINING_60DAY": return 8;
-    case "TRAINING_90DAY": return 12;
+    case "TRAINING_30DAY": return 5;
+    case "TRAINING_60DAY": return 9;
+    case "TRAINING_90DAY": return 13;
     default: return null;
   }
 }
@@ -443,7 +471,7 @@ export async function generateInitialPlan(
   // only, no adherence signal exists yet for weeks that haven't happened) and
   // created inactive; cron.service.ts's weekly check activates each in turn
   // as real time reaches it.
-  const totalWeeks = getTotalWeeksForTier(subscription?.planTier);
+  const totalWeeks = getTotalWeeksForTier(subscription?.planTier, subscription?.currentPeriodStart, subscription?.currentPeriodEnd);
   let totalSessionCount = sessionData.length;
   if (totalWeeks && totalWeeks > 1) {
     totalSessionCount += await generateUpfrontRemainingWeeks(profileId, profile, totalWeeks, endDate);

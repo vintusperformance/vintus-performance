@@ -6,6 +6,7 @@ import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { setClientStatus } from "../services/admin.service.js";
+import { sendSMS } from "../lib/twilio.js";
 
 const router = Router();
 
@@ -144,7 +145,7 @@ router.post("/sms", async (req: Request, res: Response) => {
           { phone: normalizedFrom },
         ],
       },
-      select: { id: true, userId: true, messagingDisabled: true },
+      select: { id: true, userId: true, messagingDisabled: true, firstName: true },
     });
 
     // Handle HELP keywords (CTIA compliance)
@@ -189,7 +190,10 @@ router.post("/sms", async (req: Request, res: Response) => {
       return;
     }
 
-    // Log inbound message for coach visibility
+    // Log inbound message for coach visibility, and forward it to Anthony's
+    // own phone as a live notification -- the admin Messaging tab log is
+    // passive (only seen if someone goes looking), and a client texting in
+    // is very often "something's wrong," which shouldn't sit unnoticed.
     if (profile) {
       await prisma.messageLog.create({
         data: {
@@ -201,6 +205,11 @@ router.post("/sms", async (req: Request, res: Response) => {
           templateId: "inbound-sms",
         },
       });
+
+      if (env.COACH_PHONE) {
+        const name = profile.firstName || "A client";
+        await sendSMS(env.COACH_PHONE, `${name} texted: "${body}" (${from})`);
+      }
     }
 
     // Empty TwiML response (no auto-reply for regular messages)

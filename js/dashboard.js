@@ -204,6 +204,8 @@
         setupPlanTabs(d.athlete.planTier, d.athlete.nutritionTier, d.athlete.nutritionAccessType);
       }
 
+      updatePrefsButtonVisibility(d);
+
       // 30-day milestone report, if one's due
       if (d.milestoneReport) {
         showMilestoneReport(d.milestoneReport);
@@ -1040,19 +1042,47 @@
   });
 
   // ============================================================
-  // Edit My Preferences — standing rest days + swap two upcoming days
+  // Edit My Preferences — adapts to what the client actually has:
+  // training/PC clients get rest-days + day-swap (rebuilds the workout
+  // plan), nutrition clients get a goal-update (regenerates the nutrition
+  // plan), and a Private Coaching + nutrition client sees both since they
+  // have both.
   // ============================================================
 
   var selectedRestDays = [];
 
+  function updatePrefsButtonVisibility(d) {
+    var btn = document.getElementById('editPreferencesBtn');
+    if (!btn) return;
+    var hasTraining = !!(d && d.athlete && d.athlete.planTier);
+    var hasNutrition = !!(d && d.athlete && d.athlete.hasNutritionPlan);
+    btn.style.display = (hasTraining || hasNutrition) ? 'inline-flex' : 'none';
+  }
+
   function openPrefsModal() {
-    selectedRestDays = (overviewData && overviewData.athlete && overviewData.athlete.restDayPreferences) || [];
+    var athlete = (overviewData && overviewData.athlete) || {};
+    var hasTraining = !!athlete.planTier;
+    var hasNutrition = !!athlete.hasNutritionPlan;
+
+    var trainingSection = document.getElementById('prefsTrainingSection');
+    var nutritionSection = document.getElementById('prefsNutritionSection');
+    trainingSection.style.display = hasTraining ? 'block' : 'none';
+    nutritionSection.style.display = hasNutrition ? 'block' : 'none';
+
+    var trainingLabel = document.getElementById('prefsTrainingSectionLabel');
+    if (trainingLabel) {
+      trainingLabel.textContent = (TIER_DISPLAY[athlete.planTier] || 'Training');
+    }
+
+    selectedRestDays = athlete.restDayPreferences || [];
     document.querySelectorAll('.prefs-day').forEach(function (btn) {
       var day = parseInt(btn.getAttribute('data-day'), 10);
       btn.classList.toggle('prefs-day--active', selectedRestDays.indexOf(day) !== -1);
     });
     document.getElementById('prefsSwapDateA').value = '';
     document.getElementById('prefsSwapDateB').value = '';
+    document.getElementById('prefsNutritionGoal').value = '';
+    document.getElementById('prefsTargetWeight').value = '';
     document.getElementById('prefsError').style.display = 'none';
     document.getElementById('prefsModalOverlay').style.display = 'flex';
   }
@@ -1088,41 +1118,65 @@
     var errorEl = document.getElementById('prefsError');
     errorEl.style.display = 'none';
 
+    var trainingVisible = document.getElementById('prefsTrainingSection').style.display !== 'none';
+    var nutritionVisible = document.getElementById('prefsNutritionSection').style.display !== 'none';
+
     var dateA = document.getElementById('prefsSwapDateA').value;
     var dateB = document.getElementById('prefsSwapDateB').value;
-
     if ((dateA && !dateB) || (!dateA && dateB)) {
       errorEl.textContent = 'Pick both days to swap, or leave both blank.';
       errorEl.style.display = 'block';
       return;
     }
 
-    var payload = { restDays: selectedRestDays };
-    if (dateA && dateB) {
-      payload.swapDateA = dateA;
-      payload.swapDateB = dateB;
+    var nutritionGoal = document.getElementById('prefsNutritionGoal').value.trim();
+    var targetWeightRaw = document.getElementById('prefsTargetWeight').value;
+
+    var calls = [];
+    if (trainingVisible) {
+      var trainingPayload = { restDays: selectedRestDays };
+      if (dateA && dateB) {
+        trainingPayload.swapDateA = dateA;
+        trainingPayload.swapDateB = dateB;
+      }
+      calls.push({ label: 'training', promise: apiPost('/api/v1/workout/rebuild-preferences', trainingPayload) });
+    }
+    if (nutritionVisible && nutritionGoal) {
+      var nutritionPayload = { goalDescription: nutritionGoal };
+      if (targetWeightRaw) nutritionPayload.targetWeight = parseFloat(targetWeightRaw);
+      calls.push({ label: 'nutrition', promise: apiPost('/api/v1/dashboard/nutrition/update-goal', nutritionPayload) });
+    }
+
+    if (calls.length === 0) {
+      errorEl.textContent = 'Nothing to save yet — pick rest days, a swap, or a nutrition goal.';
+      errorEl.style.display = 'block';
+      return;
     }
 
     btn.disabled = true;
-    btn.textContent = 'Rebuilding...';
+    btn.textContent = 'Saving...';
 
-    try {
-      var res = await apiPost('/api/v1/workout/rebuild-preferences', payload);
-      if (res.success) {
-        closePrefsModal();
-        await loadOverview();
-        await loadWeek(currentWeekOffset);
-      } else {
-        errorEl.textContent = res.error || 'Failed to update preferences.';
-        errorEl.style.display = 'block';
+    var errors = [];
+    for (var i = 0; i < calls.length; i++) {
+      try {
+        var res = await calls[i].promise;
+        if (!res.success) errors.push(res.error || ('Failed to update ' + calls[i].label + ' preferences.'));
+      } catch (err) {
+        errors.push((err && err.message) || ('Failed to update ' + calls[i].label + ' preferences.'));
       }
-    } catch (err) {
-      errorEl.textContent = (err && err.message) || 'Failed to update preferences.';
+    }
+
+    if (errors.length === 0) {
+      closePrefsModal();
+      await loadOverview();
+      await loadWeek(currentWeekOffset);
+    } else {
+      errorEl.textContent = errors.join(' ');
       errorEl.style.display = 'block';
     }
 
     btn.disabled = false;
-    btn.textContent = 'Save & Rebuild Plan';
+    btn.textContent = 'Save Preferences';
   });
 
   // ============================================================
