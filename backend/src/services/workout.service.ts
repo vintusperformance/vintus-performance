@@ -190,6 +190,72 @@ function buildSessionSchedule(
   return specs;
 }
 
+// buildSessionSchedule groups specs by category (all strength first, then
+// all endurance, etc.), and callers zip that array 1:1 with calendar dates
+// in order -- so without this, a client sees every strength day clustered
+// at the start of the week and every run clustered at the end. Reorders
+// the same specs into an evenly-spread sequence (largest categories placed
+// first, into evenly-spaced slots) using the identical distribution trick
+// placeSessionsOnAvailableWeekdays already uses for picking weekdays.
+function interleaveSpecsByCategory(specs: SessionSpec[]): SessionSpec[] {
+  const categoryOf = (spec: SessionSpec): string => {
+    if (spec.type.startsWith("STRENGTH")) return "strength";
+    if (spec.type.startsWith("ENDURANCE")) return "endurance";
+    return spec.type; // HIIT, MOBILITY_RECOVERY, ACTIVE_RECOVERY -- each its own bucket
+  };
+
+  const groups = new Map<string, SessionSpec[]>();
+  for (const spec of specs) {
+    const cat = categoryOf(spec);
+    const group = groups.get(cat);
+    if (group) group.push(spec);
+    else groups.set(cat, [spec]);
+  }
+
+  const total = specs.length;
+  const result: SessionSpec[] = new Array(total);
+  const filled = new Array(total).fill(false);
+
+  const orderedGroups = [...groups.values()].sort((a, b) => b.length - a.length);
+  for (const groupSpecs of orderedGroups) {
+    const emptySlots: number[] = [];
+    for (let i = 0; i < total; i++) if (!filled[i]) emptySlots.push(i);
+    const gap = emptySlots.length / groupSpecs.length;
+    // Centered offset (k + 0.5) rather than k -- picking the middle of each
+    // bucket instead of its edge spreads the group as evenly as the slot
+    // count allows (e.g. 3 items in 5 slots lands on 0,2,4 instead of the
+    // edge-anchored 0,1,3, which leaves two of the three adjacent).
+    for (let k = 0; k < groupSpecs.length; k++) {
+      const slot = emptySlots[Math.min(Math.floor((k + 0.5) * gap), emptySlots.length - 1)];
+      result[slot] = groupSpecs[k];
+      filled[slot] = true;
+    }
+  }
+
+  return result;
+}
+
+// Endurance sub-type is picked positionally by buildSessionSchedule with no
+// idea which calendar day it'll land on. Corrects the two cases that matter
+// once the real date is known: a Zone 2 (steady, easy) run has no business
+// on a weekday when a higher-intensity Tempo/Intervals session fits the
+// "hard effort, shorter" weekday slot better, and only Zone 2 belongs on a
+// weekend, where there's time for a longer easy aerobic session. Leaves
+// weekday Tempo/Intervals variety and non-endurance specs untouched.
+function fitEnduranceToDay(spec: SessionSpec, date: Date): SessionSpec {
+  if (!spec.type.startsWith("ENDURANCE")) return spec;
+
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  let type = spec.type;
+  if (isWeekend && type !== "ENDURANCE_ZONE2") {
+    type = "ENDURANCE_ZONE2" as SessionType;
+  } else if (!isWeekend && type === "ENDURANCE_ZONE2") {
+    type = "ENDURANCE_INTERVALS" as SessionType;
+  }
+  if (type === spec.type) return spec;
+  return { type, title: formatSessionTitle(type, 1) };
+}
+
 function formatSessionTitle(type: SessionType, index: number): string {
   const labels: Record<string, string> = {
     STRENGTH_UPPER: "Upper Body Strength",
@@ -326,11 +392,13 @@ You must return ONLY valid JSON (no markdown, no explanation) with this exact st
 
 Rules:
 - dayOffset: 0=Monday through 6=Sunday. Schedule exactly the number of training days specified.
+- Spread session types evenly across the week — never cluster all strength days together and all cardio days together (e.g. three strength sessions back to back followed by two runs back to back). Alternate types so consecutive training days vary.
 - sessionType must be one of: STRENGTH_UPPER, STRENGTH_LOWER, STRENGTH_FULL, STRENGTH_PUSH, STRENGTH_PULL, ENDURANCE_ZONE2, ENDURANCE_TEMPO, ENDURANCE_INTERVALS, HIIT, MOBILITY_RECOVERY, ACTIVE_RECOVERY
+- For endurance (running/cardio) sessions specifically: use ENDURANCE_TEMPO or ENDURANCE_INTERVALS (higher intensity, shorter duration) for weekday runs, and ENDURANCE_ZONE2 (steady, easy pace, can run longer) for any endurance session that falls on a Saturday or Sunday.
 - NEVER prescribe exercises that conflict with their injuries. If they have a knee injury, avoid heavy squats/lunges. If shoulder, avoid overhead pressing. Be specific.
 - Adjust volume/intensity for their experience level and baseline readiness scores.
 - Only prescribe exercises they can do with their equipment.
-- Respect their preferred session length — keep sessions within 5 minutes of it.
+- Respect their preferred session length for strength/HIIT sessions — keep those within 5 minutes of it. Endurance sessions don't need to match it exactly: weekday Tempo/Intervals runs can run shorter given the higher intensity, and weekend Zone 2 runs can run longer.
 - Consider their work type: desk workers need more mobility and hip openers. Physical laborers need less total volume.
 - If they listed exercises they love, include them when appropriate.
 - If they listed exercises they hate, avoid them unless absolutely critical.
@@ -521,10 +589,10 @@ async function generateUpfrontRemainingWeeks(
 
     if (existingWeekNumbers.has(weekNumber)) continue;
 
-    const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+    const sessionSpecs = interleaveSpecsByCategory(buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal));
     const placements = placeSessionsOnAvailableWeekdays(weekStart, sessionSpecs.length, profile.restDayPreferences);
     const sessionData = placements.map((sessionDate, index) => {
-      const spec = sessionSpecs[index];
+      const spec = fitEnduranceToDay(sessionSpecs[index], sessionDate);
       const { content, templateId } = buildSessionContent(
         spec.type,
         profile.equipmentAccess,
@@ -845,13 +913,13 @@ async function regenerateFutureSessions(
     if (plan.endDate < regenerateFrom) continue; // this whole week is in the past -- untouched
 
     const volumeMultiplier = getUpfrontVolumeMultiplier(plan.weekNumber, plan.blockType);
-    const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+    const sessionSpecs = interleaveSpecsByCategory(buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal));
     const placements = placeSessionsOnAvailableWeekdays(plan.startDate, sessionSpecs.length, restDays);
 
     const newSessionData = placements
       .map((sessionDate, index) => {
         if (sessionDate < regenerateFrom) return null; // this specific day is in the past, or was just changed -- leave it
-        const spec = sessionSpecs[index];
+        const spec = fitEnduranceToDay(sessionSpecs[index], sessionDate);
         const { content, templateId } = buildSessionContent(
           spec.type,
           profile.equipmentAccess,
@@ -1084,12 +1152,12 @@ function generateRuleBasedPlan(
     status: "SCHEDULED";
   }>;
 } {
-  const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+  const sessionSpecs = interleaveSpecsByCategory(buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal));
   const usedTemplateIds: string[] = [];
   const placements = placeSessionsOnAvailableWeekdays(startDate, sessionSpecs.length, profile.restDayPreferences);
 
   const sessionData = placements.map((sessionDate, index) => {
-    const spec = sessionSpecs[index];
+    const spec = fitEnduranceToDay(sessionSpecs[index], sessionDate);
     const { content, templateId } = buildSessionContent(
       spec.type,
       profile.equipmentAccess,
@@ -1212,7 +1280,7 @@ export async function generateNextWeek(
   const avoidTemplateIds = await getRecentTemplateIds(profileId, 2);
 
   // Build session schedule
-  const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+  const sessionSpecs = interleaveSpecsByCategory(buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal));
 
   // Calculate dates for next week
   const nextWeekStart = new Date(weekStart);
@@ -1230,7 +1298,7 @@ export async function generateNextWeek(
   const usedIds = [...avoidTemplateIds];
   const placements = placeSessionsOnAvailableWeekdays(nextWeekStart, sessionSpecs.length, profile.restDayPreferences);
   const sessionData = placements.map((sessionDate, index) => {
-    const spec = sessionSpecs[index];
+    const spec = fitEnduranceToDay(sessionSpecs[index], sessionDate);
     const { content, templateId } = buildSessionContent(
       spec.type,
       profile.equipmentAccess,
