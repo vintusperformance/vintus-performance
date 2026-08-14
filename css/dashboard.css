@@ -352,46 +352,6 @@
   gap: 6px;
 }
 
-.tp-week__grid--full-plan {
-  display: block;
-}
-
-.tp-week__group {
-  padding: 0.9rem 0.6rem;
-  margin: 0 -0.6rem;
-  border-radius: 8px;
-}
-
-.tp-week__group:nth-child(even) {
-  background: rgba(255, 255, 255, 0.015);
-}
-
-.tp-week__group:not(:first-child) {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.tp-week__group-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-family: var(--font-heading);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--gray-light);
-  margin-bottom: 0.6rem;
-}
-
-.tp-week__group-header::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 10px;
-  background: var(--silver);
-  border-radius: 1px;
-}
-
 .tp-week__full-link {
   display: flex;
   align-items: center;

@@ -486,7 +486,7 @@ export async function generateInitialPlan(
 
 async function generateUpfrontRemainingWeeks(
   profileId: string,
-  profile: { trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string },
+  profile: { trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string; restDayPreferences: number[] },
   totalWeeks: number,
   week1EndDate: Date
 ): Promise<number> {
@@ -522,7 +522,9 @@ async function generateUpfrontRemainingWeeks(
     if (existingWeekNumbers.has(weekNumber)) continue;
 
     const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
-    const sessionData = sessionSpecs.map((spec, index) => {
+    const placements = placeSessionsOnAvailableWeekdays(weekStart, sessionSpecs.length, profile.restDayPreferences);
+    const sessionData = placements.map((sessionDate, index) => {
+      const spec = sessionSpecs[index];
       const { content, templateId } = buildSessionContent(
         spec.type,
         profile.equipmentAccess,
@@ -531,10 +533,6 @@ async function generateUpfrontRemainingWeeks(
         volumeMultiplier
       );
       usedTemplateIds.push(templateId);
-
-      const dayGap = Math.floor(7 / sessionSpecs.length);
-      const sessionDate = new Date(weekStart);
-      sessionDate.setDate(sessionDate.getDate() + Math.min(index * dayGap, 6));
 
       return {
         scheduledDate: sessionDate,
@@ -1060,7 +1058,7 @@ async function generatePlanWithClaude(
 // ============================================================
 
 function generateRuleBasedPlan(
-  profile: { trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string },
+  profile: { trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string; restDayPreferences: number[] },
   startDate: Date
 ): {
   planName: string;
@@ -1078,8 +1076,10 @@ function generateRuleBasedPlan(
 } {
   const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
   const usedTemplateIds: string[] = [];
+  const placements = placeSessionsOnAvailableWeekdays(startDate, sessionSpecs.length, profile.restDayPreferences);
 
-  const sessionData = sessionSpecs.map((spec, index) => {
+  const sessionData = placements.map((sessionDate, index) => {
+    const spec = sessionSpecs[index];
     const { content, templateId } = buildSessionContent(
       spec.type,
       profile.equipmentAccess,
@@ -1087,10 +1087,6 @@ function generateRuleBasedPlan(
       usedTemplateIds
     );
     usedTemplateIds.push(templateId);
-
-    const dayGap = Math.floor(7 / sessionSpecs.length);
-    const sessionDate = new Date(startDate);
-    sessionDate.setDate(sessionDate.getDate() + Math.min(index * dayGap, 6));
 
     return {
       scheduledDate: sessionDate,
@@ -1222,7 +1218,9 @@ export async function generateNextWeek(
 
   // Build session content with volume adjustments
   const usedIds = [...avoidTemplateIds];
-  const sessionData = sessionSpecs.map((spec, index) => {
+  const placements = placeSessionsOnAvailableWeekdays(nextWeekStart, sessionSpecs.length, profile.restDayPreferences);
+  const sessionData = placements.map((sessionDate, index) => {
+    const spec = sessionSpecs[index];
     const { content, templateId } = buildSessionContent(
       spec.type,
       profile.equipmentAccess,
@@ -1231,10 +1229,6 @@ export async function generateNextWeek(
       volumeMultiplier
     );
     usedIds.push(templateId);
-
-    const dayGap = Math.floor(7 / sessionSpecs.length);
-    const sessionDate = new Date(nextWeekStart);
-    sessionDate.setDate(sessionDate.getDate() + Math.min(index * dayGap, 6));
 
     return {
       scheduledDate: sessionDate,
