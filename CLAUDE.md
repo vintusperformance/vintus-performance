@@ -151,20 +151,19 @@ fitness account, it's wrong.
    any prior billing period. Stated in the client waiver
    (`legal/private-coaching-waiver.md` §10), `onboarding.html`, `terms.html`,
    `faq.html`, and `faq-knowledge.ts`.
-2. **Never fabricate proof.** No testimonials, transformation stats, client counts,
-   or results that aren't real. This includes "3 spots left" style scarcity unless
-   the number is actually true.
-   - *Settled exception:* the "Popular" badge (`features.html`) and "Most Popular"
-     badge (`results.html`) on the 60-day tier are an approved marketing convention.
-     Anthony reviewed and decided to keep them. Do not re-flag on future reviews.
-3. **Compliance is not optional.** SMS requires explicit opt-in consent
+2. **Compliance is not optional.** SMS requires explicit opt-in consent
    (`smsConsent` on AthleteProfile gates all sending). Terms and Privacy pages
    carry carrier-required disclosures — don't thin them out.
-4. **Secrets never enter chat or commits.** API keys live in Railway/Vercel env
+3. **Secrets never enter chat or commits.** API keys live in Railway/Vercel env
    vars only.
-5. **Ship behind review.** Feature flags (`MESSAGING_ENABLED`, `CRON_ENABLED`,
+4. **Ship behind review.** Feature flags (`MESSAGING_ENABLED`, `CRON_ENABLED`,
    `AUTO_MESSAGING_ENABLED`) exist so automation can be staged. Default to
    queue-for-approval over auto-send until Anthony says otherwise.
+5. **Marketing claims and stats are Anthony's call.** He decides what proof,
+   numbers, and scarcity framing run on his own site — this file doesn't gate
+   it. Draft what he asks for; flag a factual conflict once if one exists
+   (e.g. it contradicts something else on the site), then proceed as directed
+   without re-litigating it.
 
 ---
 
