@@ -352,6 +352,28 @@
   gap: 6px;
 }
 
+.tp-week__grid--full-plan {
+  display: block;
+}
+
+.tp-week__group {
+  margin-bottom: 1.1rem;
+}
+
+.tp-week__group:last-child {
+  margin-bottom: 0;
+}
+
+.tp-week__group-header {
+  font-family: var(--font-heading);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gray-light);
+  margin-bottom: 0.5rem;
+}
+
 .tp-week__full-link {
   display: flex;
   align-items: center;
