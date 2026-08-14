@@ -28,9 +28,19 @@ Claude (plan generation, intake analysis, and the client-facing coach "Jerry").
 | 90-Day Training Plan | $199 | One-time |
 | 4-Week Nutrition Plan | $229 | One-time |
 | 8-Week Nutrition Plan | $399 | One-time |
+| Calorie & Macro Calculator (add-on) | $23 | One-time |
 
 All plans deliver through the client's private dashboard — **never** "PDF" or
 email attachment. Say "delivered through your private dashboard."
+
+**Calorie & Macro Calculator add-on ($23, Training Plan tiers only):** targets
+only — daily calorie/protein/carb/fat numbers, no meal plan, no check-ins, no
+recipes. Deliberately the lighter, cheaper alternative to the full Nutrition
+Plan tiers for a Training Plan client who just wants numbers to hit. Bought
+from the dashboard's "Add-Ons" button, delivered as a new "Macro Calculator"
+tab, recalculable anytime. Not offered to Private Coaching (nutrition already
+bundled) or Nutrition Plan clients (already have real macros as part of an
+actual meal plan) — would be redundant for both.
 
 **Private Coaching ($997/mo) includes, at no extra charge:**
 - Nutrition guidance bundled in — no separate Nutrition Plan purchase required

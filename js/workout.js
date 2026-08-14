@@ -108,7 +108,7 @@
         var warmupList = document.getElementById('warmupList');
         warmupPhase.style.display = 'block';
 
-        content.warmup.forEach(function (ex) {
+        content.warmup.forEach(function (ex, idx) {
           var card = document.createElement('div');
           card.className = 'exercise-card simple';
           card.innerHTML =
@@ -119,7 +119,7 @@
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
           var warmupVideoBtn = addVideoButton(ex.exercise);
           if (warmupVideoBtn) card.appendChild(warmupVideoBtn);
-          card.appendChild(addCompleteToggle(card));
+          card.appendChild(addCompleteToggle(card, 'warmup', idx));
           warmupList.appendChild(card);
         });
       }
@@ -160,7 +160,7 @@
             (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '');
           var mainVideoBtn = addVideoButton(ex.exercise);
           if (mainVideoBtn) card.querySelector('.exercise-name-row').appendChild(mainVideoBtn);
-          card.querySelector('.exercise-name-row').appendChild(addCompleteToggle(card));
+          card.querySelector('.exercise-name-row').appendChild(addCompleteToggle(card, 'main', idx));
           mainList.appendChild(card);
         });
 
@@ -181,7 +181,7 @@
         var cooldownList = document.getElementById('cooldownList');
         cooldownPhase.style.display = 'block';
 
-        content.cooldown.forEach(function (ex) {
+        content.cooldown.forEach(function (ex, idx) {
           var card = document.createElement('div');
           card.className = 'exercise-card simple';
           card.innerHTML =
@@ -189,7 +189,7 @@
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
           var cooldownVideoBtn = addVideoButton(ex.exercise);
           if (cooldownVideoBtn) card.appendChild(cooldownVideoBtn);
-          card.appendChild(addCompleteToggle(card));
+          card.appendChild(addCompleteToggle(card, 'cooldown', idx));
           cooldownList.appendChild(card);
         });
       }
@@ -463,15 +463,39 @@
 
   var CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
-  function addCompleteToggle(card, exerciseNameEl) {
+  function addCompleteToggle(card, section, index) {
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'exercise-complete-btn';
     btn.setAttribute('aria-label', 'Mark exercise complete');
     btn.innerHTML = CHECK_ICON;
+
+    var savedIndices = (sessionData && sessionData.completedExercises && sessionData.completedExercises[section]) || [];
+    if (savedIndices.indexOf(index) !== -1) {
+      card.classList.add('exercise-checked');
+      btn.classList.add('checked');
+    }
+
     btn.addEventListener('click', function () {
       var isChecked = card.classList.toggle('exercise-checked');
       btn.classList.toggle('checked', isChecked);
+      btn.disabled = true;
+
+      apiPost('/api/v1/workout/' + encodeURIComponent(sessionId) + '/exercise-toggle', {
+        section: section,
+        index: index,
+        completed: isChecked
+      }).then(function (res) {
+        if (res.success && res.data) {
+          sessionData.completedExercises = res.data;
+        }
+      }).catch(function () {
+        // Revert on failure so the UI never claims a save that didn't happen
+        card.classList.toggle('exercise-checked');
+        btn.classList.toggle('checked');
+      }).finally(function () {
+        btn.disabled = false;
+      });
     });
     return btn;
   }

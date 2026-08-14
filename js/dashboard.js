@@ -185,8 +185,6 @@
       // Today's workout — only relevant when there's a training/coaching plan
       if (d.athlete && d.athlete.planTier) {
         renderTodayWorkout(d);
-      } else {
-        document.getElementById('trainingTabContent').style.display = 'none';
       }
 
       // Nutrition plan — fetch whenever one might exist, regardless of the
@@ -198,12 +196,18 @@
         loadNutritionProgress();
       }
 
-      // Show the plan tabs only when a client has both a training/coaching
-      // plan and a nutrition plan — single-plan clients see no tabs at all.
-      if (d.athlete && d.athlete.planTier && d.athlete.hasNutritionPlan) {
-        setupPlanTabs(d.athlete.planTier, d.athlete.nutritionTier, d.athlete.nutritionAccessType);
+      // Macro Calculator add-on — pre-fill the form/results if already purchased
+      if (d.athlete && d.athlete.macroCalculatorAddon) {
+        renderMacroCalculator(d.athlete.macroCalculatorAddon);
       }
 
+      // Tabs decide section visibility for training/nutrition/macro-calculator
+      // — single-plan clients get no tabs and just see that one section.
+      if (d.athlete) {
+        setupPlanTabs(d.athlete);
+      }
+
+      updateAddonsButtonVisibility(d);
       updatePrefsButtonVisibility(d);
 
       // 30-day milestone report, if one's due
@@ -264,44 +268,84 @@
   }
 
   // ============================================================
-  // PLAN TABS (Training + Nutrition, when a client has both)
+  // PLAN TABS — training/coaching, nutrition, and macro-calculator add-on.
+  // Shown whenever a client has more than one of these; a single-plan
+  // client sees no tabs and just gets that one section. Generic over
+  // however many of the three apply, since they aren't mutually exclusive
+  // (e.g. a Training Plan client could buy the macro add-on, then later
+  // add a full Nutrition Plan too).
   // ============================================================
 
-  var planTabsSetUp = false;
+  var planTabsBound = false;
 
-  function setupPlanTabs(trainingTier, nutritionTier, accessType) {
+  function setupPlanTabs(athlete) {
     var tabsEl = document.getElementById('planTabs');
     var tabTraining = document.getElementById('tabTraining');
     var tabNutrition = document.getElementById('tabNutrition');
-    var trainingContent = document.getElementById('trainingTabContent');
-    var nutritionContent = document.getElementById('nutritionSection');
+    var tabMacro = document.getElementById('tabMacroCalc');
+    var allContent = [
+      document.getElementById('trainingTabContent'),
+      document.getElementById('nutritionSection'),
+      document.getElementById('macroCalcSection')
+    ];
 
-    var trainingLabel = (TIER_DISPLAY[trainingTier] || trainingTier) +
-      (trainingTier === 'PRIVATE_COACHING' ? '' : ' Training Plan');
+    var trainingLabel = (TIER_DISPLAY[athlete.planTier] || athlete.planTier) +
+      (athlete.planTier === 'PRIVATE_COACHING' ? '' : ' Training Plan');
     // Concierge nutrition has no separate NutritionSubscription tier to name
     // — it's a bundled benefit, not a purchased plan.
-    var nutritionLabel = accessType === 'concierge'
+    var nutritionLabel = athlete.nutritionAccessType === 'concierge'
       ? 'Nutrition Guidance'
-      : (TIER_DISPLAY[nutritionTier] || nutritionTier) + ' Plan';
+      : (TIER_DISPLAY[athlete.nutritionTier] || athlete.nutritionTier) + ' Plan';
 
-    tabTraining.textContent = trainingLabel;
-    tabNutrition.textContent = nutritionLabel;
-    tabsEl.style.display = 'flex';
-
-    if (planTabsSetUp) return; // avoid double-binding click handlers on re-render
-    planTabsSetUp = true;
-
-    function activate(tab) {
-      var isTraining = tab === 'training';
-      tabTraining.classList.toggle('tp-plan-tab--active', isTraining);
-      tabNutrition.classList.toggle('tp-plan-tab--active', !isTraining);
-      trainingContent.style.display = isTraining ? '' : 'none';
-      nutritionContent.style.display = isTraining ? 'none' : 'block';
+    var tabs = [];
+    if (athlete.planTier) {
+      tabTraining.textContent = trainingLabel;
+      tabs.push({ btn: tabTraining, content: document.getElementById('trainingTabContent') });
+    }
+    if (athlete.hasNutritionPlan) {
+      tabNutrition.textContent = nutritionLabel;
+      tabs.push({ btn: tabNutrition, content: document.getElementById('nutritionSection') });
+    }
+    if (athlete.macroCalculatorAddon) {
+      tabs.push({ btn: tabMacro, content: document.getElementById('macroCalcSection') });
     }
 
-    tabTraining.addEventListener('click', function () { activate('training'); });
-    tabNutrition.addEventListener('click', function () { activate('nutrition'); });
-    activate('training');
+    [tabTraining, tabNutrition, tabMacro].forEach(function (btn) { btn.style.display = 'none'; });
+    allContent.forEach(function (el) { el.style.display = 'none'; });
+
+    if (tabs.length <= 1) {
+      tabsEl.style.display = 'none';
+      // Single-plan client: force that one section visible directly, since
+      // no tab click will ever do it. Zero-plan (pending approval etc.):
+      // everything stays hidden, matching the prior explicit-hide behavior.
+      if (tabs.length === 1) tabs[0].content.style.display = 'block';
+      return;
+    }
+
+    tabsEl.style.display = 'flex';
+    tabs.forEach(function (tab) { tab.btn.style.display = ''; });
+
+    function activate(activeBtn) {
+      tabs.forEach(function (tab) {
+        var isActive = tab.btn === activeBtn;
+        tab.btn.classList.toggle('tp-plan-tab--active', isActive);
+        tab.content.style.display = isActive ? 'block' : 'none';
+      });
+    }
+
+    if (!planTabsBound) {
+      planTabsBound = true;
+      tabs.forEach(function (tab) {
+        tab.btn.addEventListener('click', function () { activate(tab.btn); });
+      });
+      activate(tabs[0].btn);
+    } else {
+      // Rerun (e.g. after skipping a workout): don't yank the client back to
+      // the first tab if they're currently looking at another one — just
+      // make sure whichever tab is already marked active stays visible.
+      var currentlyActive = tabs.filter(function (t) { return t.btn.classList.contains('tp-plan-tab--active'); })[0];
+      activate((currentlyActive || tabs[0]).btn);
+    }
   }
 
   // ============================================================
@@ -1040,6 +1084,126 @@
     btn.disabled = false;
     btn.textContent = 'Skip Session';
   });
+
+  // ============================================================
+  // Add-Ons — $23 Calorie & Macro Calculator, Training Plan clients only.
+  // Purchase redirects to Stripe; the tab/section itself is handled by
+  // setupPlanTabs + renderMacroCalculator once the server confirms ownership.
+  // ============================================================
+
+  function updateAddonsButtonVisibility(d) {
+    var btn = document.getElementById('addonsBtn');
+    if (!btn) return;
+    var eligible = !!(d && d.athlete && d.athlete.macroCalculatorAddonEligible);
+    var alreadyOwns = !!(d && d.athlete && d.athlete.macroCalculatorAddon);
+    btn.style.display = (eligible && !alreadyOwns) ? 'inline-flex' : 'none';
+  }
+
+  var addonsBtn = document.getElementById('addonsBtn');
+  var addonModalOverlay = document.getElementById('addonModalOverlay');
+  if (addonsBtn) {
+    addonsBtn.addEventListener('click', function () {
+      document.getElementById('addonError').style.display = 'none';
+      addonModalOverlay.style.display = 'flex';
+    });
+  }
+  document.getElementById('addonModalClose').addEventListener('click', function () {
+    addonModalOverlay.style.display = 'none';
+  });
+  addonModalOverlay.addEventListener('click', function (e) {
+    if (e.target === this) addonModalOverlay.style.display = 'none';
+  });
+
+  document.getElementById('addonBuyMacroCalcBtn').addEventListener('click', async function () {
+    var btn = this;
+    var errorEl = document.getElementById('addonError');
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Redirecting...';
+
+    try {
+      var res = await apiPost('/api/v1/checkout/addon/macro-calculator', {
+        successUrl: window.location.origin + '/dashboard',
+        cancelUrl: window.location.origin + '/dashboard'
+      });
+      if (res.success && res.data && res.data.url) {
+        window.location.href = res.data.url;
+      } else {
+        errorEl.textContent = (res && res.error) || 'Failed to start checkout.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Add for $23';
+      }
+    } catch (err) {
+      errorEl.textContent = (err && err.message) || 'Failed to start checkout.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Add for $23';
+    }
+  });
+
+  function renderMacroCalculator(addon) {
+    if (addon.weightLbs) document.getElementById('mcWeight').value = addon.weightLbs;
+    if (addon.heightInches) document.getElementById('mcHeight').value = addon.heightInches;
+    if (addon.age) document.getElementById('mcAge').value = addon.age;
+    if (addon.gender) document.getElementById('mcGender').value = addon.gender;
+    if (addon.activityLevel) document.getElementById('mcActivity').value = addon.activityLevel;
+    if (addon.goalDirection) document.getElementById('mcGoal').value = addon.goalDirection;
+
+    if (addon.calories) {
+      document.getElementById('mcResults').style.display = 'grid';
+      document.getElementById('mcResults').innerHTML =
+        '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + addon.calories + '</span><span class="tp-nutrition__macro-label">Calories</span></div>' +
+        '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + addon.proteinGrams + 'g</span><span class="tp-nutrition__macro-label">Protein</span></div>' +
+        '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + addon.carbGrams + 'g</span><span class="tp-nutrition__macro-label">Carbs</span></div>' +
+        '<div class="tp-nutrition__macro"><span class="tp-nutrition__macro-value">' + addon.fatGrams + 'g</span><span class="tp-nutrition__macro-label">Fat</span></div>';
+    }
+  }
+
+  var mcCalculateBtn = document.getElementById('mcCalculateBtn');
+  if (mcCalculateBtn) {
+    mcCalculateBtn.addEventListener('click', async function () {
+      var btn = this;
+      var errorEl = document.getElementById('mcError');
+      errorEl.style.display = 'none';
+
+      var weightLbs = parseFloat(document.getElementById('mcWeight').value);
+      var heightInches = parseInt(document.getElementById('mcHeight').value, 10);
+      var age = parseInt(document.getElementById('mcAge').value, 10);
+      var gender = document.getElementById('mcGender').value;
+      var activityLevel = document.getElementById('mcActivity').value;
+      var goalDirection = document.getElementById('mcGoal').value;
+
+      if (!weightLbs || !heightInches || !age) {
+        errorEl.textContent = 'Fill in your weight, height, and age.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.querySelector('span').textContent = 'Calculating...';
+
+      try {
+        var res = await apiPost('/api/v1/dashboard/addons/macro-calculator/calculate', {
+          weightLbs: weightLbs, heightInches: heightInches, age: age,
+          gender: gender, activityLevel: activityLevel, goalDirection: goalDirection
+        });
+        if (res.success && res.data) {
+          renderMacroCalculator(res.data);
+          if (overviewData && overviewData.athlete) overviewData.athlete.macroCalculatorAddon = res.data;
+        } else {
+          errorEl.textContent = (res && res.error) || 'Failed to calculate targets.';
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.textContent = (err && err.message) || 'Failed to calculate targets.';
+        errorEl.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      btn.querySelector('span').textContent = 'Calculate My Targets';
+    });
+  }
 
   // ============================================================
   // Edit My Preferences — adapts to what the client actually has:

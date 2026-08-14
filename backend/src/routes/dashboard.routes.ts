@@ -10,8 +10,9 @@ import {
   recordNutritionCheckIn,
   getNutritionProgress,
   executeNutritionGoalUpdate,
+  calculateMacroCalculatorTargets,
 } from "../services/nutrition.service.js";
-import { nutritionGoalUpdateSchema } from "./schemas/nutrition.schemas.js";
+import { nutritionGoalUpdateSchema, macroCalculatorInputSchema } from "./schemas/nutrition.schemas.js";
 import {
   getUpcomingWeeklyCall,
   bookWeeklyCoachingCall,
@@ -113,6 +114,51 @@ router.post(
       }
 
       res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/addons/macro-calculator/calculate — computes and saves
+// calorie/macro targets for a client who's purchased the $23 add-on.
+// Recalculable anytime; each call overwrites the saved inputs/targets.
+router.post(
+  "/addons/macro-calculator/calculate",
+  validate(macroCalculatorInputSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+
+      const addon = await prisma.macroCalculatorAddon.findUnique({ where: { userId } });
+      if (!addon) {
+        res.status(403).json({ success: false, error: "You haven't purchased the Calorie & Macro Calculator yet" });
+        return;
+      }
+
+      const input = req.body as {
+        weightLbs: number; heightInches: number; age: number;
+        gender: "male" | "female"; activityLevel: string; goalDirection: "lose" | "maintain" | "gain";
+      };
+      const targets = calculateMacroCalculatorTargets(input);
+
+      const updated = await prisma.macroCalculatorAddon.update({
+        where: { userId },
+        data: {
+          calories: targets.dailyCalories,
+          proteinGrams: targets.proteinG,
+          carbGrams: targets.carbsG,
+          fatGrams: targets.fatG,
+          weightLbs: input.weightLbs,
+          heightInches: input.heightInches,
+          age: input.age,
+          gender: input.gender,
+          activityLevel: input.activityLevel,
+          goalDirection: input.goalDirection,
+        },
+      });
+
+      res.status(200).json({ success: true, data: updated });
     } catch (err) {
       next(err);
     }

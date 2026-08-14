@@ -1945,6 +1945,89 @@
   padding: 0.6rem 0.85rem;
 }
 
+/* ── Add-Ons: Calorie & Macro Calculator ── */
+
+.addon-card {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+
+.addon-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.addon-card__name {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--off-white);
+  margin: 0;
+}
+
+.addon-card__price {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #4ade80;
+  margin: 0;
+}
+
+.addon-card__desc {
+  font-size: 0.85rem;
+  color: var(--gray-light);
+  line-height: 1.5;
+  margin-bottom: 1.1rem;
+}
+
+.macro-calc-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  max-width: 640px;
+}
+
+.macro-calc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.macro-calc-field label {
+  font-family: var(--font-heading);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray);
+}
+
+.macro-calc-field input,
+.macro-calc-field select {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  color: var(--off-white);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s;
+  color-scheme: dark;
+}
+
+.macro-calc-field input:focus,
+.macro-calc-field select:focus {
+  border-color: var(--silver);
+}
+
 /* ====================================================
    CHAT PANEL (preserved from original)
    ==================================================== */
