@@ -32,8 +32,25 @@
     return y + '-' + m + '-' + day;
   }
 
+  // Parses a "YYYY-MM-DD..." date string into a local-midnight Date using
+  // the numeric constructor (not `new Date(isoString)`), so a UTC-midnight
+  // timestamp from the API never shifts a day backward for timezones west
+  // of UTC. Same convention as toLocalDateStr, just inverted.
+  function parseDateOnly(dateStr) {
+    var parts = dateStr.substring(0, 10).split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  // ── Full Plan view state ──
+  var fullPlanLoaded = false;
+
   // ── Load initial data ──
-  loadWeek(0);
+  var initialView = new URLSearchParams(window.location.search).get('view');
+  if (initialView === 'full') {
+    switchView('full');
+  } else {
+    loadWeek(0);
+  }
 
   // ── Resize handler for mobile detection ──
   window.addEventListener('resize', function () {
@@ -155,7 +172,8 @@
     }
   }
 
-  function buildWorkoutCard(session, isPast) {
+  function buildWorkoutCard(session, isPast, opts) {
+    var interactive = !opts || opts.interactive !== false;
     var statusClass = getStatusClass(session.status);
     var typeBadge = (session.sessionType || '').replace(/_/g, ' ');
     var duration = session.prescribedDuration ? session.prescribedDuration + ' min' : '';
@@ -167,13 +185,13 @@
       statusIcon = '\u2717';
     }
 
-    var isDraggable = session.status === 'SCHEDULED' && !isPast;
+    var isDraggable = interactive && session.status === 'SCHEDULED' && !isPast;
 
     var card = document.createElement('div');
     card.className = 'cal-workout cal-workout--' + statusClass;
     card.setAttribute('data-session-id', session.id);
 
-    if (isDraggable) {
+    if (isDraggable && !isMobile) {
       card.setAttribute('draggable', 'true');
       card.addEventListener('dragstart', handleDragStart);
       card.addEventListener('dragend', handleDragEnd);
@@ -301,7 +319,11 @@
       var res = await apiPost('/api/v1/workout/' + sessionId + '/replan');
       if (res.success) {
         showToast('Plan adjusted for missed workout.');
-        if (res.data && res.data.sessions) {
+        var inFullPlanView = document.getElementById('calFullPlanCard').style.display !== 'none';
+        if (inFullPlanView) {
+          fullPlanLoaded = false;
+          loadFullPlan();
+        } else if (res.data && res.data.sessions) {
           weekSessions = res.data.sessions;
           renderCalendar();
         } else {
@@ -368,6 +390,133 @@
     // purchase -- keep in sync with dashboard.routes.ts's matching cap.
     if (currentWeekOffset < 12) loadWeek(currentWeekOffset + 1);
   });
+
+  // ── View toggle: This Week vs. Full Plan ──
+
+  document.getElementById('calViewWeekBtn').addEventListener('click', function () { switchView('week'); });
+  document.getElementById('calViewFullBtn').addEventListener('click', function () { switchView('full'); });
+
+  function switchView(view) {
+    var weekBtn = document.getElementById('calViewWeekBtn');
+    var fullBtn = document.getElementById('calViewFullBtn');
+    var weekCard = document.getElementById('calWeekCard');
+    var fullCard = document.getElementById('calFullPlanCard');
+
+    if (view === 'full') {
+      weekBtn.classList.remove('cal-view-toggle__btn--active');
+      fullBtn.classList.add('cal-view-toggle__btn--active');
+      weekCard.style.display = 'none';
+      fullCard.style.display = 'block';
+      if (!fullPlanLoaded) loadFullPlan();
+    } else {
+      fullBtn.classList.remove('cal-view-toggle__btn--active');
+      weekBtn.classList.add('cal-view-toggle__btn--active');
+      fullCard.style.display = 'none';
+      weekCard.style.display = 'block';
+    }
+  }
+
+  // ── Full Plan: every day, start date to expiration, in one view ──
+
+  async function loadFullPlan() {
+    var body = document.getElementById('calFullPlanBody');
+    var rangeEl = document.getElementById('calFullPlanRange');
+    var adhEl = document.getElementById('calFullPlanAdherence');
+
+    try {
+      var res = await apiGet('/api/v1/dashboard/full-plan');
+      var data = res.success ? res.data : null;
+
+      if (!data || !data.available) {
+        rangeEl.textContent = '';
+        adhEl.textContent = '';
+        body.innerHTML = '<p class="cal-full-plan__unavailable">Full plan view is available for fixed-length Training Plans. Private Coaching runs on an ongoing weekly basis with no fixed end date — check "This Week" for what\'s next.</p>';
+        fullPlanLoaded = true;
+        return;
+      }
+
+      fullPlanLoaded = true;
+      var startD = parseDateOnly(data.startDate);
+      var endD = parseDateOnly(data.endDate);
+      rangeEl.textContent = formatLongDate(startD) + ' – ' + formatLongDate(endD) + ' (' + data.weeks.length + ' weeks)';
+      adhEl.textContent = data.totalSessions > 0
+        ? Math.round(data.adherenceRate * 100) + '% adherence overall · ' + data.completedCount + ' of ' + data.totalSessions + ' sessions completed'
+        : '';
+
+      body.innerHTML = '';
+      data.weeks.forEach(function (week) {
+        body.appendChild(renderFullPlanWeek(week));
+      });
+    } catch (err) {
+      console.error('Failed to load full plan:', err);
+      body.innerHTML = '<p class="cal-full-plan__unavailable">Couldn\'t load your full plan. Please try again.</p>';
+    }
+  }
+
+  function renderFullPlanWeek(week) {
+    var weekWrap = document.createElement('div');
+    weekWrap.className = 'cal-full-plan__week';
+
+    var startD = parseDateOnly(week.startDate);
+    var endD = parseDateOnly(week.endDate);
+
+    var header = document.createElement('div');
+    header.className = 'cal-full-plan__week-header';
+    header.textContent = 'Week ' + week.weekNumber + '  ·  ' + formatShortDate(startD) + ' – ' + formatShortDate(endD);
+    weekWrap.appendChild(header);
+
+    var grid = document.createElement('div');
+    grid.className = 'cal-grid';
+    var todayStr = toLocalDateStr(today);
+
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(startD);
+      d.setDate(d.getDate() + i);
+      var dateStr = toLocalDateStr(d);
+      var isPast = dateStr < todayStr;
+      var isToday = dateStr === todayStr;
+
+      var daySessions = week.sessions.filter(function (s) {
+        return s.scheduledDate && s.scheduledDate.substring(0, 10) === dateStr;
+      });
+
+      var dayEl = document.createElement('div');
+      dayEl.className = 'cal-day' + (isToday ? ' cal-day--today' : '') + (isPast ? ' cal-day--past' : '');
+      dayEl.setAttribute('data-date', dateStr);
+
+      var dayHeader = document.createElement('div');
+      dayHeader.className = 'cal-day-header';
+      dayHeader.innerHTML =
+        '<span class="cal-day-name">' + DAY_NAMES[d.getDay()] + '</span>' +
+        '<span class="cal-day-num">' + d.getDate() + '</span>';
+      dayEl.appendChild(dayHeader);
+
+      var dayBody = document.createElement('div');
+      dayBody.className = 'cal-day-body';
+
+      if (daySessions.length === 0) {
+        var restLabel = document.createElement('span');
+        restLabel.className = 'cal-rest-label';
+        restLabel.textContent = 'Rest';
+        dayBody.appendChild(restLabel);
+      } else {
+        daySessions.forEach(function (session) {
+          dayBody.appendChild(buildWorkoutCard(session, isPast, { interactive: false }));
+        });
+      }
+
+      dayEl.appendChild(dayBody);
+      grid.appendChild(dayEl);
+    }
+
+    weekWrap.appendChild(grid);
+    return weekWrap;
+  }
+
+  function formatLongDate(d) {
+    var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  }
 
   // ── Helpers ──
 

@@ -37,6 +37,41 @@
     letter-spacing: 1px;
 }
 
+/* ── View toggle ── */
+
+.cal-view-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.cal-view-toggle__btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--gray);
+    padding: 0.85rem 1rem;
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    min-height: 44px;
+    transition: all var(--transition-normal);
+}
+
+.cal-view-toggle__btn:hover {
+    border-color: var(--border-color-hover);
+    color: var(--silver);
+}
+
+.cal-view-toggle__btn--active {
+    border-color: var(--silver);
+    color: var(--white);
+    background: rgba(192, 192, 192, 0.06);
+}
+
 /* ── Card ── */
 
 .cal-card {
@@ -264,6 +299,57 @@
 
 .cal-workout-replan:hover {
     background: rgba(196, 122, 110, 0.1);
+}
+
+/* ── Full plan view ── */
+
+.cal-full-plan__header {
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.cal-full-plan__header h3 {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.cal-full-plan__range {
+    color: var(--gray);
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+}
+
+.cal-full-plan__unavailable {
+    text-align: center;
+    color: var(--gray);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    padding: 2.5rem 1rem;
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.cal-full-plan__week {
+    margin-bottom: 1.75rem;
+}
+
+.cal-full-plan__week:last-child {
+    margin-bottom: 0;
+}
+
+.cal-full-plan__week-header {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--silver);
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
 /* ── Mobile move modal ── */

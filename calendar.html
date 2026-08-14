@@ -53,7 +53,12 @@
             <h1>Training Calendar</h1>
         </div>
 
-        <div class="cal-card">
+        <div class="cal-view-toggle">
+            <button class="cal-view-toggle__btn cal-view-toggle__btn--active" id="calViewWeekBtn">This Week</button>
+            <button class="cal-view-toggle__btn" id="calViewFullBtn">Full Plan</button>
+        </div>
+
+        <div class="cal-card" id="calWeekCard">
             <div class="cal-header">
                 <button class="cal-nav-btn" id="calPrev" aria-label="Previous week">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -74,6 +79,17 @@
                     <div class="cal-move-days" id="calMoveDays"></div>
                     <button class="cal-move-cancel" id="calMoveCancel">Cancel</button>
                 </div>
+            </div>
+        </div>
+
+        <div class="cal-card cal-full-plan" id="calFullPlanCard" style="display:none;">
+            <div class="cal-full-plan__header">
+                <h3>Full Plan</h3>
+                <p class="cal-full-plan__range" id="calFullPlanRange"></p>
+            </div>
+            <div class="cal-adherence" id="calFullPlanAdherence"></div>
+            <div id="calFullPlanBody">
+                <div class="cal-loading-shimmer"></div>
             </div>
         </div>
     </section>

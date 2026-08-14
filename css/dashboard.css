@@ -352,6 +352,26 @@
   gap: 6px;
 }
 
+.tp-week__full-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  color: var(--gray-light);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-decoration: none;
+  min-height: 44px;
+  transition: color 0.15s;
+}
+
+.tp-week__full-link:hover {
+  color: var(--silver);
+}
+
 /* Week cell */
 .tp-week__cell {
   display: flex;

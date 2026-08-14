@@ -159,6 +159,15 @@
           directLineCard.style.display = currentTier === 'PRIVATE_COACHING' ? 'flex' : 'none';
           if (currentTier === 'PRIVATE_COACHING') loadWeeklyCallStatus();
         }
+
+        // Full Plan view only applies to fixed-term Training tiers -- every
+        // week is generated upfront at purchase, so there's a real start-to-
+        // finish plan to show. Private Coaching has no fixed end date.
+        var fullPlanLink = document.getElementById('viewFullPlanLink');
+        if (fullPlanLink) {
+          var isFixedTermTraining = currentTier === 'TRAINING_30DAY' || currentTier === 'TRAINING_60DAY' || currentTier === 'TRAINING_90DAY';
+          fullPlanLink.style.display = isFixedTermTraining ? 'flex' : 'none';
+        }
       }
 
       if (d.athlete && d.athlete.dayNumber && d.athlete.totalDays) {
