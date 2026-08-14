@@ -69,19 +69,6 @@
     return d;
   }
 
-  // Parses a "YYYY-MM-DD..." date string into a local-midnight Date using
-  // the numeric constructor (not `new Date(isoString)`), so a UTC-midnight
-  // timestamp from the API never shifts a day backward for timezones west
-  // of UTC. Same convention as toLocalDateStr, just inverted.
-  function parseDateOnly(dateStr) {
-    var parts = dateStr.substring(0, 10).split('-').map(Number);
-    return new Date(parts[0], parts[1] - 1, parts[2]);
-  }
-
-  function formatShortDate(d) {
-    return (d.getMonth() + 1) + '/' + d.getDate();
-  }
-
   // ── Slider live updates ──
   ['ciEnergy', 'ciSoreness', 'ciMood', 'ciSleep'].forEach(function (id) {
     var slider = document.getElementById(id);
@@ -95,7 +82,7 @@
   loadUser();
   loadOverview().then(function (isPending) {
     if (!isPending) {
-      loadWeekOrFullPlan();
+      loadWeek(0);
       loadTrends();
     }
   });
@@ -877,93 +864,6 @@
     loadWeek(currentWeekOffset + 1);
   });
 
-  // Fixed-term Training tiers (30/60/90-day) get every week generated
-  // upfront at purchase, so the dashboard's Weekly Calendar can show the
-  // whole plan -- start date to expiration -- inline instead of one week
-  // at a time. Other tiers (Private Coaching's ongoing weekly-rolling plan,
-  // or no training plan at all) keep the original paginated week view.
-  async function loadWeekOrFullPlan() {
-    var isFixedTermTraining = currentTier === 'TRAINING_30DAY' || currentTier === 'TRAINING_60DAY' || currentTier === 'TRAINING_90DAY';
-    if (isFixedTermTraining && await loadFullPlanInline()) return;
-    loadWeek(0);
-  }
-
-  async function loadFullPlanInline() {
-    try {
-      var res = await apiGet('/api/v1/dashboard/full-plan');
-      if (!res.success || !res.data || !res.data.available) return false;
-
-      var data = res.data;
-      document.getElementById('weekPrev').style.display = 'none';
-      document.getElementById('weekNext').style.display = 'none';
-
-      var firstWeekStart = parseDateOnly(data.weeks[0].startDate);
-      var lastWeekEnd = parseDateOnly(data.weeks[data.weeks.length - 1].endDate);
-      var weekCount = data.weeks.length;
-      document.getElementById('weekLabel').textContent =
-        weekCount + (weekCount === 1 ? ' Week' : ' Weeks') + ' · ' +
-        formatShortDate(firstWeekStart) + ' – ' + formatShortDate(lastWeekEnd);
-
-      renderFullPlanGrid(data.weeks);
-
-      var todayStr = toLocalDateStr(today);
-      var currentWeek = data.weeks.find(function (w) {
-        return w.startDate.substring(0, 10) <= todayStr && w.endDate.substring(0, 10) >= todayStr;
-      });
-      var thisWeekSessions = currentWeek ? currentWeek.sessions : [];
-      var completedCount = thisWeekSessions.filter(function (s) { return s.status === 'COMPLETED'; }).length;
-      var thisWeekAdherence = thisWeekSessions.length > 0 ? completedCount / thisWeekSessions.length : null;
-
-      updateWeekMetrics(thisWeekSessions, thisWeekAdherence);
-      var adhEl = document.querySelector('.tp-week__adherence');
-      if (adhEl) {
-        adhEl.textContent = (thisWeekAdherence != null && thisWeekSessions.length > 0)
-          ? Math.round(thisWeekAdherence * 100) + '% adherence this week'
-          : '';
-      }
-
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-
-  function renderFullPlanGrid(weeks) {
-    var grid = document.getElementById('weekGrid');
-    grid.innerHTML = '';
-    grid.classList.add('tp-week__grid--full-plan');
-
-    weeks.forEach(function (week) {
-      var startD = parseDateOnly(week.startDate);
-
-      var group = document.createElement('div');
-      group.className = 'tp-week__group';
-
-      var header = document.createElement('div');
-      header.className = 'tp-week__group-header';
-      header.textContent = 'Week ' + week.weekNumber + '  ·  ' + formatShortDate(startD);
-      group.appendChild(header);
-
-      var row = document.createElement('div');
-      row.className = 'tp-week__grid';
-      for (var i = 0; i < 7; i++) {
-        var d = new Date(startD);
-        d.setDate(d.getDate() + i);
-        row.appendChild(buildWeekCell(d, week.sessions));
-      }
-      group.appendChild(row);
-
-      grid.appendChild(group);
-    });
-
-    var adhEl = grid.parentElement.querySelector('.tp-week__adherence');
-    if (!adhEl) {
-      adhEl = document.createElement('div');
-      adhEl.className = 'tp-week__adherence';
-      grid.parentElement.appendChild(adhEl);
-    }
-  }
-
   async function loadWeek(offset) {
     currentWeekOffset = offset;
     updateWeekLabel(offset);
@@ -1009,7 +909,6 @@
   function renderWeekGrid(sessions) {
     var grid = document.getElementById('weekGrid');
     grid.innerHTML = '';
-    grid.classList.remove('tp-week__grid--full-plan');
 
     var monday = getWeekMonday(currentWeekOffset);
 
