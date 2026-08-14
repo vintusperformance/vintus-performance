@@ -142,7 +142,7 @@
     border: 1px solid var(--border-color);
     color: var(--white);
     font-family: var(--font-body);
-    font-size: 0.95rem;
+    font-size: 16px; /* iOS Safari auto-zooms on focus below 16px */
     padding: 0.85rem 1rem;
     transition: border-color var(--transition-normal);
     color-scheme: dark;
@@ -224,6 +224,7 @@
     padding: 1.5rem;
     max-height: 340px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     margin-bottom: 1.25rem;
 }
 
