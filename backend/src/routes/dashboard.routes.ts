@@ -285,6 +285,25 @@ router.get(
   }
 );
 
+// GET /dashboard/full-plan — every day of a fixed-term Training plan, start
+// date to expiration, in one response (not paginated week by week)
+router.get(
+  "/full-plan",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const data = await dashboardService.getFullPlan(userId);
+
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /dashboard/workout/:sessionId — full workout content
 router.get(
   "/workout/:sessionId",

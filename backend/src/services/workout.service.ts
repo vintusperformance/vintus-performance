@@ -704,68 +704,7 @@ export async function rebuildPlanFromPreferences(
     return { regeneratedSessionCount: 0, swapped };
   }
 
-  // Seed the avoid-list from recent history so regenerated sessions don't
-  // immediately repeat what the client just did.
-  const usedTemplateIds = await getRecentTemplateIds(profileId, 2);
-
-  // Delete future, non-completed sessions from regenerateFrom onward across
-  // every week -- completed history is never touched, and the swap above
-  // (if any) already happened before this cutoff was raised past it.
-  const sessionIdsToDelete = allPlans
-    .flatMap((p) => p.sessions)
-    .filter((s) => s.scheduledDate >= regenerateFrom && s.status !== "COMPLETED")
-    .map((s) => s.id);
-  if (sessionIdsToDelete.length > 0) {
-    await prisma.workoutSession.deleteMany({ where: { id: { in: sessionIdsToDelete } } });
-  }
-
-  let regeneratedCount = 0;
-  for (const plan of allPlans) {
-    if (plan.endDate < regenerateFrom) continue; // this whole week is in the past -- untouched
-
-    const volumeMultiplier = getUpfrontVolumeMultiplier(plan.weekNumber, plan.blockType);
-    const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
-    const placements = placeSessionsOnAvailableWeekdays(plan.startDate, sessionSpecs.length, restDays);
-
-    const newSessionData = placements
-      .map((sessionDate, index) => {
-        if (sessionDate < regenerateFrom) return null; // this specific day is in the past, or was just swapped -- leave it
-        const spec = sessionSpecs[index];
-        const { content, templateId } = buildSessionContent(
-          spec.type,
-          profile.equipmentAccess,
-          profile.experienceLevel,
-          usedTemplateIds,
-          volumeMultiplier
-        );
-        usedTemplateIds.push(templateId);
-        return {
-          workoutPlanId: plan.id,
-          scheduledDate: sessionDate,
-          scheduledOrder: index + 1,
-          sessionType: spec.type as SessionType,
-          title: spec.title,
-          description: `Week ${plan.weekNumber}, Session ${index + 1} — ${spec.title}.${plan.blockType === "deload" ? " Deload week: reduced volume and intensity." : ""} Rebuilt around your updated preferences.`,
-          prescribedDuration: content.estimatedDuration,
-          prescribedTSS: content.estimatedTSS,
-          content: { ...content, templateId } as unknown as Prisma.InputJsonValue,
-          status: "SCHEDULED" as const,
-        };
-      })
-      .filter((s): s is NonNullable<typeof s> => s !== null);
-
-    if (newSessionData.length > 0) {
-      await prisma.workoutSession.createMany({ data: newSessionData });
-      regeneratedCount += newSessionData.length;
-    }
-
-    const weekSessions = await prisma.workoutSession.findMany({
-      where: { workoutPlanId: plan.id },
-      select: { prescribedTSS: true },
-    });
-    const plannedTSS = weekSessions.reduce((sum, s) => sum + (s.prescribedTSS ?? 0), 0);
-    await prisma.workoutPlan.update({ where: { id: plan.id }, data: { plannedTSS } });
-  }
+  const regeneratedCount = await regenerateFutureSessions(profile, allPlans, restDays, regenerateFrom);
 
   // Audit trail, same pattern as executeJerryAdjustment -- log against the
   // plan covering "today" if one exists, otherwise the earliest touched plan.
@@ -792,6 +731,89 @@ export async function rebuildPlanFromPreferences(
   );
 
   return { regeneratedSessionCount: regeneratedCount, swapped };
+}
+
+type PlanWithSessions = Prisma.WorkoutPlanGetPayload<{
+  include: { sessions: { select: { id: true; scheduledDate: true; status: true } } };
+}>;
+
+/**
+ * Deletes and regenerates every future, non-completed session from
+ * `regenerateFrom` onward, across all of a profile's weeks -- the shared
+ * "re-automate the rest of the plan" step behind both "Edit My Preferences"
+ * (rebuildPlanFromPreferences) and any Jerry chat-driven adjustment
+ * (executeJerryAdjustment). Completed history and anything before the
+ * cutoff is left untouched.
+ */
+async function regenerateFutureSessions(
+  profile: { id: string; trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string },
+  allPlans: PlanWithSessions[],
+  restDays: number[],
+  regenerateFrom: Date
+): Promise<number> {
+  // Seed the avoid-list from recent history so regenerated sessions don't
+  // immediately repeat what the client just did.
+  const usedTemplateIds = await getRecentTemplateIds(profile.id, 2);
+
+  // Delete future, non-completed sessions from regenerateFrom onward across
+  // every week -- completed history is never touched.
+  const sessionIdsToDelete = allPlans
+    .flatMap((p) => p.sessions)
+    .filter((s) => s.scheduledDate >= regenerateFrom && s.status !== "COMPLETED")
+    .map((s) => s.id);
+  if (sessionIdsToDelete.length > 0) {
+    await prisma.workoutSession.deleteMany({ where: { id: { in: sessionIdsToDelete } } });
+  }
+
+  let regeneratedCount = 0;
+  for (const plan of allPlans) {
+    if (plan.endDate < regenerateFrom) continue; // this whole week is in the past -- untouched
+
+    const volumeMultiplier = getUpfrontVolumeMultiplier(plan.weekNumber, plan.blockType);
+    const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
+    const placements = placeSessionsOnAvailableWeekdays(plan.startDate, sessionSpecs.length, restDays);
+
+    const newSessionData = placements
+      .map((sessionDate, index) => {
+        if (sessionDate < regenerateFrom) return null; // this specific day is in the past, or was just changed -- leave it
+        const spec = sessionSpecs[index];
+        const { content, templateId } = buildSessionContent(
+          spec.type,
+          profile.equipmentAccess,
+          profile.experienceLevel,
+          usedTemplateIds,
+          volumeMultiplier
+        );
+        usedTemplateIds.push(templateId);
+        return {
+          workoutPlanId: plan.id,
+          scheduledDate: sessionDate,
+          scheduledOrder: index + 1,
+          sessionType: spec.type as SessionType,
+          title: spec.title,
+          description: `Week ${plan.weekNumber}, Session ${index + 1} — ${spec.title}.${plan.blockType === "deload" ? " Deload week: reduced volume and intensity." : ""} Rebuilt to keep the rest of your plan on the best path to your goal.`,
+          prescribedDuration: content.estimatedDuration,
+          prescribedTSS: content.estimatedTSS,
+          content: { ...content, templateId } as unknown as Prisma.InputJsonValue,
+          status: "SCHEDULED" as const,
+        };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
+
+    if (newSessionData.length > 0) {
+      await prisma.workoutSession.createMany({ data: newSessionData });
+      regeneratedCount += newSessionData.length;
+    }
+
+    const weekSessions = await prisma.workoutSession.findMany({
+      where: { workoutPlanId: plan.id },
+      select: { prescribedTSS: true },
+    });
+    const plannedTSS = weekSessions.reduce((sum, s) => sum + (s.prescribedTSS ?? 0), 0);
+    await prisma.workoutPlan.update({ where: { id: plan.id }, data: { plannedTSS } });
+  }
+
+  return regeneratedCount;
 }
 
 // ============================================================
@@ -2206,7 +2228,12 @@ export async function executeJerryAdjustment(
         affectedSessions: [session.id],
       },
     });
-    return { ok: true, message: "Session skipped.", description: `Skipped "${session.title}" on ${params.date}` };
+    const rebuilt = await rebuildRestOfPlanAfter(profile, session.scheduledDate);
+    return {
+      ok: true,
+      message: `Session skipped. ${rebuilt} upcoming session(s) re-automated so the rest of the plan stays on the best path.`,
+      description: `Skipped "${session.title}" on ${params.date}`,
+    };
   }
 
   if (params.action === "reduce_intensity") {
@@ -2232,7 +2259,12 @@ export async function executeJerryAdjustment(
         affectedSessions: [session.id],
       },
     });
-    return { ok: true, message: "Intensity reduced 15% for that session.", description: `Reduced intensity on "${session.title}" (${params.date})` };
+    const rebuilt = await rebuildRestOfPlanAfter(profile, session.scheduledDate);
+    return {
+      ok: true,
+      message: `Intensity reduced 15% for that session. ${rebuilt} upcoming session(s) re-automated so the rest of the plan stays on the best path.`,
+      description: `Reduced intensity on "${session.title}" (${params.date})`,
+    };
   }
 
   // swap_exercise
@@ -2274,11 +2306,38 @@ export async function executeJerryAdjustment(
     },
   });
 
+  const rebuilt = await rebuildRestOfPlanAfter(profile, session.scheduledDate);
   return {
     ok: true,
-    message: `Swapped "${actualName}" for "${params.newExercise}".`,
+    message: `Swapped "${actualName}" for "${params.newExercise}". ${rebuilt} upcoming session(s) re-automated so the rest of the plan stays on the best path.`,
     description: `Swapped "${actualName}" → "${params.newExercise}" on ${params.date}`,
   };
+}
+
+/**
+ * After any single-session Jerry chat adjustment, re-automates every future
+ * session strictly after the changed day -- same "keep the whole plan on
+ * the best path" guarantee "Edit My Preferences" already provides via
+ * rebuildPlanFromPreferences, just triggered from the chat path instead.
+ */
+async function rebuildRestOfPlanAfter(
+  profile: { id: string; trainingDaysPerWeek: number; primaryGoal: string; equipmentAccess: string; experienceLevel: string; restDayPreferences: number[] },
+  changedDate: Date
+): Promise<number> {
+  const regenerateFrom = new Date(changedDate);
+  regenerateFrom.setDate(regenerateFrom.getDate() + 1);
+
+  const allPlans = await prisma.workoutPlan.findMany({
+    where: { athleteProfileId: profile.id },
+    orderBy: { weekNumber: "asc" },
+    include: { sessions: { select: { id: true, scheduledDate: true, status: true } } },
+  });
+  if (allPlans.length === 0) return 0;
+
+  const planEnd = allPlans.reduce((max, p) => (p.endDate > max ? p.endDate : max), allPlans[0].endDate);
+  if (regenerateFrom > planEnd) return 0;
+
+  return regenerateFutureSessions(profile, allPlans, profile.restDayPreferences, regenerateFrom);
 }
 
 // ============================================================

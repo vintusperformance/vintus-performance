@@ -289,6 +289,85 @@ export async function getWeekView(
 }
 
 // ============================================================
+// getFullPlan — every session from plan start to expiration, in one shot
+// ============================================================
+
+/**
+ * A paying client's entire fixed-term plan, start date to expiration --
+ * not one week at a time. Only meaningful for fixed-duration Training
+ * tiers, which get every week generated upfront at purchase; Private
+ * Coaching has no fixed end date, so it stays on the weekly rolling view.
+ */
+export async function getFullPlan(userId: string): Promise<unknown> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      athleteProfile: true,
+      subscription: { select: { planTier: true, status: true, currentPeriodStart: true, currentPeriodEnd: true } },
+    },
+  });
+
+  if (!user?.athleteProfile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const profile = user.athleteProfile;
+  const sub = user.subscription;
+
+  const isFixedTermTraining =
+    sub?.planTier === "TRAINING_30DAY" || sub?.planTier === "TRAINING_60DAY" || sub?.planTier === "TRAINING_90DAY";
+  if (!isFixedTermTraining || !sub?.currentPeriodStart || !sub?.currentPeriodEnd) {
+    return { available: false };
+  }
+
+  const plans = await prisma.workoutPlan.findMany({
+    where: { athleteProfileId: profile.id },
+    orderBy: { weekNumber: "asc" },
+    include: {
+      sessions: {
+        orderBy: [{ scheduledDate: "asc" }, { scheduledOrder: "asc" }],
+        select: {
+          id: true,
+          scheduledDate: true,
+          scheduledOrder: true,
+          sessionType: true,
+          title: true,
+          description: true,
+          prescribedDuration: true,
+          status: true,
+          completedAt: true,
+          actualDuration: true,
+          rpe: true,
+        },
+      },
+    },
+  });
+
+  const allSessions = plans.flatMap((p) => p.sessions);
+  const completedCount = allSessions.filter((s) => s.status === "COMPLETED").length;
+  const adherenceRate = allSessions.length > 0 ? completedCount / allSessions.length : 0;
+
+  return {
+    available: true,
+    planTier: sub.planTier,
+    startDate: new Date(sub.currentPeriodStart).toISOString().split("T")[0],
+    endDate: new Date(sub.currentPeriodEnd).toISOString().split("T")[0],
+    totalSessions: allSessions.length,
+    completedCount,
+    adherenceRate,
+    weeks: plans.map((p) => ({
+      weekNumber: p.weekNumber,
+      blockType: p.blockType,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      sessions: p.sessions,
+    })),
+  };
+}
+
+// ============================================================
 // getWorkoutDetail — full session with content
 // ============================================================
 

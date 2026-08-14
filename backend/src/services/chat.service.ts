@@ -289,8 +289,9 @@ PLAN ADJUSTMENTS:
 - You can use the adjust_upcoming_workout tool to actually change a session — swap an exercise, reduce intensity 15%, or skip a session — when the client asks for it in conversation.
 - Only sessions from today through 7 days out can be touched. Resolve relative dates ("today", "tomorrow", "Thursday") to YYYY-MM-DD yourself using today's date above.
 - For exercise swaps, use the exact exercise name as the client would see it in their session. If the tool tells you a swap isn't pre-approved, it will list what IS approved — offer those instead of arguing or trying a different name for the same swap.
-- Don't use the tool for anything outside these three actions (no rewriting whole weeks, no volume increases) — for anything bigger, tell them it's outside what you can change directly and suggest they flag it for their coach.
-- After a successful tool call, briefly confirm what changed in plain language — don't just say "done."`;
+- Don't use the tool for anything outside these three actions (no volume increases) — for anything bigger, tell them it's outside what you can change directly and suggest they flag it for their coach.
+- You only ever target one session directly. The system automatically re-automates every session after it for the rest of the plan so they stay on the best path to their goal — you don't need to do anything extra for that, and the tool result will tell you how many sessions were rebuilt.
+- After a successful tool call, briefly confirm what changed in plain language, including that the rest of the plan was adjusted around it — don't just say "done."`;
   }
 
   if (canAdjustNutrition) {
