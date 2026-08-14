@@ -109,6 +109,9 @@
 
 .tp-header__right {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .tp-header__settings {
@@ -1779,20 +1782,15 @@
 
 /* ── Edit My Preferences ── */
 
-.tp-week__prefs-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.6rem;
-}
-
-.tp-week__prefs-btn {
+.tp-header__prefs-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   background: transparent;
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  height: 36px;
   color: var(--gray-light);
   font-family: var(--font-heading);
   font-size: 0.68rem;
@@ -1800,13 +1798,35 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s;
 }
 
-.tp-week__prefs-btn:hover {
+.tp-header__prefs-btn:hover {
   color: var(--off-white);
   border-color: var(--silver);
   background: rgba(192,192,192,0.06);
+}
+
+@media (max-width: 520px) {
+  .tp-header__prefs-btn span,
+  .tp-header__prefs-btn { font-size: 0.62rem; padding: 0 0.55rem; }
+}
+
+.prefs-group-label {
+  font-family: var(--font-heading);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--silver);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 0.4rem;
+  margin-bottom: 1rem !important;
+}
+
+#prefsTrainingSection + #prefsNutritionSection {
+  margin-top: 1.75rem;
 }
 
 .tp-modal--wide {
@@ -1889,7 +1909,10 @@
   color: var(--gray);
 }
 
-.prefs-swap-field input[type="date"] {
+.prefs-swap-field input[type="date"],
+.prefs-swap-field input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 6px;
@@ -1902,7 +1925,8 @@
   color-scheme: dark;
 }
 
-.prefs-swap-field input[type="date"]:focus {
+.prefs-swap-field input[type="date"]:focus,
+.prefs-swap-field input[type="number"]:focus {
   border-color: var(--silver);
 }
 

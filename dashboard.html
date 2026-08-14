@@ -56,6 +56,10 @@
                 <span class="tp-header__tier-badge" id="tierBadge" style="display:none;"></span>
             </div>
             <div class="tp-header__right">
+                <button class="tp-header__prefs-btn" id="editPreferencesBtn" type="button" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    Edit My Preferences
+                </button>
                 <a href="/settings" class="tp-header__settings" title="Settings">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </a>
@@ -102,12 +106,6 @@
 
             <!-- 3. Weekly Calendar -->
             <div class="tp-week" id="weekSection">
-                <div class="tp-week__prefs-row">
-                    <button class="tp-week__prefs-btn" id="editPreferencesBtn" type="button">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        Edit My Preferences
-                    </button>
-                </div>
                 <div class="tp-week__nav">
                     <button class="tp-week__nav-btn" id="weekPrev" title="Previous week">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -360,31 +358,46 @@
                 <button class="tp-modal__close" id="prefsModalClose">&times;</button>
             </div>
             <div class="tp-modal__body">
-                <div class="prefs-section">
-                    <p class="prefs-section__label">Standing rest days</p>
-                    <p class="prefs-section__hint">Pick the days that should always be rest days going forward. We'll rebuild the rest of your plan around it.</p>
-                    <div class="prefs-daypicker" id="prefsRestDays">
-                        <button type="button" class="prefs-day" data-day="0">Sun</button>
-                        <button type="button" class="prefs-day" data-day="1">Mon</button>
-                        <button type="button" class="prefs-day" data-day="2">Tue</button>
-                        <button type="button" class="prefs-day" data-day="3">Wed</button>
-                        <button type="button" class="prefs-day" data-day="4">Thu</button>
-                        <button type="button" class="prefs-day" data-day="5">Fri</button>
-                        <button type="button" class="prefs-day" data-day="6">Sat</button>
+                <div id="prefsTrainingSection" style="display:none;">
+                    <p class="prefs-group-label" id="prefsTrainingSectionLabel">Training</p>
+                    <div class="prefs-section">
+                        <p class="prefs-section__label">Standing rest days</p>
+                        <p class="prefs-section__hint">Pick the days that should always be rest days going forward. We'll rebuild the rest of your plan around it.</p>
+                        <div class="prefs-daypicker" id="prefsRestDays">
+                            <button type="button" class="prefs-day" data-day="0">Sun</button>
+                            <button type="button" class="prefs-day" data-day="1">Mon</button>
+                            <button type="button" class="prefs-day" data-day="2">Tue</button>
+                            <button type="button" class="prefs-day" data-day="3">Wed</button>
+                            <button type="button" class="prefs-day" data-day="4">Thu</button>
+                            <button type="button" class="prefs-day" data-day="5">Fri</button>
+                            <button type="button" class="prefs-day" data-day="6">Sat</button>
+                        </div>
+                    </div>
+                    <div class="prefs-section">
+                        <p class="prefs-section__label">Swap two upcoming days</p>
+                        <p class="prefs-section__hint">Want today's session on a different day instead? Pick the two dates and we'll swap them and readjust everything after.</p>
+                        <div class="prefs-swap-row">
+                            <div class="prefs-swap-field">
+                                <label for="prefsSwapDateA">Day A</label>
+                                <input type="date" id="prefsSwapDateA">
+                            </div>
+                            <div class="prefs-swap-arrow">&harr;</div>
+                            <div class="prefs-swap-field">
+                                <label for="prefsSwapDateB">Day B</label>
+                                <input type="date" id="prefsSwapDateB">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="prefs-section">
-                    <p class="prefs-section__label">Swap two upcoming days</p>
-                    <p class="prefs-section__hint">Want today's session on a different day instead? Pick the two dates and we'll swap them and readjust everything after.</p>
-                    <div class="prefs-swap-row">
-                        <div class="prefs-swap-field">
-                            <label for="prefsSwapDateA">Day A</label>
-                            <input type="date" id="prefsSwapDateA">
-                        </div>
-                        <div class="prefs-swap-arrow">&harr;</div>
-                        <div class="prefs-swap-field">
-                            <label for="prefsSwapDateB">Day B</label>
-                            <input type="date" id="prefsSwapDateB">
+                <div id="prefsNutritionSection" style="display:none;">
+                    <p class="prefs-group-label">Nutrition</p>
+                    <div class="prefs-section">
+                        <p class="prefs-section__label">Update your nutrition goal</p>
+                        <p class="prefs-section__hint">Tell us what you'd like to change — more protein, fewer calories, adjusting for a new routine — and we'll rebuild your plan around it. Leave blank to skip.</p>
+                        <textarea class="tp-modal__textarea" id="prefsNutritionGoal" rows="3" placeholder="e.g., I'd like more protein and slightly fewer carbs"></textarea>
+                        <div class="prefs-swap-field" style="max-width:180px;margin-top:0.6rem;">
+                            <label for="prefsTargetWeight">Target weight (lbs, optional)</label>
+                            <input type="number" id="prefsTargetWeight" min="1" max="1000" placeholder="e.g., 185">
                         </div>
                     </div>
                 </div>
@@ -392,7 +405,7 @@
             </div>
             <div class="tp-modal__footer">
                 <button class="tp-modal__btn tp-modal__btn--cancel" id="prefsModalCancel">Cancel</button>
-                <button class="tp-modal__btn tp-modal__btn--confirm" id="prefsModalSave">Save & Rebuild Plan</button>
+                <button class="tp-modal__btn tp-modal__btn--confirm" id="prefsModalSave">Save Preferences</button>
             </div>
         </div>
     </div>
