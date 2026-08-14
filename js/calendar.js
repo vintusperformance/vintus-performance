@@ -438,7 +438,8 @@
       fullPlanLoaded = true;
       var startD = parseDateOnly(data.startDate);
       var endD = parseDateOnly(data.endDate);
-      rangeEl.textContent = formatLongDate(startD) + ' – ' + formatLongDate(endD) + ' (' + data.weeks.length + ' weeks)';
+      var weekCount = data.weeks.length;
+      rangeEl.textContent = formatLongDate(startD) + ' – ' + formatLongDate(endD) + ' (' + weekCount + (weekCount === 1 ? ' week' : ' weeks') + ')';
       adhEl.textContent = data.totalSessions > 0
         ? Math.round(data.adherenceRate * 100) + '% adherence overall · ' + data.completedCount + ' of ' + data.totalSessions + ' sessions completed'
         : '';

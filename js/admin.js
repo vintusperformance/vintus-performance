@@ -1071,6 +1071,7 @@
           '<button class="admin-btn-secondary admin-btn-small" id="extendSubBtn" style="align-self:flex-end;">Extend</button>' +
         '</div>' +
         '<button class="admin-btn-secondary admin-btn-small" id="regenPlanBtn" style="margin-top:0.25rem;">Regenerate AI Plan</button>' +
+        '<button class="admin-btn-secondary admin-btn-small" id="backfillWeeksBtn" style="margin-top:0.25rem;margin-left:0.5rem;" title="Fills in any missing weeks for a fixed-term Training plan without touching existing weeks or logged history.">Backfill Missing Weeks</button>' +
         '<div id="planMgmtAlert" style="margin-top:0.5rem;"></div>' +
         '</div>';
       } // end if (sub) — plan management
@@ -1252,6 +1253,27 @@
         } catch (err) {
           showPlanAlert({ kind: 'error', reason: err.message });
         } finally { regenPlanBtn.disabled = false; regenPlanBtn.textContent = 'Regenerate AI Plan'; }
+      });
+    }
+
+    // Backfill missing weeks (fixed-term Training tiers stuck on Week 1)
+    var backfillWeeksBtn = document.getElementById('backfillWeeksBtn');
+    if (backfillWeeksBtn) {
+      backfillWeeksBtn.addEventListener('click', async function () {
+        backfillWeeksBtn.disabled = true;
+        backfillWeeksBtn.textContent = 'Backfilling...';
+        try {
+          var res = await apiPost('/api/v1/admin/clients/' + encodeURIComponent(userId) + '/backfill-plan-weeks');
+          var d = res.data || {};
+          document.getElementById('planMgmtAlert').innerHTML =
+            '<div class="admin-alert admin-alert--success">' +
+            (d.sessionsAdded > 0
+              ? 'Backfilled to ' + d.weeksExpected + ' weeks (' + d.sessionsAdded + ' sessions added).'
+              : 'Already complete — nothing to backfill.') +
+            '</div>';
+        } catch (err) {
+          document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+        } finally { backfillWeeksBtn.disabled = false; backfillWeeksBtn.textContent = 'Backfill Missing Weeks'; }
       });
     }
 

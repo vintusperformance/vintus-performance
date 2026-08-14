@@ -899,7 +899,9 @@
 
       var firstWeekStart = parseDateOnly(data.weeks[0].startDate);
       var lastWeekEnd = parseDateOnly(data.weeks[data.weeks.length - 1].endDate);
+      var weekCount = data.weeks.length;
       document.getElementById('weekLabel').textContent =
+        weekCount + (weekCount === 1 ? ' Week' : ' Weeks') + ' · ' +
         formatShortDate(firstWeekStart) + ' – ' + formatShortDate(lastWeekEnd);
 
       renderFullPlanGrid(data.weeks);

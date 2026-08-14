@@ -490,6 +490,20 @@ async function generateUpfrontRemainingWeeks(
   totalWeeks: number,
   week1EndDate: Date
 ): Promise<number> {
+  // At-purchase, no weeks 2+ exist yet, so this is always empty and every
+  // iteration below creates as normal. Called again as a backfill (a client
+  // whose upfront generation only partly completed), it's populated -- skip
+  // weeks that already exist instead of creating duplicates, while still
+  // advancing the date cursor so later weeks land on the right calendar day.
+  const existingWeekNumbers = new Set(
+    (
+      await prisma.workoutPlan.findMany({
+        where: { athleteProfileId: profileId, weekNumber: { gte: 2 } },
+        select: { weekNumber: true },
+      })
+    ).map((p) => p.weekNumber)
+  );
+
   const usedTemplateIds: string[] = [];
   let sessionCount = 0;
   let previousWeekStart = new Date(week1EndDate);
@@ -503,6 +517,9 @@ async function generateUpfrontRemainingWeeks(
     weekStart.setDate(weekStart.getDate() + 7);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
+    previousWeekStart = weekStart;
+
+    if (existingWeekNumbers.has(weekNumber)) continue;
 
     const sessionSpecs = buildSessionSchedule(profile.trainingDaysPerWeek, profile.primaryGoal);
     const sessionData = sessionSpecs.map((spec, index) => {
@@ -550,7 +567,6 @@ async function generateUpfrontRemainingWeeks(
     });
 
     sessionCount += sessionData.length;
-    previousWeekStart = weekStart;
   }
 
   logger.info(
@@ -559,6 +575,57 @@ async function generateUpfrontRemainingWeeks(
   );
 
   return sessionCount;
+}
+
+// ============================================================
+// backfillUpfrontWeeks — repairs a fixed-term plan stuck on Week 1
+// ============================================================
+
+/**
+ * A fixed-duration Training client should get every week generated upfront
+ * at purchase (generateInitialPlan), but if that step ever partially failed
+ * -- or a client's account predates the upfront-generation feature -- they
+ * can be left with only Week 1 despite paying for the full term. Unlike the
+ * admin "Regenerate AI Plan" action, this never touches existing weeks (so
+ * no logged history is lost); it only fills in whatever's missing between
+ * Week 1 and the tier's real end date.
+ */
+export async function backfillUpfrontWeeks(
+  profileId: string
+): Promise<{ weeksExpected: number; sessionsAdded: number }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { id: profileId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId: profile.userId },
+    select: { planTier: true, currentPeriodStart: true, currentPeriodEnd: true },
+  });
+  const totalWeeks = getTotalWeeksForTier(subscription?.planTier, subscription?.currentPeriodStart, subscription?.currentPeriodEnd);
+  if (!totalWeeks || totalWeeks <= 1) {
+    return { weeksExpected: totalWeeks ?? 0, sessionsAdded: 0 };
+  }
+
+  const week1 = await prisma.workoutPlan.findFirst({
+    where: { athleteProfileId: profileId, weekNumber: 1 },
+    select: { startDate: true },
+  });
+  if (!week1) {
+    const err = new Error("No Week 1 plan exists to anchor the backfill to -- use Regenerate AI Plan instead") as Error & { statusCode?: number };
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const week1EndDate = new Date(week1.startDate);
+  week1EndDate.setDate(week1EndDate.getDate() + 6);
+
+  const sessionsAdded = await generateUpfrontRemainingWeeks(profileId, profile, totalWeeks, week1EndDate);
+
+  logger.info({ profileId, totalWeeks, sessionsAdded }, "Backfilled missing upfront weeks");
+  return { weeksExpected: totalWeeks, sessionsAdded };
 }
 
 // ============================================================
