@@ -1072,6 +1072,7 @@
         '</div>' +
         '<button class="admin-btn-secondary admin-btn-small" id="regenPlanBtn" style="margin-top:0.25rem;">Regenerate AI Plan</button>' +
         '<button class="admin-btn-secondary admin-btn-small" id="backfillWeeksBtn" style="margin-top:0.25rem;margin-left:0.5rem;" title="Fills in any missing weeks for a fixed-term Training plan without touching existing weeks or logged history.">Backfill Missing Weeks</button>' +
+        '<button class="admin-btn-secondary admin-btn-small" id="rebalancePlanBtn" style="margin-top:0.25rem;margin-left:0.5rem;" title="Re-applies the current scheduling engine (session-type balance, weekday/weekend run intensity) to every future session. Same as the client re-saving Edit My Preferences -- never touches completed history.">Rebalance Plan</button>' +
         '<div id="planMgmtAlert" style="margin-top:0.5rem;"></div>' +
         '</div>';
       } // end if (sub) — plan management
@@ -1274,6 +1275,27 @@
         } catch (err) {
           document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
         } finally { backfillWeeksBtn.disabled = false; backfillWeeksBtn.textContent = 'Backfill Missing Weeks'; }
+      });
+    }
+
+    // Rebalance plan (re-apply current scheduling logic to future sessions)
+    var rebalancePlanBtn = document.getElementById('rebalancePlanBtn');
+    if (rebalancePlanBtn) {
+      rebalancePlanBtn.addEventListener('click', async function () {
+        rebalancePlanBtn.disabled = true;
+        rebalancePlanBtn.textContent = 'Rebalancing...';
+        try {
+          var res = await apiPost('/api/v1/admin/clients/' + encodeURIComponent(userId) + '/rebalance-plan');
+          var d = res.data || {};
+          document.getElementById('planMgmtAlert').innerHTML =
+            '<div class="admin-alert admin-alert--success">' +
+            (d.regeneratedSessionCount > 0
+              ? 'Rebalanced ' + d.regeneratedSessionCount + ' upcoming session(s).'
+              : 'Nothing upcoming to rebalance.') +
+            '</div>';
+        } catch (err) {
+          document.getElementById('planMgmtAlert').innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
+        } finally { rebalancePlanBtn.disabled = false; rebalancePlanBtn.textContent = 'Rebalance Plan'; }
       });
     }
 

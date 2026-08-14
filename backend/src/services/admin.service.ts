@@ -1044,6 +1044,33 @@ export async function backfillPlanWeeks(
 }
 
 /**
+ * Re-applies the scheduling engine's current logic (session-type balance,
+ * weekday/weekend run intensity, etc.) to every future, non-completed
+ * session on a client's plan. Same mechanism as the client's own "Edit My
+ * Preferences" save -- re-runs rebuildPlanFromPreferences using their
+ * existing rest days (no actual preference change) -- so it's the tool for
+ * getting an already-generated plan onto a scheduling-logic fix without
+ * the client having to touch anything themselves. Never touches completed
+ * history or anything already in the past.
+ */
+export async function rebalancePlan(
+  userId: string
+): Promise<{ regeneratedSessionCount: number }> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) {
+    const err = new Error("Athlete profile not found") as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const { rebuildPlanFromPreferences } = await import("./workout.service.js");
+  const result = await rebuildPlanFromPreferences(profile.id, { restDays: profile.restDayPreferences });
+
+  logger.info({ userId, ...result }, "Admin triggered plan rebalance");
+  return { regeneratedSessionCount: result.regeneratedSessionCount };
+}
+
+/**
  * Permanently delete a client and all associated data.
  * Prisma cascade deletes handle related records (profile, subscription, messages, etc.).
  */

@@ -355,6 +355,21 @@ router.post(
   }
 );
 
+// POST /admin/clients/:userId/rebalance-plan — re-run the scheduling engine
+// against every future session (same as the client re-saving "Edit My
+// Preferences"), without touching completed history
+router.post(
+  "/clients/:userId/rebalance-plan",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await adminService.rebalancePlan(req.params.userId as string);
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /admin/escalations/:id/resolve — resolve an escalation
 router.post(
   "/escalations/:id/resolve",
