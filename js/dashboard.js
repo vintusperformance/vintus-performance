@@ -78,13 +78,31 @@
     }
   });
 
+  // ── Exercise Illustrations ("show me how" demo diagrams) ──
+  var approvedIllustrationMap = {};
+  var approvedIllustrationMapLower = {};
+  var illustrationMapPromise = apiGet('/api/v1/workout/exercise-illustrations').then(function (res) {
+    if (res.success && res.data) {
+      approvedIllustrationMap = res.data;
+      // Case-insensitive lookup key so a plan's exercise text ("barbell
+      // bench press") still matches an admin-approved illustration keyed by
+      // its canonical Title Case name ("Barbell Bench Press").
+      approvedIllustrationMapLower = {};
+      Object.keys(approvedIllustrationMap).forEach(function (name) {
+        approvedIllustrationMapLower[name.toLowerCase()] = approvedIllustrationMap[name];
+      });
+    }
+  }).catch(function () {});
+
   // ── Load everything ──
   loadUser();
-  loadOverview().then(function (isPending) {
-    if (!isPending) {
-      loadWeek(0);
-      loadTrends();
-    }
+  illustrationMapPromise.then(function () {
+    loadOverview().then(function (isPending) {
+      if (!isPending) {
+        loadWeek(0);
+        loadTrends();
+      }
+    });
   });
 
   // ============================================================
@@ -1151,6 +1169,7 @@
       html += '</div>';
 
       el.innerHTML = html;
+      wireIllustrationButtons(el);
 
       // Bind skip button
       var skipBtn = document.getElementById('skipWorkoutBtn');
@@ -1210,6 +1229,8 @@
     return html;
   }
 
+  var SHOW_ME_HOW_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+
   function renderExerciseList(exercises) {
     if (!exercises || !Array.isArray(exercises)) return '';
     var html = '';
@@ -1225,16 +1246,68 @@
         detail = ex.description;
       }
 
+      // Looked back up from the in-memory map at click time (by name, via
+      // data-exercise) rather than embedding the illustration URL itself in
+      // the DOM -- an approved illustration can be a multi-hundred-KB data:
+      // URI, which would bloat every render if stamped onto every button.
+      var hasIllustration = !!(approvedIllustrationMap[name] || approvedIllustrationMapLower[(name || '').toLowerCase()]);
+      var illustrationBtnHtml = hasIllustration
+        ? '<button type="button" class="tp-workout-card__illustration-btn" data-exercise="' + encodeURIComponent(name) + '" title="Show me how">' +
+            SHOW_ME_HOW_ICON + '<span>Show me how</span>' +
+          '</button>'
+        : '';
+
       html += '<div class="tp-workout-card__exercise">';
       html += '<span class="tp-workout-card__exercise-name">' + escapeHtml(name) + '</span>';
       if (detail) html += '<span class="tp-workout-card__exercise-detail">' + escapeHtml(detail) + '</span>';
       html += '</div>';
+      if (illustrationBtnHtml) html += illustrationBtnHtml;
 
       if (ex.notes) {
         html += '<div class="tp-workout-card__exercise-notes">' + escapeHtml(ex.notes) + '</div>';
       }
     });
     return html;
+  }
+
+  // Attaches click handlers to every "Show me how" button inside a
+  // just-rendered container -- call this after any innerHTML assignment
+  // that may include renderExerciseList output.
+  function wireIllustrationButtons(container) {
+    if (!container) return;
+    container.querySelectorAll('.tp-workout-card__illustration-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var name = decodeURIComponent(btn.getAttribute('data-exercise'));
+        var url = approvedIllustrationMap[name] || approvedIllustrationMapLower[name.toLowerCase()];
+        if (url) openIllustrationModal(name, url);
+      });
+    });
+  }
+
+  // ============================================================
+  // Show Me How (exercise demo illustration)
+  // ============================================================
+
+  function openIllustrationModal(exerciseName, imageUrl) {
+    document.getElementById('illustrationModalTitle').textContent = exerciseName;
+    document.getElementById('illustrationModalImg').src = imageUrl;
+    document.getElementById('illustrationModalOverlay').style.display = 'flex';
+    lockBodyScroll();
+  }
+
+  function closeIllustrationModal() {
+    document.getElementById('illustrationModalOverlay').style.display = 'none';
+    unlockBodyScroll();
+    document.getElementById('illustrationModalImg').removeAttribute('src');
+  }
+
+  var illustrationModalCloseBtn = document.getElementById('illustrationModalClose');
+  if (illustrationModalCloseBtn) illustrationModalCloseBtn.addEventListener('click', closeIllustrationModal);
+  var illustrationModalOverlay = document.getElementById('illustrationModalOverlay');
+  if (illustrationModalOverlay) {
+    illustrationModalOverlay.addEventListener('click', function (e) {
+      if (e.target === illustrationModalOverlay) closeIllustrationModal();
+    });
   }
 
   // ============================================================
@@ -1414,12 +1487,14 @@
     // what we already have immediately, then fill in full detail once the
     // real session (with content) has loaded.
     workoutEl.innerHTML = buildDayPreviewCard(summary, dateLabel);
+    wireIllustrationButtons(workoutEl);
     workoutEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     try {
       var res = await apiGet('/api/v1/dashboard/workout/' + summary.id);
       if (res.success && res.data) {
         workoutEl.innerHTML = buildDayPreviewCard(res.data, dateLabel);
+        wireIllustrationButtons(workoutEl);
       }
     } catch (err) {
       // Keep the badges-only card already shown.

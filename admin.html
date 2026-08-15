@@ -61,7 +61,7 @@
             <button class="admin-primary-tab" data-group="clients">Clients <span id="pendingBadge" class="admin-pending-badge" style="display:none;"></span></button>
             <button class="admin-tab admin-primary-tab" data-tab="messaging">Messaging</button>
             <button class="admin-tab admin-primary-tab" data-tab="crm">CRM</button>
-            <button class="admin-primary-tab" data-group="tools">Tools <span id="videoReviewBadge" class="admin-pending-badge" style="display:none;"></span> <span id="billingAuditBadge" class="admin-pending-badge" style="display:none;"></span></button>
+            <button class="admin-primary-tab" data-group="tools">Tools <span id="illustrationReviewBadge" class="admin-pending-badge" style="display:none;"></span> <span id="billingAuditBadge" class="admin-pending-badge" style="display:none;"></span></button>
         </div>
 
         <!-- Secondary Tabs (shown per primary group) -->
@@ -76,7 +76,7 @@
             <button class="admin-tab admin-subtab" data-tab="upcomingCalls">Upcoming Calls</button>
         </div>
         <div class="admin-subtabs" data-subgroup="tools" style="display:none;">
-            <button class="admin-tab admin-subtab" data-tab="exerciseVideos">Exercise Videos</button>
+            <button class="admin-tab admin-subtab" data-tab="exerciseIllustrations">Exercise Illustrations</button>
             <button class="admin-tab admin-subtab" data-tab="billingAudit">Billing Audit</button>
         </div>
 
@@ -343,37 +343,28 @@
                 <div class="admin-pagination" id="crmPagination"></div>
             </div>
 
-            <!-- Exercise Videos Tab -->
-            <div class="admin-tab-content" id="tabExerciseVideos">
+            <!-- Exercise Illustrations Tab -->
+            <div class="admin-tab-content" id="tabExerciseIllustrations">
                 <div class="admin-card">
-                    <h3 class="admin-card-title">Generate a "Show Me How" Demo</h3>
-                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;margin-bottom:1rem;">Two videos exist per exercise — one male trainer, one female trainer — generated once and reused for every client. Clients see whichever is the opposite of their own gender. Nothing here is visible to clients until you approve it below.</p>
+                    <h3 class="admin-card-title">Generate a "Show Me How" Diagram</h3>
+                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;margin-bottom:1rem;">One illustration exists per exercise — generated once and reused for every client. Generation is synchronous (a few seconds), no polling needed. Nothing here is visible to clients until you approve it below.</p>
                     <div class="admin-form-row" style="align-items:flex-end;">
                         <div class="admin-form-group" style="flex:1;">
-                            <label for="videoExerciseSelect">Exercise</label>
-                            <select class="admin-select" id="videoExerciseSelect" style="width:100%;"></select>
+                            <label for="illustrationExerciseSelect">Exercise</label>
+                            <select class="admin-select" id="illustrationExerciseSelect" style="width:100%;"></select>
                         </div>
-                        <div class="admin-form-group">
-                            <label for="videoGenderSelect">Trainer</label>
-                            <select class="admin-select" id="videoGenderSelect">
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                            </select>
-                        </div>
-                        <button class="admin-btn-primary" id="videoGenerateBtn" type="button">Generate</button>
-                        <button class="admin-btn-secondary" id="videoPollBtn" type="button">Check Pending</button>
+                        <button class="admin-btn-primary" id="illustrationGenerateBtn" type="button">Generate</button>
                     </div>
-                    <div id="videoGenerateStatus" style="margin-top:0.75rem;"></div>
+                    <div id="illustrationGenerateStatus" style="margin-top:0.75rem;"></div>
                 </div>
                 <div class="admin-esc-toolbar">
-                    <button class="admin-filter-btn video-filter-btn admin-filter-btn--active" data-video-filter="all">All</button>
-                    <button class="admin-filter-btn video-filter-btn" data-video-filter="NEEDS_REVIEW">Needs Review</button>
-                    <button class="admin-filter-btn video-filter-btn" data-video-filter="APPROVED">Approved</button>
-                    <button class="admin-filter-btn video-filter-btn" data-video-filter="GENERATING">Generating</button>
-                    <button class="admin-filter-btn video-filter-btn" data-video-filter="REJECTED">Rejected</button>
-                    <button class="admin-filter-btn video-filter-btn" data-video-filter="FAILED">Failed</button>
+                    <button class="admin-filter-btn illustration-filter-btn admin-filter-btn--active" data-illustration-filter="all">All</button>
+                    <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="NEEDS_REVIEW">Needs Review</button>
+                    <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="APPROVED">Approved</button>
+                    <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="REJECTED">Rejected</button>
+                    <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="FAILED">Failed</button>
                 </div>
-                <div id="exerciseVideosList" class="admin-esc-list"></div>
+                <div id="exerciseIllustrationsList" class="admin-esc-list"></div>
             </div>
         </div>
     </section>
@@ -486,6 +477,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=3"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/admin.js?v=3"></script>
+    <script src="js/admin.js?v=4"></script>
 </body>
 </html>

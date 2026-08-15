@@ -102,7 +102,7 @@ model AthleteProfile {
   recoveryPractices String[]    // foam-roll | stretch | sauna | cold-plunge | massage | none
 
   // Physical Profile (expanded onboarding)
-  gender            String?       // male | female — used to match the opposite-sex trainer in "show me how" demo videos
+  gender            String?       // male | female — used for BMR/calorie-target calculation (Mifflin-St Jeor)
   heightInches      Int?
   weightLbs         Float?
   bodyFatEstimate   String?       // under-15 | 15-20 | 20-25 | 25-30 | 30-plus | unsure
@@ -782,6 +782,38 @@ model ExerciseVideo {
 enum ExerciseVideoStatus {
   GENERATING   // task submitted to Runway, not yet complete
   NEEDS_REVIEW // video generated, awaiting admin approval
+  APPROVED     // visible to clients
+  REJECTED     // failed review — needs regeneration
+  FAILED       // generation itself failed
+}
+
+// ============================================================
+// EXERCISE DEMO ILLUSTRATIONS — the "Show Me How" feature's current form.
+// Replaces ExerciseVideo above (kept in place, unused, rather than a
+// destructive drop) — a clean instructional diagram of body positioning and
+// movement direction, not a video. Generated once per exercise (no
+// trainer-gender variant — a form diagram isn't gendered), human-approved,
+// then reused for every client forever. Never shown to a client unless
+// status is APPROVED.
+// ============================================================
+
+model ExerciseIllustration {
+  id            String                       @id @default(cuid())
+  exerciseName  String                       @unique // must match exercise-swaps.ts naming exactly
+  prompt        String                       // exact prompt sent to the image model, for reproducibility
+  imageUrl      String?                      @db.Text // hosted URL or a data: URI, depending on provider response
+  status        ExerciseIllustrationStatus   @default(GENERATING)
+  generatedAt   DateTime                     @default(now())
+  approvedAt    DateTime?
+  rejectionNote String?                      // why a regeneration was requested, if any
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum ExerciseIllustrationStatus {
+  GENERATING   // request in flight — generation is synchronous, so this is transient
+  NEEDS_REVIEW // image generated, awaiting admin approval
   APPROVED     // visible to clients
   REJECTED     // failed review — needs regeneration
   FAILED       // generation itself failed

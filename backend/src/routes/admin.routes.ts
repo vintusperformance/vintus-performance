@@ -12,14 +12,14 @@ import {
   changeTierSchema,
   extendSubscriptionSchema,
   resolveEscalationSchema,
-  rejectExerciseVideoSchema,
+  rejectExerciseIllustrationSchema,
 } from "./schemas/admin.schemas.js";
 import { dailyReviewForClient } from "../services/cron.service.js";
 import { getFlags, setFlag } from "../lib/feature-flags.js";
 import { getHistory as getChatHistory } from "../services/chat.service.js";
 import * as adminService from "../services/admin.service.js";
-import * as exerciseVideoService from "../services/exercise-video.service.js";
-import { ExerciseVideoStatus } from "@prisma/client";
+import * as exerciseIllustrationService from "../services/exercise-illustration.service.js";
+import { ExerciseIllustrationStatus } from "@prisma/client";
 
 const router = Router();
 
@@ -671,34 +671,34 @@ router.put(
 );
 
 // ============================================================
-// EXERCISE VIDEOS ("show me how" demo clips — generate/approve/reject)
+// EXERCISE ILLUSTRATIONS ("show me how" demo diagrams — generate/approve/reject)
 // ============================================================
 
-// GET /admin/exercise-videos — all rows, optional ?status= filter
+// GET /admin/exercise-illustrations — all rows, optional ?status= filter
 router.get(
-  "/exercise-videos",
+  "/exercise-illustrations",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const statusParam = req.query.status as string | undefined;
       const status =
-        statusParam && statusParam in ExerciseVideoStatus
-          ? (statusParam as ExerciseVideoStatus)
+        statusParam && statusParam in ExerciseIllustrationStatus
+          ? (statusParam as ExerciseIllustrationStatus)
           : undefined;
 
-      const videos = await exerciseVideoService.listExerciseVideos(status);
-      res.status(200).json({ success: true, data: videos });
+      const illustrations = await exerciseIllustrationService.listExerciseIllustrations(status);
+      res.status(200).json({ success: true, data: illustrations });
     } catch (err) {
       next(err);
     }
   }
 );
 
-// GET /admin/exercise-videos/starter-list — exercise names with prompt metadata ready
+// GET /admin/exercise-illustrations/starter-list — exercise names with prompt metadata ready
 router.get(
-  "/exercise-videos/starter-list",
+  "/exercise-illustrations/starter-list",
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const exercises = exerciseVideoService.listStarterExercises();
+      const exercises = exerciseIllustrationService.listStarterExercises();
       res.status(200).json({ success: true, data: { exercises } });
     } catch (err) {
       next(err);
@@ -706,88 +706,70 @@ router.get(
   }
 );
 
-// POST /admin/exercise-videos/poll — check Runway for any GENERATING rows
+// POST /admin/exercise-illustrations/:exerciseName/generate — kick off generation.
+// Synchronous — resolves once the image is ready (or failed), no polling needed.
 router.post(
-  "/exercise-videos/poll",
-  async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const updated = await exerciseVideoService.pollPendingGenerations();
-      res.status(200).json({ success: true, data: updated });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// POST /admin/exercise-videos/:exerciseName/generate — kick off generation
-// for one trainer gender. Body: { trainerGender: "male" | "female" }
-router.post(
-  "/exercise-videos/:exerciseName/generate",
+  "/exercise-illustrations/:exerciseName/generate",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const exerciseName = decodeURIComponent(req.params.exerciseName as string);
-      const trainerGender = req.body.trainerGender;
-      if (trainerGender !== "male" && trainerGender !== "female") {
-        res.status(400).json({ success: false, error: "trainerGender must be 'male' or 'female'" });
-        return;
-      }
-      const video = await exerciseVideoService.generateExerciseVideo(exerciseName, trainerGender);
-      res.status(200).json({ success: true, data: video });
+      const illustration = await exerciseIllustrationService.generateExerciseIllustration(exerciseName);
+      res.status(200).json({ success: true, data: illustration });
     } catch (err) {
       next(err);
     }
   }
 );
 
-// POST /admin/exercise-videos/:id/approve — make visible to clients
+// POST /admin/exercise-illustrations/:id/approve — make visible to clients
 router.post(
-  "/exercise-videos/:id/approve",
+  "/exercise-illustrations/:id/approve",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const video = await exerciseVideoService.approveExerciseVideo(req.params.id as string);
-      res.status(200).json({ success: true, data: video });
+      const illustration = await exerciseIllustrationService.approveExerciseIllustration(req.params.id as string);
+      res.status(200).json({ success: true, data: illustration });
     } catch (err) {
       next(err);
     }
   }
 );
 
-// POST /admin/exercise-videos/:id/reject — reject with a note, never shown to clients
+// POST /admin/exercise-illustrations/:id/reject — reject with a note, never shown to clients
 router.post(
-  "/exercise-videos/:id/reject",
-  validate(rejectExerciseVideoSchema),
+  "/exercise-illustrations/:id/reject",
+  validate(rejectExerciseIllustrationSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const video = await exerciseVideoService.rejectExerciseVideo(
+      const illustration = await exerciseIllustrationService.rejectExerciseIllustration(
         req.params.id as string,
         req.body.note
       );
-      res.status(200).json({ success: true, data: video });
+      res.status(200).json({ success: true, data: illustration });
     } catch (err) {
       next(err);
     }
   }
 );
 
-// POST /admin/exercise-videos/:id/regenerate — re-submit the same prompt
+// POST /admin/exercise-illustrations/:id/regenerate — re-submit the same prompt
 router.post(
-  "/exercise-videos/:id/regenerate",
+  "/exercise-illustrations/:id/regenerate",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const video = await exerciseVideoService.regenerateExerciseVideo(req.params.id as string);
-      res.status(200).json({ success: true, data: video });
+      const illustration = await exerciseIllustrationService.regenerateExerciseIllustration(req.params.id as string);
+      res.status(200).json({ success: true, data: illustration });
     } catch (err) {
       next(err);
     }
   }
 );
 
-// DELETE /admin/exercise-videos/:id — permanently remove a REJECTED or FAILED row
+// DELETE /admin/exercise-illustrations/:id — permanently remove a REJECTED or FAILED row
 router.delete(
-  "/exercise-videos/:id",
+  "/exercise-illustrations/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await exerciseVideoService.deleteExerciseVideo(req.params.id as string);
+      const result = await exerciseIllustrationService.deleteExerciseIllustration(req.params.id as string);
       res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);

@@ -203,7 +203,7 @@
     color: var(--black);
 }
 
-.exercise-video-btn {
+.exercise-illustration-btn {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -221,13 +221,13 @@
     transition: all var(--transition-normal);
 }
 
-.exercise-video-btn svg {
+.exercise-illustration-btn svg {
     width: 12px;
     height: 12px;
     flex-shrink: 0;
 }
 
-.exercise-video-btn:hover {
+.exercise-illustration-btn:hover {
     color: var(--silver);
     border-color: var(--border-color-hover);
 }

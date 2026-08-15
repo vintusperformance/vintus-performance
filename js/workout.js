@@ -30,13 +30,13 @@
 
   var sessionData = null;
   var canSwap = false;
-  var approvedVideoMap = {};
-  var approvedVideoMapLower = {};
+  var approvedIllustrationMap = {};
+  var approvedIllustrationMapLower = {};
   loadWorkout();
 
   async function loadWorkout() {
     try {
-      var videoMapPromise = apiGet('/api/v1/workout/exercise-videos').catch(function () { return null; });
+      var illustrationMapPromise = apiGet('/api/v1/workout/exercise-illustrations').catch(function () { return null; });
       var res = await apiGet('/api/v1/dashboard/workout/' + sessionId);
 
       if (!res.success || !res.data) {
@@ -44,15 +44,15 @@
         return;
       }
 
-      var videoRes = await videoMapPromise;
-      if (videoRes && videoRes.success && videoRes.data) {
-        approvedVideoMap = videoRes.data;
+      var illustrationRes = await illustrationMapPromise;
+      if (illustrationRes && illustrationRes.success && illustrationRes.data) {
+        approvedIllustrationMap = illustrationRes.data;
         // Case-insensitive lookup key so a plan's exercise text ("barbell
-        // bench press") still matches an admin-approved video keyed by its
-        // canonical Title Case name ("Barbell Bench Press").
-        approvedVideoMapLower = {};
-        Object.keys(approvedVideoMap).forEach(function (name) {
-          approvedVideoMapLower[name.toLowerCase()] = approvedVideoMap[name];
+        // bench press") still matches an admin-approved illustration keyed
+        // by its canonical Title Case name ("Barbell Bench Press").
+        approvedIllustrationMapLower = {};
+        Object.keys(approvedIllustrationMap).forEach(function (name) {
+          approvedIllustrationMapLower[name.toLowerCase()] = approvedIllustrationMap[name];
         });
       }
 
@@ -117,8 +117,8 @@
               (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '') +
             '</div>' +
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
-          var warmupVideoBtn = addVideoButton(ex.exercise);
-          if (warmupVideoBtn) card.appendChild(warmupVideoBtn);
+          var warmupIllustrationBtn = addIllustrationButton(ex.exercise);
+          if (warmupIllustrationBtn) card.appendChild(warmupIllustrationBtn);
           card.appendChild(addCompleteToggle(card, 'warmup', idx));
           warmupList.appendChild(card);
         });
@@ -158,8 +158,8 @@
             '<div class="exercise-name-row"><div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' + swapBtnHtml + '</div>' +
             '<div class="exercise-details">' + detailsHtml + '</div>' +
             (ex.notes ? '<div class="exercise-notes">' + escapeHtml(ex.notes) + '</div>' : '');
-          var mainVideoBtn = addVideoButton(ex.exercise);
-          if (mainVideoBtn) card.querySelector('.exercise-name-row').appendChild(mainVideoBtn);
+          var mainIllustrationBtn = addIllustrationButton(ex.exercise);
+          if (mainIllustrationBtn) card.querySelector('.exercise-name-row').appendChild(mainIllustrationBtn);
           card.querySelector('.exercise-name-row').appendChild(addCompleteToggle(card, 'main', idx));
           mainList.appendChild(card);
         });
@@ -187,8 +187,8 @@
           card.innerHTML =
             '<div class="exercise-name">' + escapeHtml(ex.exercise) + '</div>' +
             (ex.duration ? '<span class="exercise-duration">' + escapeHtml(ex.duration) + '</span>' : '');
-          var cooldownVideoBtn = addVideoButton(ex.exercise);
-          if (cooldownVideoBtn) card.appendChild(cooldownVideoBtn);
+          var cooldownIllustrationBtn = addIllustrationButton(ex.exercise);
+          if (cooldownIllustrationBtn) card.appendChild(cooldownIllustrationBtn);
           card.appendChild(addCompleteToggle(card, 'cooldown', idx));
           cooldownList.appendChild(card);
         });
@@ -512,46 +512,43 @@
     return btn;
   }
 
-  // ── Show Me How (exercise demo video) ──
-  var PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
-  var videoModal = document.getElementById('videoModal');
-  var videoModalClose = document.getElementById('videoModalClose');
-  var videoModalTitle = document.getElementById('videoModalTitle');
-  var videoModalPlayer = document.getElementById('videoModalPlayer');
+  // ── Show Me How (exercise demo illustration) ──
+  var ILLUSTRATION_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  var illustrationModal = document.getElementById('illustrationModal');
+  var illustrationModalClose = document.getElementById('illustrationModalClose');
+  var illustrationModalTitle = document.getElementById('illustrationModalTitle');
+  var illustrationModalImg = document.getElementById('illustrationModalImg');
 
-  function openVideoModal(exerciseName, videoUrl) {
-    videoModalTitle.textContent = exerciseName;
-    videoModalPlayer.src = videoUrl;
-    videoModal.classList.add('active');
+  function openIllustrationModal(exerciseName, imageUrl) {
+    illustrationModalTitle.textContent = exerciseName;
+    illustrationModalImg.src = imageUrl;
+    illustrationModal.classList.add('active');
     lockBodyScroll();
-    videoModalPlayer.play().catch(function () {});
   }
 
-  function closeVideoModal() {
-    videoModal.classList.remove('active');
+  function closeIllustrationModal() {
+    illustrationModal.classList.remove('active');
     unlockBodyScroll();
-    videoModalPlayer.pause();
-    videoModalPlayer.removeAttribute('src');
-    videoModalPlayer.load();
+    illustrationModalImg.removeAttribute('src');
   }
 
-  videoModalClose.addEventListener('click', closeVideoModal);
-  videoModal.addEventListener('click', function (e) {
-    if (e.target === videoModal) closeVideoModal();
+  illustrationModalClose.addEventListener('click', closeIllustrationModal);
+  illustrationModal.addEventListener('click', function (e) {
+    if (e.target === illustrationModal) closeIllustrationModal();
   });
 
-  // Returns a "Show me how" button if an approved demo exists for this
-  // exercise, or null if not — callers should skip appending in that case.
-  function addVideoButton(exerciseName) {
-    var videoUrl = approvedVideoMap[exerciseName] || approvedVideoMapLower[(exerciseName || '').toLowerCase()];
-    if (!videoUrl) return null;
+  // Returns a "Show me how" button if an approved illustration exists for
+  // this exercise, or null if not — callers should skip appending in that case.
+  function addIllustrationButton(exerciseName) {
+    var imageUrl = approvedIllustrationMap[exerciseName] || approvedIllustrationMapLower[(exerciseName || '').toLowerCase()];
+    if (!imageUrl) return null;
 
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'exercise-video-btn';
-    btn.innerHTML = PLAY_ICON + '<span>Show me how</span>';
+    btn.className = 'exercise-illustration-btn';
+    btn.innerHTML = ILLUSTRATION_ICON + '<span>Show me how</span>';
     btn.addEventListener('click', function () {
-      openVideoModal(exerciseName, videoUrl);
+      openIllustrationModal(exerciseName, imageUrl);
     });
     return btn;
   }
