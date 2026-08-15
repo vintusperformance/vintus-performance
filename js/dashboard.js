@@ -994,61 +994,77 @@
     return { cls: 'scheduled', icon: '\u2022' };
   }
 
-  function handleCellClick(dateStr, sessions, isToday) {
+  async function handleCellClick(dateStr, sessions, isToday) {
     // Remove selected state from all cells
     document.querySelectorAll('.tp-week__cell--selected').forEach(function(el) {
       el.classList.remove('tp-week__cell--selected');
     });
+    var clickedCell = document.querySelector('[data-date="' + dateStr + '"]');
+    if (clickedCell) clickedCell.classList.add('tp-week__cell--selected');
 
-    // If clicking today and it's current week, scroll to workout card
-    if (isToday && currentWeekOffset === 0 && todaySession) {
-      var workoutEl = document.getElementById('todayWorkout');
+    var workoutEl = document.getElementById('todayWorkout');
+
+    // Today always re-renders the authoritative Today's Workout card from
+    // already-loaded data, rather than just scrolling to it -- a previous
+    // click on a different day overwrites this same element, so scrolling
+    // alone would leave that other day's content stuck on screen with no
+    // way back except a page refresh.
+    if (isToday && currentWeekOffset === 0 && overviewData) {
+      renderTodayWorkout(overviewData);
       workoutEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Highlight cell
-      var clickedCell = document.querySelector('[data-date="' + dateStr + '"]');
-      if (clickedCell) clickedCell.classList.add('tp-week__cell--selected');
       return;
     }
 
-    // For other days with sessions, show a mini detail inline
-    if (sessions.length > 0) {
-      var clickedCell = document.querySelector('[data-date="' + dateStr + '"]');
-      if (clickedCell) clickedCell.classList.add('tp-week__cell--selected');
+    if (sessions.length === 0) return;
 
-      var s = sessions[0];
-      var workoutEl = document.getElementById('todayWorkout');
-      var typeBadge = (s.sessionType || '').replace(/_/g, ' ');
-      var duration = s.prescribedDuration ? s.prescribedDuration + ' min' : '';
-      var d = new Date(dateStr + 'T12:00:00');
-      var dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    var summary = sessions[0];
+    var d = new Date(dateStr + 'T12:00:00');
+    var dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-      var html = '<div class="tp-workout-card">';
-      html += '<div class="tp-workout-card__header">';
-      html += '<div class="tp-workout-card__title">' + escapeHtml(s.title || dateLabel) + '</div>';
-      html += '</div>';
-      html += '<div class="tp-workout-card__meta">';
-      html += '<span class="tp-workout-card__badge">' + escapeHtml(dateLabel) + '</span>';
-      if (typeBadge) html += '<span class="tp-workout-card__badge">' + escapeHtml(typeBadge) + '</span>';
-      if (duration) html += '<span class="tp-workout-card__badge">' + duration + '</span>';
-      html += '<span class="tp-workout-card__badge">' + escapeHtml(s.status) + '</span>';
-      html += '</div>';
-      html += renderWorkoutSections(s);
+    // The week summary doesn't carry warmup/main/cooldown content -- show
+    // what we already have immediately, then fill in full detail once the
+    // real session (with content) has loaded.
+    workoutEl.innerHTML = buildDayPreviewCard(summary, dateLabel);
+    workoutEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      if (s.status === 'COMPLETED') {
-        html += '<div class="tp-workout-card__actions">' +
-          '<span class="tp-workout-card__completed-label">' +
-          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
-          'Completed</span></div>';
-      } else if (s.status === 'SCHEDULED') {
-        html += '<div class="tp-workout-card__actions">' +
-          '<a href="/workout?id=' + s.id + '" class="tp-workout-card__start-btn">Start Workout</a>' +
-          '</div>';
+    try {
+      var res = await apiGet('/api/v1/dashboard/workout/' + summary.id);
+      if (res.success && res.data) {
+        workoutEl.innerHTML = buildDayPreviewCard(res.data, dateLabel);
       }
-
-      html += '</div>';
-      workoutEl.innerHTML = html;
-      workoutEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      // Keep the badges-only card already shown.
     }
+  }
+
+  // Renders a look-ahead/look-back preview for a day other than today.
+  // Never offers a Start Workout action -- that's only ever available for
+  // today's own session, via renderTodayWorkout.
+  function buildDayPreviewCard(s, dateLabel) {
+    var typeBadge = (s.sessionType || '').replace(/_/g, ' ');
+    var duration = s.prescribedDuration ? s.prescribedDuration + ' min' : '';
+
+    var html = '<div class="tp-workout-card">';
+    html += '<div class="tp-workout-card__header">';
+    html += '<div class="tp-workout-card__title">' + escapeHtml(s.title || dateLabel) + '</div>';
+    html += '</div>';
+    html += '<div class="tp-workout-card__meta">';
+    html += '<span class="tp-workout-card__badge">' + escapeHtml(dateLabel) + '</span>';
+    if (typeBadge) html += '<span class="tp-workout-card__badge">' + escapeHtml(typeBadge) + '</span>';
+    if (duration) html += '<span class="tp-workout-card__badge">' + duration + '</span>';
+    html += '<span class="tp-workout-card__badge">' + escapeHtml(s.status) + '</span>';
+    html += '</div>';
+    html += renderWorkoutSections(s);
+
+    if (s.status === 'COMPLETED') {
+      html += '<div class="tp-workout-card__actions">' +
+        '<span class="tp-workout-card__completed-label">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
+        'Completed</span></div>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   // ============================================================
