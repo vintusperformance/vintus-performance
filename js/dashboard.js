@@ -999,7 +999,10 @@
     document.querySelectorAll('.tp-week__cell--selected').forEach(function(el) {
       el.classList.remove('tp-week__cell--selected');
     });
-    var clickedCell = document.querySelector('[data-date="' + dateStr + '"]');
+    // Scoped to .tp-week__cell -- the 14-day performance chart's bars also
+    // carry a data-date attribute, so an unscoped selector could grab the
+    // wrong element if the DOM order ever changes.
+    var clickedCell = document.querySelector('.tp-week__cell[data-date="' + dateStr + '"]');
     if (clickedCell) clickedCell.classList.add('tp-week__cell--selected');
 
     var workoutEl = document.getElementById('todayWorkout');
