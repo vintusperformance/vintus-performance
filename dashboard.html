@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=2">
-    <link rel="stylesheet" href="css/dashboard.css?v=15">
+    <link rel="stylesheet" href="css/dashboard.css?v=16">
     <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
 </head>
 <body class="dashboard-page" style="background: #0a0a0a !important;">
@@ -500,6 +500,19 @@
         </div>
     </div>
 
+    <!-- Show Me How Modal — exercise form illustration -->
+    <div class="tp-modal-overlay" id="illustrationModalOverlay" style="display:none;">
+        <div class="tp-modal">
+            <div class="tp-modal__header">
+                <h3 id="illustrationModalTitle">Show Me How</h3>
+                <button class="tp-modal__close" id="illustrationModalClose">&times;</button>
+            </div>
+            <div class="tp-modal__body">
+                <img id="illustrationModalImg" class="illustration-modal-img" alt="Exercise form illustration">
+            </div>
+        </div>
+    </div>
+
     <!-- Meal Ideas Modal — search calorie-capped alternatives for one meal slot -->
     <div class="tp-modal-overlay" id="mealIdeasModalOverlay" style="display:none;">
         <div class="tp-modal tp-modal--wide">
@@ -602,6 +615,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=3"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/dashboard.js?v=17"></script>
+    <script src="js/dashboard.js?v=18"></script>
 </body>
 </html>

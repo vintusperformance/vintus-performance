@@ -15,28 +15,22 @@ import {
   rebuildPlanFromPreferences,
 } from "../services/workout.service.js";
 import { getWeekView } from "../services/dashboard.service.js";
-import { getApprovedVideoMap } from "../services/exercise-video.service.js";
+import { getApprovedIllustrationMap } from "../services/exercise-illustration.service.js";
 
 const router = Router();
 
 // All workout routes require authentication
 router.use(authenticate);
 
-// GET /workout/exercise-videos — approved "show me how" demo clips, keyed by
-// exercise name. Not per-user data, but the choice of male vs. female clip
-// per exercise depends on the requesting client's own gender (opposite-sex
-// match), so this does read their profile.
+// GET /workout/exercise-illustrations — approved "show me how" demo
+// diagrams, keyed by exercise name. Not per-user data (no gender variant,
+// unlike the earlier video pilot) — same map for every client.
 router.get(
-  "/exercise-videos",
-  async (req: Request, res: Response, next: NextFunction) => {
+  "/exercise-illustrations",
+  async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user!.userId;
-      const profile = await prisma.athleteProfile.findUnique({
-        where: { userId },
-        select: { gender: true },
-      });
-      const videos = await getApprovedVideoMap(profile?.gender);
-      res.status(200).json({ success: true, data: videos });
+      const illustrations = await getApprovedIllustrationMap();
+      res.status(200).json({ success: true, data: illustrations });
     } catch (err) {
       next(err);
     }

@@ -607,6 +607,36 @@
   margin-top: -0.1rem;
 }
 
+.tp-workout-card__illustration-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--gray);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin: -0.15rem 0 0.35rem;
+}
+
+.tp-workout-card__illustration-btn:hover {
+  color: var(--off-white);
+  border-color: rgba(255,255,255,0.25);
+}
+
+.illustration-modal-img {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  background: rgba(255,255,255,0.03);
+}
+
 /* Action buttons */
 .tp-workout-card__actions {
   display: flex;

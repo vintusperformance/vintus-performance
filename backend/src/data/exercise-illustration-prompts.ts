@@ -1,37 +1,34 @@
 /**
- * Exercise demo video generation — prompt builder + starter exercise metadata.
+ * Exercise demo illustration generation — prompt builder + starter exercise
+ * metadata. Replaces the earlier video-based "Show Me How" pilot; the cue
+ * data below carries over unchanged (it's dietary-neutral body-mechanics
+ * data, equally valid for describing a still illustration or a video).
  *
- * Scope: the ~24 highest-frequency exercises across exercise-library.ts session
- * templates, not the full ~112-exercise exercise-swaps.ts list. Same reasoning
- * as the earlier photo-graphics pilot (see scratchpad brief from that pass):
- * stock/generation quality and human review time both thin out fast past the
+ * Scope: the ~24 highest-frequency exercises across exercise-library.ts
+ * session templates, not the full ~112-exercise exercise-swaps.ts list.
+ * Illustration quality and admin review time both thin out fast past the
  * "major lift" tier, so start narrow and expand deliberately rather than
- * generating all ~112 uniformly.
+ * generating all ~112 uniformly — same reasoning the video pilot used.
  *
- * Note on gender: two videos are generated per exerciseName — one with a
- * male trainer, one with a female trainer (paired via ExerciseVideo's
- * (exerciseName, trainerGender) unique constraint) — both admin-approved,
- * both reused for every client (still generate-once, not per-client). The
- * client-facing player picks whichever clip's trainerGender is the
- * *opposite* of the client's own AthleteProfile.gender. The cue metadata
- * below is gender-neutral; buildVideoPrompt takes the gender as a parameter
- * so the same cue produces either version on demand.
+ * Unlike the video pilot, illustrations have no gender variant — a form
+ * diagram depicts the movement, not a person to identify with, so one
+ * generated (and admin-approved) illustration is reused for every client
+ * regardless of their own gender.
  */
 
 export type CameraAngle = "side" | "front" | "three-quarter";
-export type TrainerGender = "male" | "female";
 
-export interface ExerciseVideoCue {
+export interface ExerciseIllustrationCue {
   /** Must match the naming used in exercise-library.ts / exercise-swaps.ts exactly. */
   exerciseName: string;
   cameraAngle: CameraAngle;
-  /** What's visibly in frame besides the trainer — equipment, setup. */
+  /** What's visibly in frame besides the athlete — equipment, setup. */
   equipmentDetail: string;
-  /** 3-4 short biomechanical cues, same voice as the earlier photo-graphics brief. */
+  /** 3-4 short biomechanical cues to depict visually (posture, joint angles, movement path). */
   formCues: string[];
 }
 
-export const STARTER_EXERCISE_CUES: ExerciseVideoCue[] = [
+export const STARTER_EXERCISE_CUES: ExerciseIllustrationCue[] = [
   // Horizontal push
   {
     exerciseName: "Barbell Bench Press",
@@ -311,39 +308,38 @@ export const STARTER_EXERCISE_CUES: ExerciseVideoCue[] = [
 ];
 
 const PROMPT_SUFFIX =
-  "Steady camera, no cuts, no text overlays, no on-screen graphics, realistic human " +
-  "anatomy and movement, natural gym lighting, plain neutral gray or black athletic " +
-  "clothing with no visible logos or text. Full range of motion on every repetition " +
-  "— no partial reps. 8 seconds, 2 clean and controlled repetitions.";
+  "Professional 2D fitness instructional illustration, clean flat-color vector art style, " +
+  "textbook or infographic quality — the kind found in a physical therapy or strength " +
+  "coaching manual. Plain white or light neutral background, no clutter. Show clear " +
+  "directional arrows indicating the movement path. Realistic human proportions and " +
+  "anatomy, athletic build, plain neutral athletic clothing with no logos or text. " +
+  "Absolutely no text, words, letters, numbers, or labels anywhere in the image — " +
+  "AI-generated text is unreliable, so the image must communicate entirely through the " +
+  "illustration itself.";
 
 /**
- * Builds the exact prompt sent to Runway for a given exercise + trainer
- * gender. Deterministic — same cue+gender always produces the same prompt
- * string, so it's stored verbatim on ExerciseVideo.prompt for reproducibility
+ * Builds the exact prompt sent to the image model for a given exercise cue.
+ * Deterministic — the same cue always produces the same prompt string, so
+ * it's stored verbatim on ExerciseIllustration.prompt for reproducibility
  * (matches the model comment on that field).
  */
-export function buildVideoPrompt(cue: ExerciseVideoCue, trainerGender: TrainerGender): string {
+export function buildIllustrationPrompt(cue: ExerciseIllustrationCue): string {
   const angleText =
     cue.cameraAngle === "side"
-      ? "Camera holds a steady side-on shot"
+      ? "Side-view angle"
       : cue.cameraAngle === "front"
-        ? "Camera holds a steady front-facing shot"
-        : "Camera holds a steady three-quarter angle shot";
-
-  const prefix =
-    `A fit, athletic ${trainerGender} fitness trainer in athletic wear ` +
-    "demonstrates proper exercise form in a clean, well-lit modern gym.";
+        ? "Front-facing angle"
+        : "Three-quarter angle";
 
   return [
-    prefix,
-    `Exercise: ${cue.exerciseName}.`,
+    `A professional fitness instructional illustration demonstrating proper form for: ${cue.exerciseName}.`,
     `Setup: ${cue.equipmentDetail}.`,
-    `${angleText} at mid-distance, capturing the full body throughout the movement.`,
-    `Form cues to show clearly: ${cue.formCues.join("; ")}.`,
+    `${angleText}, showing the full body and the complete range of motion — depict the start and end position, or use motion arrows to show the movement path within a single image.`,
+    `Key form details to depict visually: ${cue.formCues.join("; ")}.`,
     PROMPT_SUFFIX,
   ].join(" ");
 }
 
-export function getStarterCue(exerciseName: string): ExerciseVideoCue | undefined {
+export function getStarterCue(exerciseName: string): ExerciseIllustrationCue | undefined {
   return STARTER_EXERCISE_CUES.find((c) => c.exerciseName === exerciseName);
 }

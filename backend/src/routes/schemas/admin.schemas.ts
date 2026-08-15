@@ -66,7 +66,7 @@ export const resolveEscalationSchema = z.object({
   resolution: z.enum(["resumed", "paused_subscription", "churned", "call_completed", "other"]),
 });
 
-export const rejectExerciseVideoSchema = z.object({
+export const rejectExerciseIllustrationSchema = z.object({
   note: z.string().min(1, "A rejection note is required").max(1000),
 });
 

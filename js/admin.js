@@ -11,7 +11,7 @@
   }
 
   /* ── State ── */
-  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false, exerciseVideos: false, billingAudit: false };
+  var loadedTabs = { command: false, overview: false, actions: false, clients: false, messaging: false, adherence: false, escalations: false, upcomingCalls: false, crm: false, exerciseIllustrations: false, billingAudit: false };
   var clientsPage = 1;
   var clientsTotalPages = 1;
   var escalationsPage = 1;
@@ -19,7 +19,7 @@
   var escalationFilter = 'all';
   var crmPage = 1;
   var crmTotalPages = 1;
-  var videoFilter = 'all';
+  var illustrationFilter = 'all';
   var currentDetailUserId = null;
   var searchTimeout = null;
 
@@ -203,7 +203,7 @@
     else if (name === 'escalations') loadEscalations();
     else if (name === 'upcomingCalls') loadUpcomingCalls();
     else if (name === 'crm') loadCrm();
-    else if (name === 'exerciseVideos') loadExerciseVideos();
+    else if (name === 'exerciseIllustrations') loadExerciseIllustrations();
     else if (name === 'billingAudit') loadBillingAudit();
   }
 
@@ -2022,65 +2022,42 @@
   }
 
   /* ============================================================
-     EXERCISE VIDEOS TAB — generate/approve/reject "show me how" demos
+     EXERCISE ILLUSTRATIONS TAB — generate/approve/reject "show me how" diagrams
      ============================================================ */
 
-  var videoFilterBtns = document.querySelectorAll('.video-filter-btn');
-  videoFilterBtns.forEach(function (btn) {
+  var illustrationFilterBtns = document.querySelectorAll('.illustration-filter-btn');
+  illustrationFilterBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      videoFilterBtns.forEach(function (b) { b.classList.remove('admin-filter-btn--active'); });
+      illustrationFilterBtns.forEach(function (b) { b.classList.remove('admin-filter-btn--active'); });
       btn.classList.add('admin-filter-btn--active');
-      videoFilter = btn.getAttribute('data-video-filter');
-      loadExerciseVideos();
+      illustrationFilter = btn.getAttribute('data-illustration-filter');
+      loadExerciseIllustrations();
     });
   });
 
-  var videoGenerateBtn = document.getElementById('videoGenerateBtn');
-  if (videoGenerateBtn) {
-    videoGenerateBtn.addEventListener('click', async function () {
-      var select = document.getElementById('videoExerciseSelect');
-      var genderSelect = document.getElementById('videoGenderSelect');
-      var statusEl = document.getElementById('videoGenerateStatus');
+  var illustrationGenerateBtn = document.getElementById('illustrationGenerateBtn');
+  if (illustrationGenerateBtn) {
+    illustrationGenerateBtn.addEventListener('click', async function () {
+      var select = document.getElementById('illustrationExerciseSelect');
+      var statusEl = document.getElementById('illustrationGenerateStatus');
       var exerciseName = select ? select.value : '';
-      var trainerGender = genderSelect ? genderSelect.value : 'male';
       if (!exerciseName) return;
 
-      videoGenerateBtn.disabled = true;
-      statusEl.innerHTML = '<div class="admin-empty">Submitting to Runway…</div>';
+      illustrationGenerateBtn.disabled = true;
+      statusEl.innerHTML = '<div class="admin-empty">Generating…</div>';
       try {
-        await apiPost('/api/v1/admin/exercise-videos/' + encodeURIComponent(exerciseName) + '/generate', { trainerGender: trainerGender });
-        statusEl.innerHTML = '<div class="admin-alert admin-alert--success">Generation started for "' + esc(exerciseName) + '" (' + esc(trainerGender) + ' trainer). Use "Check Pending" in a minute or two to see if it\'s ready for review.</div>';
-        loadExerciseVideos();
+        await apiPost('/api/v1/admin/exercise-illustrations/' + encodeURIComponent(exerciseName) + '/generate', {});
+        statusEl.innerHTML = '<div class="admin-alert admin-alert--success">Generated "' + esc(exerciseName) + '" — ready for review below.</div>';
+        loadExerciseIllustrations();
       } catch (err) {
         statusEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
       } finally {
-        videoGenerateBtn.disabled = false;
+        illustrationGenerateBtn.disabled = false;
       }
     });
   }
 
-  var videoPollBtn = document.getElementById('videoPollBtn');
-  if (videoPollBtn) {
-    videoPollBtn.addEventListener('click', async function () {
-      var statusEl = document.getElementById('videoGenerateStatus');
-      videoPollBtn.disabled = true;
-      statusEl.innerHTML = '<div class="admin-empty">Checking Runway for updates…</div>';
-      try {
-        var res = await apiPost('/api/v1/admin/exercise-videos/poll', {});
-        var updated = res.data || [];
-        statusEl.innerHTML = updated.length
-          ? '<div class="admin-alert admin-alert--success">' + updated.length + ' video(s) updated.</div>'
-          : '<div class="admin-empty">No pending generations finished yet.</div>';
-        loadExerciseVideos();
-      } catch (err) {
-        statusEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
-      } finally {
-        videoPollBtn.disabled = false;
-      }
-    });
-  }
-
-  function videoStatusBadge(status) {
+  function illustrationStatusBadge(status) {
     var badgeBaseStyle = 'display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:600;margin-left:0.4rem;vertical-align:middle;';
     var map = {
       GENERATING: 'background:rgba(245,158,11,0.15);color:#f59e0b;',
@@ -2092,51 +2069,50 @@
     return '<span style="' + badgeBaseStyle + (map[status] || '') + '">' + esc(status.replace(/_/g, ' ')) + '</span>';
   }
 
-  async function loadExerciseVideos() {
-    var listEl = document.getElementById('exerciseVideosList');
-    var select = document.getElementById('videoExerciseSelect');
+  async function loadExerciseIllustrations() {
+    var listEl = document.getElementById('exerciseIllustrationsList');
+    var select = document.getElementById('illustrationExerciseSelect');
 
     try {
       if (select && !select.options.length) {
-        var starterRes = await apiGet('/api/v1/admin/exercise-videos/starter-list');
+        var starterRes = await apiGet('/api/v1/admin/exercise-illustrations/starter-list');
         var exercises = starterRes.data.exercises || [];
         select.innerHTML = exercises.map(function (name) {
           return '<option value="' + esc(name) + '">' + esc(name) + '</option>';
         }).join('');
       }
 
-      var params = videoFilter !== 'all' ? '?status=' + encodeURIComponent(videoFilter) : '';
-      var res = await apiGet('/api/v1/admin/exercise-videos' + params);
-      var videos = res.data || [];
+      var params = illustrationFilter !== 'all' ? '?status=' + encodeURIComponent(illustrationFilter) : '';
+      var res = await apiGet('/api/v1/admin/exercise-illustrations' + params);
+      var illustrations = res.data || [];
 
-      var badge = document.getElementById('videoReviewBadge');
+      var badge = document.getElementById('illustrationReviewBadge');
       if (badge) {
-        var needsReview = videos.filter(function (v) { return v.status === 'NEEDS_REVIEW'; }).length;
-        if (videoFilter === 'all' && needsReview > 0) {
+        var needsReview = illustrations.filter(function (v) { return v.status === 'NEEDS_REVIEW'; }).length;
+        if (illustrationFilter === 'all' && needsReview > 0) {
           badge.textContent = needsReview;
           badge.style.display = '';
-        } else if (videoFilter === 'all') {
+        } else if (illustrationFilter === 'all') {
           badge.style.display = 'none';
         }
       }
 
-      if (!videos.length) {
-        listEl.innerHTML = '<div class="admin-empty">No exercise videos yet — generate one above</div>';
+      if (!illustrations.length) {
+        listEl.innerHTML = '<div class="admin-empty">No exercise illustrations yet — generate one above</div>';
         return;
       }
 
       var html = '';
-      for (var i = 0; i < videos.length; i++) {
-        var v = videos[i];
-        var genderLabel = v.trainerGender === 'female' ? 'Female trainer' : 'Male trainer';
+      for (var i = 0; i < illustrations.length; i++) {
+        var v = illustrations[i];
         html += '<div class="admin-esc-card">' +
           '<div class="admin-esc-card-header">' +
-          '<span class="admin-esc-client">' + esc(v.exerciseName) + ' — ' + esc(genderLabel) + videoStatusBadge(v.status) + '</span>' +
+          '<span class="admin-esc-client">' + esc(v.exerciseName) + illustrationStatusBadge(v.status) + '</span>' +
           '<span class="admin-esc-date">' + fmtDateTime(v.updatedAt) + '</span>' +
           '</div>';
 
-        if (v.videoUrl) {
-          html += '<div style="margin:0.6rem 0;"><video src="' + esc(v.videoUrl) + '" controls preload="metadata" style="max-width:320px;border-radius:6px;display:block;"></video></div>';
+        if (v.imageUrl) {
+          html += '<div style="margin:0.6rem 0;"><img src="' + esc(v.imageUrl) + '" style="max-width:320px;border-radius:6px;display:block;" alt="' + esc(v.exerciseName) + '"></div>';
         }
 
         if (v.status === 'FAILED' && v.rejectionNote) {
@@ -2148,23 +2124,23 @@
 
         html += '<div class="admin-esc-meta" style="gap:0.5rem;">';
         if (v.status === 'NEEDS_REVIEW') {
-          html += '<button class="admin-btn-primary video-approve-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Approve</button>';
-          html += '<button class="admin-btn-secondary video-reject-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Reject</button>';
+          html += '<button class="admin-btn-primary illustration-approve-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Approve</button>';
+          html += '<button class="admin-btn-secondary illustration-reject-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Reject</button>';
         }
         if (v.status === 'REJECTED' || v.status === 'FAILED') {
-          html += '<button class="admin-btn-secondary video-regenerate-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Regenerate</button>';
-          html += '<button class="admin-btn-secondary video-delete-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;color:#f87171;border-color:#f87171;">Delete</button>';
+          html += '<button class="admin-btn-secondary illustration-regenerate-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Regenerate</button>';
+          html += '<button class="admin-btn-secondary illustration-delete-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;color:#f87171;border-color:#f87171;">Delete</button>';
         }
         html += '</div></div>';
       }
       listEl.innerHTML = html;
 
-      listEl.querySelectorAll('.video-approve-btn').forEach(function (btn) {
+      listEl.querySelectorAll('.illustration-approve-btn').forEach(function (btn) {
         btn.addEventListener('click', async function () {
           btn.disabled = true;
           try {
-            await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/approve', {});
-            loadExerciseVideos();
+            await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/approve', {});
+            loadExerciseIllustrations();
           } catch (err) {
             alert(err.message);
             btn.disabled = false;
@@ -2172,14 +2148,14 @@
         });
       });
 
-      listEl.querySelectorAll('.video-reject-btn').forEach(function (btn) {
+      listEl.querySelectorAll('.illustration-reject-btn').forEach(function (btn) {
         btn.addEventListener('click', async function () {
           var note = prompt('Why is this rejected? (helps whoever regenerates it)');
           if (!note) return;
           btn.disabled = true;
           try {
-            await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/reject', { note: note });
-            loadExerciseVideos();
+            await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/reject', { note: note });
+            loadExerciseIllustrations();
           } catch (err) {
             alert(err.message);
             btn.disabled = false;
@@ -2187,12 +2163,12 @@
         });
       });
 
-      listEl.querySelectorAll('.video-regenerate-btn').forEach(function (btn) {
+      listEl.querySelectorAll('.illustration-regenerate-btn').forEach(function (btn) {
         btn.addEventListener('click', async function () {
           btn.disabled = true;
           try {
-            await apiPost('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id') + '/regenerate', {});
-            loadExerciseVideos();
+            await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/regenerate', {});
+            loadExerciseIllustrations();
           } catch (err) {
             alert(err.message);
             btn.disabled = false;
@@ -2200,13 +2176,13 @@
         });
       });
 
-      listEl.querySelectorAll('.video-delete-btn').forEach(function (btn) {
+      listEl.querySelectorAll('.illustration-delete-btn').forEach(function (btn) {
         btn.addEventListener('click', async function () {
-          if (!confirm('Permanently delete this video? This cannot be undone.')) return;
+          if (!confirm('Permanently delete this illustration? This cannot be undone.')) return;
           btn.disabled = true;
           try {
-            await apiDelete('/api/v1/admin/exercise-videos/' + btn.getAttribute('data-id'));
-            loadExerciseVideos();
+            await apiDelete('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id'));
+            loadExerciseIllustrations();
           } catch (err) {
             alert(err.message);
             btn.disabled = false;
