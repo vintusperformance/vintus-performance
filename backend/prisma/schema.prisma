@@ -164,6 +164,7 @@ model AthleteProfile {
   workoutPlans      WorkoutPlan[]
   nutritionPlans    NutritionPlan[]
   nutritionCheckIns NutritionCheckIn[]
+  nutritionFavorites NutritionFavorite[]
 }
 
 // ============================================================
@@ -324,7 +325,10 @@ model NutritionPlan {
   fatG            Int
 
   mealTiming      String         // AI-generated guidance on when/how to eat
-  sampleMeals     Json           // { breakfast: [...], lunch: [...], dinner: [...], snacks: [...] }
+  sampleMeals     Json           // ChecklistItem[] -- one representative day, shown as "Today's Plan"
+  mealRotation    Json?          // ChecklistItem[][] -- 2-3 distinct day-variants (sampleMeals is variant 0) used to
+                                  // compute a realistic weekly grocery list instead of assuming one day repeated x7.
+                                  // Null on plans generated before this existed -- grocery list falls back to sampleMeals x7.
   supplementNotes String?        // AI-generated, general — never a medical recommendation
   coachNotes      String?        // short AI rationale summary, shown to client
 
@@ -332,6 +336,28 @@ model NutritionPlan {
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// A meal the client explicitly liked enough to keep — biases future
+// shuffles/rotation/Meal Ideas toward similar (not identical) suggestions,
+// and gets slotted back into the rotation occasionally, not every day.
+model NutritionFavorite {
+  id              String   @id @default(cuid())
+  athleteProfileId String
+  athleteProfile  AthleteProfile @relation(fields: [athleteProfileId], references: [id], onDelete: Cascade)
+
+  mealType        String   // breakfast | lunch | dinner | snack
+  title           String
+  foods           Json     // string[]
+  instructions    String?
+  calories        Int
+  proteinG        Int
+  carbsG          Int
+  fatG            Int
+
+  createdAt       DateTime @default(now())
+
+  @@unique([athleteProfileId, title])
 }
 
 // Which checklist items a client actually checked off on a given day —

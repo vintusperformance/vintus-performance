@@ -368,6 +368,19 @@
     return div.innerHTML;
   }
 
+  var favoritedTitles = {}; // lowercase title -> true, for heart-icon state
+
+  async function loadNutritionFavorites() {
+    try {
+      var res = await apiGet('/api/v1/dashboard/nutrition/favorites');
+      if (!res.success || !Array.isArray(res.data)) return;
+      favoritedTitles = {};
+      res.data.forEach(function (f) { favoritedTitles[f.title.toLowerCase()] = true; });
+    } catch (err) {
+      // Non-critical -- hearts just default to unfavorited if this fails.
+    }
+  }
+
   async function loadNutritionPlan() {
     try {
       var res = await apiGet('/api/v1/dashboard/nutrition');
@@ -379,6 +392,7 @@
         showNutritionConciergeCTA();
         return;
       }
+      await loadNutritionFavorites();
       renderNutritionPlan(res.data);
     } catch (err) {
       // A nutrition-plan load failure shouldn't break the rest of the dashboard.
@@ -501,14 +515,24 @@
       nutritionRegenBtn.disabled = true;
       var icon = nutritionRegenBtn.querySelector('svg');
       if (icon) icon.classList.add('spinning');
+      var errorEl = document.getElementById('nutritionRegenError');
+      if (errorEl) errorEl.style.display = 'none';
 
       try {
         var res = await apiPost('/api/v1/dashboard/nutrition/regenerate');
         if (res.success) {
+          lastGroceryList = null;
           await loadNutritionPlan();
+          await loadNutritionProgress();
+        } else if (errorEl) {
+          errorEl.textContent = (res && res.error) || 'Failed to regenerate your plan. Try again in a moment.';
+          errorEl.style.display = 'block';
         }
       } catch (err) {
-        // Leave the existing plan showing rather than blanking it on failure.
+        if (errorEl) {
+          errorEl.textContent = (err && err.message) || 'Failed to regenerate your plan. Try again in a moment.';
+          errorEl.style.display = 'block';
+        }
       } finally {
         nutritionRegenBtn.disabled = false;
         if (icon) icon.classList.remove('spinning');
@@ -588,6 +612,7 @@
         '<button class="tp-nutrition__item-howto-toggle" data-idx="' + idx + '">How to make it</button>' +
         '<div class="tp-nutrition__item-instructions" id="nutritionInstructions' + idx + '" style="display:none;">' + escapeHtml(item.instructions) + '</div>';
     }
+    var isFavorited = item.title && favoritedTitles[item.title.toLowerCase()];
     return (
       '<div class="tp-nutrition__item" id="nutritionItem' + idx + '">' +
         '<div class="tp-nutrition__item-icon">' + icon + '</div>' +
@@ -608,6 +633,10 @@
             '<button class="tp-nutrition__item-ideas" data-idx="' + idx + '" title="Search meal ideas within a calorie cap">' +
               '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
               '<span>Meal Ideas</span>' +
+            '</button>' +
+            '<button class="tp-nutrition__item-favorite' + (isFavorited ? ' tp-nutrition__item-favorite--active' : '') + '" data-idx="' + idx + '" title="' + (isFavorited ? 'Remove from favorites' : 'Favorite this meal') + '">' +
+              '<svg viewBox="0 0 24 24" width="13" height="13" fill="' + (isFavorited ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
+              '<span>' + (isFavorited ? 'Favorited' : 'Favorite') + '</span>' +
             '</button>' +
           '</div>' +
         '</div>' +
@@ -657,10 +686,58 @@
         openMealIdeasModal(parseInt(btn.getAttribute('data-idx'), 10));
       });
     });
+    checklistEl.querySelectorAll('.tp-nutrition__item-favorite').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        toggleFavorite(nutritionChecklistCache[idx], btn);
+      });
+    });
+  }
+
+  // ============================================================
+  // Favorites — heart a meal to keep it in the rotation (not every day) and
+  // bias future shuffles/Meal Ideas toward a similar (not identical) style.
+  // ============================================================
+
+  async function toggleFavorite(item, btn) {
+    if (!item || !item.title) return;
+    var key = item.title.toLowerCase();
+    var isFavorited = !!favoritedTitles[key];
+    btn.disabled = true;
+
+    try {
+      if (isFavorited) {
+        await apiDelete('/api/v1/dashboard/nutrition/favorites', { title: item.title });
+        delete favoritedTitles[key];
+      } else {
+        await apiPost('/api/v1/dashboard/nutrition/favorites', {
+          mealType: item.type,
+          title: item.title,
+          foods: item.foods,
+          instructions: item.instructions,
+          calories: item.calories,
+          proteinG: item.proteinG,
+          carbsG: item.carbsG,
+          fatG: item.fatG
+        });
+        favoritedTitles[key] = true;
+      }
+      btn.classList.toggle('tp-nutrition__item-favorite--active', !isFavorited);
+      btn.title = !isFavorited ? 'Remove from favorites' : 'Favorite this meal';
+      var labelEl = btn.querySelector('span');
+      if (labelEl) labelEl.textContent = !isFavorited ? 'Favorited' : 'Favorite';
+      var svgPath = btn.querySelector('svg');
+      if (svgPath) svgPath.setAttribute('fill', !isFavorited ? 'currentColor' : 'none');
+    } catch (err) {
+      // Non-critical -- leave the button in its previous state on failure.
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   function replaceNutritionItemInPlace(idx, item) {
     nutritionChecklistCache[idx] = item;
+    lastGroceryList = null; // the checklist changed -- a cached grocery list would now be stale
     var existing = document.getElementById('nutritionItem' + idx);
     if (!existing) return;
     var wrapper = document.createElement('div');
@@ -729,9 +806,15 @@
 
   function renderMealIdeaCandidate(candidate, idx) {
     var foods = Array.isArray(candidate.foods) ? candidate.foods : [];
+    var isFavorited = candidate.title && favoritedTitles[candidate.title.toLowerCase()];
     return (
       '<div class="meal-idea-card">' +
-        '<div class="meal-idea-card__title">' + escapeHtml(candidate.title || 'Meal Idea') + '</div>' +
+        '<div class="meal-idea-card__top">' +
+          '<div class="meal-idea-card__title">' + escapeHtml(candidate.title || 'Meal Idea') + '</div>' +
+          '<button class="tp-nutrition__item-favorite' + (isFavorited ? ' tp-nutrition__item-favorite--active' : '') + '" data-cand-idx="' + idx + '" title="' + (isFavorited ? 'Remove from favorites' : 'Favorite this meal') + '">' +
+            '<svg viewBox="0 0 24 24" width="13" height="13" fill="' + (isFavorited ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
+          '</button>' +
+        '</div>' +
         '<ul class="tp-nutrition__item-foods">' + foods.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>' +
         '<div class="tp-nutrition__item-macros">' + candidate.calories + ' cal &nbsp;·&nbsp; ' + candidate.proteinG + 'g protein &nbsp;·&nbsp; ' + candidate.carbsG + 'g carbs &nbsp;·&nbsp; ' + candidate.fatG + 'g fat</div>' +
         (candidate.instructions ? '<div class="tp-nutrition__item-instructions" style="display:block;margin-top:0.5rem;">' + escapeHtml(candidate.instructions) + '</div>' : '') +
@@ -778,6 +861,12 @@
           resultsEl.querySelectorAll('.meal-idea-card__use').forEach(function (useBtn) {
             useBtn.addEventListener('click', function () {
               applyMealIdea(parseInt(useBtn.getAttribute('data-cand-idx'), 10), useBtn);
+            });
+          });
+          resultsEl.querySelectorAll('.meal-idea-card .tp-nutrition__item-favorite').forEach(function (favBtn) {
+            favBtn.addEventListener('click', function () {
+              var candIdx = parseInt(favBtn.getAttribute('data-cand-idx'), 10);
+              toggleFavorite(mealIdeasCandidates[candIdx], favBtn);
             });
           });
         } else {
