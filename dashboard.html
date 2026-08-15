@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=2">
-    <link rel="stylesheet" href="css/dashboard.css?v=13">
+    <link rel="stylesheet" href="css/dashboard.css?v=14">
     <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
 </head>
 <body class="dashboard-page" style="background: #0a0a0a !important;">
@@ -194,10 +194,16 @@
             <div id="nutritionPlanContent" style="display:none;">
                 <div class="tp-nutrition__header">
                     <h3 class="tp-section-title">Today's Plan</h3>
-                    <button class="tp-nutrition__regen-btn" id="nutritionRegenBtn" title="Regenerate your plan">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                        <span>Regenerate</span>
-                    </button>
+                    <div class="tp-nutrition__header-actions">
+                        <button class="tp-nutrition__regen-btn" id="nutritionGroceryBtn" title="Weekly grocery list">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                            <span>Grocery List</span>
+                        </button>
+                        <button class="tp-nutrition__regen-btn" id="nutritionRegenBtn" title="Regenerate your plan">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+                            <span>Regenerate</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="tp-nutrition__macros" id="nutritionMacros"></div>
 
@@ -493,6 +499,62 @@
         </div>
     </div>
 
+    <!-- Meal Ideas Modal — search calorie-capped alternatives for one meal slot -->
+    <div class="tp-modal-overlay" id="mealIdeasModalOverlay" style="display:none;">
+        <div class="tp-modal tp-modal--wide">
+            <div class="tp-modal__header">
+                <h3>Meal Ideas</h3>
+                <button class="tp-modal__close" id="mealIdeasModalClose">&times;</button>
+            </div>
+            <div class="tp-modal__body">
+                <p style="font-size:0.82rem;color:var(--gray);margin-bottom:1rem;">Set a calorie cap to stay on plan. Protein, carbs, and fat are optional — leave them blank and we'll balance them for you.</p>
+                <div class="meal-ideas-form">
+                    <div class="meal-ideas-field">
+                        <label for="mealIdeasCalorieCap">Calorie Cap</label>
+                        <input type="number" id="mealIdeasCalorieCap" min="100" max="2000" step="10" value="700">
+                    </div>
+                    <div class="meal-ideas-field">
+                        <label for="mealIdeasProtein">Protein (g) <span>optional</span></label>
+                        <input type="number" id="mealIdeasProtein" min="0" max="300" placeholder="Any">
+                    </div>
+                    <div class="meal-ideas-field">
+                        <label for="mealIdeasCarbs">Carbs (g) <span>optional</span></label>
+                        <input type="number" id="mealIdeasCarbs" min="0" max="500" placeholder="Any">
+                    </div>
+                    <div class="meal-ideas-field">
+                        <label for="mealIdeasFat">Fat (g) <span>optional</span></label>
+                        <input type="number" id="mealIdeasFat" min="0" max="200" placeholder="Any">
+                    </div>
+                </div>
+                <button class="tp-modal__btn tp-modal__btn--confirm" id="mealIdeasSearchBtn" style="width:100%;margin-top:0.85rem;">Search Meal Ideas</button>
+                <p class="prefs-error" id="mealIdeasError" style="display:none;margin-top:0.75rem;"></p>
+                <div id="mealIdeasResults" class="meal-ideas-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grocery List Modal — weekly list, scaled by household size -->
+    <div class="tp-modal-overlay" id="groceryModalOverlay" style="display:none;">
+        <div class="tp-modal tp-modal--wide">
+            <div class="tp-modal__header">
+                <h3>Weekly Grocery List</h3>
+                <button class="tp-modal__close" id="groceryModalClose">&times;</button>
+            </div>
+            <div class="tp-modal__body">
+                <p style="font-size:0.82rem;color:var(--gray);margin-bottom:1rem;">Your plan's meals, totaled for a 7-day stock-up. Set household size to scale portions for everyone you're shopping for.</p>
+                <div class="grocery-controls">
+                    <label for="groceryPeople">Shopping for</label>
+                    <input type="number" id="groceryPeople" min="1" max="12" value="1">
+                    <span>people</span>
+                    <button class="tp-modal__btn tp-modal__btn--confirm" id="groceryGenerateBtn">Generate</button>
+                </div>
+                <p class="prefs-error" id="groceryError" style="display:none;margin-top:0.75rem;"></p>
+                <div id="groceryListResults" class="grocery-list"></div>
+                <button class="tp-modal__btn tp-modal__btn--cancel" id="groceryDownloadBtn" style="display:none;width:100%;margin-top:1rem;">Download List</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 30-Day Milestone Report Modal -->
     <div class="tp-modal-overlay" id="milestoneModalOverlay" style="display:none;">
         <div class="tp-modal">
@@ -539,6 +601,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=2"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/dashboard.js?v=15"></script>
+    <script src="js/dashboard.js?v=16"></script>
 </body>
 </html>

@@ -541,56 +541,84 @@
 
     document.getElementById('nutritionRhythm').textContent = plan.mealTiming || '';
 
-    var NUTRITION_ICONS = {
-      breakfast: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
-      lunch: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2M7 2v20M17 2v20M17 2a5 5 0 0 0-5 5v6h5"/></svg>',
-      dinner: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
-      snack: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 5V3M9 3h6"/></svg>'
-    };
-
     var checklist = plan.sampleMeals;
+    nutritionChecklistCache = Array.isArray(checklist) ? checklist : [];
     var checklistHtml = '';
     if (Array.isArray(checklist)) {
       checklist.forEach(function (item, idx) {
-        var icon = NUTRITION_ICONS[item.type] || NUTRITION_ICONS.snack;
-        var foods = Array.isArray(item.foods) ? item.foods : (item.food ? [item.food] : []);
-        var foodsHtml = '<ul class="tp-nutrition__item-foods">' +
-          foods.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') +
-          '</ul>';
-        var hasMacros = typeof item.calories === 'number';
-        var macrosHtml = hasMacros
-          ? '<div class="tp-nutrition__item-macros">' + item.calories + ' cal &nbsp;·&nbsp; ' + item.proteinG + 'g protein &nbsp;·&nbsp; ' + item.carbsG + 'g carbs &nbsp;·&nbsp; ' + item.fatG + 'g fat</div>'
-          : '';
-        var titleHtml = item.title ? '<div class="tp-nutrition__item-title">' + escapeHtml(item.title) + '</div>' : '';
-        var instructionsHtml = '';
-        if (item.instructions) {
-          instructionsHtml =
-            '<button class="tp-nutrition__item-howto-toggle" data-idx="' + idx + '">How to make it</button>' +
-            '<div class="tp-nutrition__item-instructions" id="nutritionInstructions' + idx + '" style="display:none;">' + escapeHtml(item.instructions) + '</div>';
-        }
-        checklistHtml +=
-          '<div class="tp-nutrition__item" id="nutritionItem' + idx + '">' +
-            '<div class="tp-nutrition__item-icon">' + icon + '</div>' +
-            '<div class="tp-nutrition__item-body">' +
-              '<div class="tp-nutrition__item-top">' +
-                '<span class="tp-nutrition__item-time">' + escapeHtml(item.time || '') + '</span>' +
-                '<span class="tp-nutrition__item-label">' + escapeHtml(item.label || '') + '</span>' +
-              '</div>' +
-              titleHtml +
-              foodsHtml +
-              macrosHtml +
-              instructionsHtml +
-            '</div>' +
-            '<button class="tp-nutrition__item-check" data-idx="' + idx + '" title="Mark done">' +
-              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
-            '</button>' +
-          '</div>';
+        checklistHtml += buildNutritionItemHtml(item, idx);
       });
     }
     nutritionTotalItems = Array.isArray(checklist) ? checklist.length : 0;
 
     var checklistEl = document.getElementById('nutritionChecklist');
     checklistEl.innerHTML = checklistHtml;
+    wireNutritionItemEvents(checklistEl);
+    applyNutritionCheckState();
+
+    var supplements = (plan.supplementNotes || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    document.getElementById('nutritionSupplements').innerHTML = supplements
+      .map(function (s) { return '<span class="tp-nutrition__supplement-chip">' + escapeHtml(s) + '</span>'; })
+      .join('');
+  }
+
+  var NUTRITION_ICONS = {
+    breakfast: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+    lunch: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2M7 2v20M17 2v20M17 2a5 5 0 0 0-5 5v6h5"/></svg>',
+    dinner: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+    snack: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 5V3M9 3h6"/></svg>'
+  };
+
+  var nutritionChecklistCache = [];
+
+  function buildNutritionItemHtml(item, idx) {
+    var icon = NUTRITION_ICONS[item.type] || NUTRITION_ICONS.snack;
+    var foods = Array.isArray(item.foods) ? item.foods : (item.food ? [item.food] : []);
+    var foodsHtml = '<ul class="tp-nutrition__item-foods">' +
+      foods.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') +
+      '</ul>';
+    var hasMacros = typeof item.calories === 'number';
+    var macrosHtml = hasMacros
+      ? '<div class="tp-nutrition__item-macros">' + item.calories + ' cal &nbsp;·&nbsp; ' + item.proteinG + 'g protein &nbsp;·&nbsp; ' + item.carbsG + 'g carbs &nbsp;·&nbsp; ' + item.fatG + 'g fat</div>'
+      : '';
+    var titleHtml = item.title ? '<div class="tp-nutrition__item-title">' + escapeHtml(item.title) + '</div>' : '';
+    var instructionsHtml = '';
+    if (item.instructions) {
+      instructionsHtml =
+        '<button class="tp-nutrition__item-howto-toggle" data-idx="' + idx + '">How to make it</button>' +
+        '<div class="tp-nutrition__item-instructions" id="nutritionInstructions' + idx + '" style="display:none;">' + escapeHtml(item.instructions) + '</div>';
+    }
+    return (
+      '<div class="tp-nutrition__item" id="nutritionItem' + idx + '">' +
+        '<div class="tp-nutrition__item-icon">' + icon + '</div>' +
+        '<div class="tp-nutrition__item-body">' +
+          '<div class="tp-nutrition__item-top">' +
+            '<span class="tp-nutrition__item-time">' + escapeHtml(item.time || '') + '</span>' +
+            '<span class="tp-nutrition__item-label">' + escapeHtml(item.label || '') + '</span>' +
+          '</div>' +
+          titleHtml +
+          foodsHtml +
+          macrosHtml +
+          instructionsHtml +
+          '<div class="tp-nutrition__item-swap-row">' +
+            '<button class="tp-nutrition__item-shuffle" data-idx="' + idx + '" title="Not craving this? Shuffle for a new meal idea.">' +
+              '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>' +
+              '<span>Shuffle</span>' +
+            '</button>' +
+            '<button class="tp-nutrition__item-ideas" data-idx="' + idx + '" title="Search meal ideas within a calorie cap">' +
+              '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+              '<span>Meal Ideas</span>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<button class="tp-nutrition__item-check" data-idx="' + idx + '" title="Mark done">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' +
+        '</button>' +
+      '</div>'
+    );
+  }
+
+  function wireNutritionItemEvents(checklistEl) {
     checklistEl.querySelectorAll('.tp-nutrition__item-check').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var idx = parseInt(btn.getAttribute('data-idx'), 10);
@@ -611,7 +639,6 @@
         });
       });
     });
-    applyNutritionCheckState();
     checklistEl.querySelectorAll('.tp-nutrition__item-howto-toggle').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var panel = document.getElementById('nutritionInstructions' + btn.getAttribute('data-idx'));
@@ -620,11 +647,281 @@
         btn.textContent = isOpen ? 'How to make it' : 'Hide instructions';
       });
     });
+    checklistEl.querySelectorAll('.tp-nutrition__item-shuffle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        shuffleMealAtIndex(parseInt(btn.getAttribute('data-idx'), 10), btn);
+      });
+    });
+    checklistEl.querySelectorAll('.tp-nutrition__item-ideas').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openMealIdeasModal(parseInt(btn.getAttribute('data-idx'), 10));
+      });
+    });
+  }
 
-    var supplements = (plan.supplementNotes || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-    document.getElementById('nutritionSupplements').innerHTML = supplements
-      .map(function (s) { return '<span class="tp-nutrition__supplement-chip">' + escapeHtml(s) + '</span>'; })
-      .join('');
+  function replaceNutritionItemInPlace(idx, item) {
+    nutritionChecklistCache[idx] = item;
+    var existing = document.getElementById('nutritionItem' + idx);
+    if (!existing) return;
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = buildNutritionItemHtml(item, idx);
+    var replacement = wrapper.firstElementChild;
+    existing.replaceWith(replacement);
+    wireNutritionItemEvents(replacement.parentElement || document.getElementById('nutritionChecklist'));
+    applyNutritionCheckState();
+  }
+
+  // ============================================================
+  // Meal Shuffle — "not craving this? shuffle for a new meal idea."
+  // ============================================================
+
+  async function shuffleMealAtIndex(idx, btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('tp-nutrition__item-shuffle--busy');
+    }
+    try {
+      var res = await apiPost('/api/v1/dashboard/nutrition/shuffle-meal', { index: idx });
+      if (res.success && res.data && res.data.item) {
+        replaceNutritionItemInPlace(idx, res.data.item);
+      }
+    } catch (err) {
+      // Leave the existing meal showing rather than blanking it on failure.
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('tp-nutrition__item-shuffle--busy');
+      }
+    }
+  }
+
+  // ============================================================
+  // Meal Ideas — search calorie-capped alternatives for one slot, pick one to apply.
+  // ============================================================
+
+  var mealIdeasIndex = null;
+
+  function openMealIdeasModal(idx) {
+    mealIdeasIndex = idx;
+    document.getElementById('mealIdeasError').style.display = 'none';
+    document.getElementById('mealIdeasResults').innerHTML = '';
+    document.getElementById('mealIdeasProtein').value = '';
+    document.getElementById('mealIdeasCarbs').value = '';
+    document.getElementById('mealIdeasFat').value = '';
+    document.getElementById('mealIdeasModalOverlay').style.display = 'flex';
+    lockBodyScroll();
+  }
+
+  function closeMealIdeasModal() {
+    mealIdeasIndex = null;
+    document.getElementById('mealIdeasModalOverlay').style.display = 'none';
+    unlockBodyScroll();
+  }
+
+  var mealIdeasModalCloseBtn = document.getElementById('mealIdeasModalClose');
+  if (mealIdeasModalCloseBtn) mealIdeasModalCloseBtn.addEventListener('click', closeMealIdeasModal);
+  var mealIdeasModalOverlay = document.getElementById('mealIdeasModalOverlay');
+  if (mealIdeasModalOverlay) {
+    mealIdeasModalOverlay.addEventListener('click', function (e) {
+      if (e.target === this) closeMealIdeasModal();
+    });
+  }
+
+  function renderMealIdeaCandidate(candidate, idx) {
+    var foods = Array.isArray(candidate.foods) ? candidate.foods : [];
+    return (
+      '<div class="meal-idea-card">' +
+        '<div class="meal-idea-card__title">' + escapeHtml(candidate.title || 'Meal Idea') + '</div>' +
+        '<ul class="tp-nutrition__item-foods">' + foods.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>' +
+        '<div class="tp-nutrition__item-macros">' + candidate.calories + ' cal &nbsp;·&nbsp; ' + candidate.proteinG + 'g protein &nbsp;·&nbsp; ' + candidate.carbsG + 'g carbs &nbsp;·&nbsp; ' + candidate.fatG + 'g fat</div>' +
+        (candidate.instructions ? '<div class="tp-nutrition__item-instructions" style="display:block;margin-top:0.5rem;">' + escapeHtml(candidate.instructions) + '</div>' : '') +
+        '<button class="tp-modal__btn tp-modal__btn--confirm meal-idea-card__use" data-cand-idx="' + idx + '" style="width:100%;margin-top:0.75rem;">Use This</button>' +
+      '</div>'
+    );
+  }
+
+  var mealIdeasCandidates = [];
+
+  var mealIdeasSearchBtn = document.getElementById('mealIdeasSearchBtn');
+  if (mealIdeasSearchBtn) {
+    mealIdeasSearchBtn.addEventListener('click', async function () {
+      if (mealIdeasIndex == null) return;
+      var btn = this;
+      var errorEl = document.getElementById('mealIdeasError');
+      var resultsEl = document.getElementById('mealIdeasResults');
+      errorEl.style.display = 'none';
+      resultsEl.innerHTML = '';
+
+      var calorieCap = parseInt(document.getElementById('mealIdeasCalorieCap').value, 10);
+      if (!calorieCap || calorieCap < 100) {
+        errorEl.textContent = 'Enter a calorie cap of at least 100.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      var proteinRaw = document.getElementById('mealIdeasProtein').value;
+      var carbsRaw = document.getElementById('mealIdeasCarbs').value;
+      var fatRaw = document.getElementById('mealIdeasFat').value;
+
+      var payload = { index: mealIdeasIndex, calorieCap: calorieCap };
+      if (proteinRaw !== '') payload.proteinG = parseFloat(proteinRaw);
+      if (carbsRaw !== '') payload.carbsG = parseFloat(carbsRaw);
+      if (fatRaw !== '') payload.fatG = parseFloat(fatRaw);
+
+      btn.disabled = true;
+      btn.textContent = 'Searching...';
+
+      try {
+        var res = await apiPost('/api/v1/dashboard/nutrition/meal-ideas', payload);
+        if (res.success && res.data && Array.isArray(res.data.candidates) && res.data.candidates.length) {
+          mealIdeasCandidates = res.data.candidates;
+          resultsEl.innerHTML = mealIdeasCandidates.map(function (c, i) { return renderMealIdeaCandidate(c, i); }).join('');
+          resultsEl.querySelectorAll('.meal-idea-card__use').forEach(function (useBtn) {
+            useBtn.addEventListener('click', function () {
+              applyMealIdea(parseInt(useBtn.getAttribute('data-cand-idx'), 10), useBtn);
+            });
+          });
+        } else {
+          errorEl.textContent = (res && res.error) || 'No meal ideas found under that cap. Try raising it slightly.';
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.textContent = (err && err.message) || 'Failed to search meal ideas.';
+        errorEl.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Search Meal Ideas';
+    });
+  }
+
+  async function applyMealIdea(candIdx, useBtn) {
+    if (mealIdeasIndex == null) return;
+    var candidate = mealIdeasCandidates[candIdx];
+    if (!candidate) return;
+
+    useBtn.disabled = true;
+    useBtn.textContent = 'Applying...';
+
+    try {
+      var res = await apiPost('/api/v1/dashboard/nutrition/meal-ideas/apply', {
+        index: mealIdeasIndex,
+        item: {
+          title: candidate.title,
+          foods: candidate.foods,
+          instructions: candidate.instructions,
+          calories: candidate.calories,
+          proteinG: candidate.proteinG,
+          carbsG: candidate.carbsG,
+          fatG: candidate.fatG
+        }
+      });
+      if (res.success && res.data && res.data.item) {
+        replaceNutritionItemInPlace(mealIdeasIndex, res.data.item);
+        closeMealIdeasModal();
+      } else {
+        useBtn.disabled = false;
+        useBtn.textContent = 'Use This';
+      }
+    } catch (err) {
+      useBtn.disabled = false;
+      useBtn.textContent = 'Use This';
+    }
+  }
+
+  // ============================================================
+  // Weekly Grocery List — the plan's sample day scaled to 7 days and
+  // household size. Viewable inline in the modal, or downloadable as a
+  // plain-text list.
+  // ============================================================
+
+  var lastGroceryList = null;
+
+  var nutritionGroceryBtn = document.getElementById('nutritionGroceryBtn');
+  if (nutritionGroceryBtn) {
+    nutritionGroceryBtn.addEventListener('click', function () {
+      document.getElementById('groceryError').style.display = 'none';
+      document.getElementById('groceryModalOverlay').style.display = 'flex';
+      lockBodyScroll();
+      if (!lastGroceryList) generateGroceryList();
+    });
+  }
+  var groceryModalCloseBtn = document.getElementById('groceryModalClose');
+  if (groceryModalCloseBtn) {
+    groceryModalCloseBtn.addEventListener('click', function () {
+      document.getElementById('groceryModalOverlay').style.display = 'none';
+      unlockBodyScroll();
+    });
+  }
+  var groceryModalOverlay = document.getElementById('groceryModalOverlay');
+  if (groceryModalOverlay) {
+    groceryModalOverlay.addEventListener('click', function (e) {
+      if (e.target === this) {
+        groceryModalOverlay.style.display = 'none';
+        unlockBodyScroll();
+      }
+    });
+  }
+
+  async function generateGroceryList() {
+    var errorEl = document.getElementById('groceryError');
+    var resultsEl = document.getElementById('groceryListResults');
+    var downloadBtn = document.getElementById('groceryDownloadBtn');
+    var genBtn = document.getElementById('groceryGenerateBtn');
+    errorEl.style.display = 'none';
+    downloadBtn.style.display = 'none';
+
+    var people = parseInt(document.getElementById('groceryPeople').value, 10) || 1;
+
+    genBtn.disabled = true;
+    genBtn.textContent = 'Generating...';
+    resultsEl.innerHTML = '<div class="cal-loading-shimmer"></div>';
+
+    try {
+      var res = await apiGet('/api/v1/dashboard/nutrition/grocery-list?people=' + encodeURIComponent(people));
+      if (res.success && res.data && Array.isArray(res.data.items)) {
+        lastGroceryList = res.data;
+        if (!res.data.items.length) {
+          resultsEl.innerHTML = '<p style="color:var(--gray);font-size:0.85rem;">No items to list yet.</p>';
+        } else {
+          resultsEl.innerHTML = '<ul class="grocery-list__items">' +
+            res.data.items.map(function (item) { return '<li>' + escapeHtml(item.display) + '</li>'; }).join('') +
+            '</ul>';
+          downloadBtn.style.display = 'block';
+        }
+      } else {
+        resultsEl.innerHTML = '';
+        errorEl.textContent = (res && res.error) || 'Failed to generate the grocery list.';
+        errorEl.style.display = 'block';
+      }
+    } catch (err) {
+      resultsEl.innerHTML = '';
+      errorEl.textContent = (err && err.message) || 'Failed to generate the grocery list.';
+      errorEl.style.display = 'block';
+    }
+
+    genBtn.disabled = false;
+    genBtn.textContent = 'Generate';
+  }
+
+  var groceryGenerateBtn = document.getElementById('groceryGenerateBtn');
+  if (groceryGenerateBtn) groceryGenerateBtn.addEventListener('click', generateGroceryList);
+
+  var groceryDownloadBtn = document.getElementById('groceryDownloadBtn');
+  if (groceryDownloadBtn) {
+    groceryDownloadBtn.addEventListener('click', function () {
+      if (!lastGroceryList || !lastGroceryList.items.length) return;
+      var lines = ['Vintus Performance — Weekly Grocery List', 'For ' + lastGroceryList.people + ' ' + (lastGroceryList.people === 1 ? 'person' : 'people') + ', ' + lastGroceryList.days + ' days', ''];
+      lastGroceryList.items.forEach(function (item) { lines.push('- ' + item.display); });
+      var blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'vintus-grocery-list.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
   }
 
   // ============================================================

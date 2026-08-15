@@ -11,8 +11,19 @@ import {
   getNutritionProgress,
   executeNutritionGoalUpdate,
   calculateMacroCalculatorTargets,
+  shuffleMeal,
+  searchMealIdeas,
+  applyMealIdea,
+  getGroceryList,
 } from "../services/nutrition.service.js";
-import { nutritionGoalUpdateSchema, macroCalculatorInputSchema } from "./schemas/nutrition.schemas.js";
+import {
+  nutritionGoalUpdateSchema,
+  macroCalculatorInputSchema,
+  shuffleMealSchema,
+  mealIdeasSearchSchema,
+  applyMealIdeaSchema,
+  groceryListQuerySchema,
+} from "./schemas/nutrition.schemas.js";
 import {
   getUpcomingWeeklyCall,
   bookWeeklyCoachingCall,
@@ -203,6 +214,80 @@ router.post(
       await recordNutritionCheckIn(userId, completedIndices, totalItems);
 
       res.status(200).json({ success: true, data: {} });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/shuffle-meal — swap one checklist slot for a
+// different meal idea that still hits that slot's own calorie/macro numbers.
+router.post(
+  "/nutrition/shuffle-meal",
+  validate(shuffleMealSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const { index } = req.body as { index: number };
+      const result = await shuffleMeal(userId, index);
+
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/meal-ideas — search up to 3 calorie-capped
+// alternatives for one checklist slot ("Meal Ideas" button). Non-persisting —
+// the client browses, then applies one via /meal-ideas/apply.
+router.post(
+  "/nutrition/meal-ideas",
+  validate(mealIdeasSearchSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const result = await searchMealIdeas(userId, req.body);
+
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/meal-ideas/apply — persists a chosen Meal Ideas candidate
+router.post(
+  "/nutrition/meal-ideas/apply",
+  validate(applyMealIdeaSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const result = await applyMealIdea(userId, req.body);
+
+      res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /dashboard/nutrition/grocery-list?people=N — weekly grocery list, the
+// plan's sample day scaled to 7 days and household size. Pure read.
+router.get(
+  "/nutrition/grocery-list",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const parsed = groceryListQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        res.status(400).json({ success: false, error: "Invalid people count" });
+        return;
+      }
+
+      const result = await getGroceryList(userId, parsed.data.people);
+
+      res.status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);
     }
