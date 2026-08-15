@@ -15,6 +15,9 @@ import {
   searchMealIdeas,
   applyMealIdea,
   getGroceryList,
+  addNutritionFavorite,
+  removeNutritionFavorite,
+  listNutritionFavorites,
 } from "../services/nutrition.service.js";
 import {
   nutritionGoalUpdateSchema,
@@ -23,6 +26,8 @@ import {
   mealIdeasSearchSchema,
   applyMealIdeaSchema,
   groceryListQuerySchema,
+  addFavoriteSchema,
+  removeFavoriteSchema,
 } from "./schemas/nutrition.schemas.js";
 import {
   getUpcomingWeeklyCall,
@@ -288,6 +293,53 @@ router.get(
       const result = await getGroceryList(userId, parsed.data.people);
 
       res.status(200).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /dashboard/nutrition/favorites — the client's favorited meals
+router.get(
+  "/nutrition/favorites",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const favorites = await listNutritionFavorites(userId);
+
+      res.status(200).json({ success: true, data: favorites });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /dashboard/nutrition/favorites — favorite a meal (idempotent by title)
+router.post(
+  "/nutrition/favorites",
+  validate(addFavoriteSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const favorite = await addNutritionFavorite(userId, req.body);
+
+      res.status(200).json({ success: true, data: favorite });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// DELETE /dashboard/nutrition/favorites — unfavorite a meal by title
+router.delete(
+  "/nutrition/favorites",
+  validate(removeFavoriteSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      await removeNutritionFavorite(userId, req.body.title);
+
+      res.status(200).json({ success: true, data: {} });
     } catch (err) {
       next(err);
     }

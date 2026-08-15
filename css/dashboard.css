@@ -1302,6 +1302,39 @@
   animation: nutritionSpin 1s linear infinite;
 }
 
+.tp-nutrition__item-favorite {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--gray);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.68rem;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tp-nutrition__item-favorite:hover {
+  color: #f87171;
+  border-color: rgba(248,113,113,0.4);
+}
+
+.tp-nutrition__item-favorite:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tp-nutrition__item-favorite--active {
+  color: #f87171;
+  border-color: rgba(248,113,113,0.4);
+  background: rgba(248,113,113,0.08);
+}
+
 /* Meal Ideas modal */
 .meal-ideas-form {
   display: grid;
@@ -1352,12 +1385,19 @@
   padding: 0.85rem 1rem;
 }
 
+.meal-idea-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
 .meal-idea-card__title {
   font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--off-white);
-  margin-bottom: 0.35rem;
 }
 
 /* Grocery List modal */

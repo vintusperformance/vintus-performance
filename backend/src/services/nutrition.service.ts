@@ -287,7 +287,7 @@ export function calculateMacroCalculatorTargets(
 }
 
 interface ChecklistItem {
-  time: string; // e.g. "6:30 AM" or "Post-Workout" — anchored to their actual wake/bed time when known
+  time: string; // a general block, e.g. "8-9 AM" or "12-1 PM" — never a precise minute
   type: "breakfast" | "lunch" | "dinner" | "snack";
   label: string; // e.g. "Breakfast"
   title: string; // short appealing dish name, e.g. "Protein Oatmeal Bowl"
@@ -317,55 +317,43 @@ interface MealTarget {
 }
 
 // Slot composition by meal count — meals come first, snacks fill in as count
-// grows. offsetPct places each slot across the client's actual eating window.
-const SLOT_PATTERNS: Record<number, Array<{ type: ChecklistItem["type"]; label: string; offsetPct: number }>> = {
+// grows. Times are general blocks ("8-9 AM", "12-1 PM"), not minute-precise —
+// clients think in terms of "around lunchtime," not an exact scheduled
+// minute, and a fixed block sidesteps ever needing to parse wake/bed times
+// (which are freeform strings like "10:00 PM" — 12-hour text, not amenable
+// to reliable minute math) into a display time.
+const SLOT_PATTERNS: Record<number, Array<{ type: ChecklistItem["type"]; label: string; time: string }>> = {
   2: [
-    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
-    { type: "dinner", label: "Dinner", offsetPct: 1 },
+    { type: "breakfast", label: "Breakfast", time: "8-9 AM" },
+    { type: "dinner", label: "Dinner", time: "6-7 PM" },
   ],
   3: [
-    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
-    { type: "lunch", label: "Lunch", offsetPct: 0.5 },
-    { type: "dinner", label: "Dinner", offsetPct: 1 },
+    { type: "breakfast", label: "Breakfast", time: "8-9 AM" },
+    { type: "lunch", label: "Lunch", time: "12-1 PM" },
+    { type: "dinner", label: "Dinner", time: "6-7 PM" },
   ],
   4: [
-    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
-    { type: "lunch", label: "Lunch", offsetPct: 0.4 },
-    { type: "snack", label: "Snack", offsetPct: 0.65 },
-    { type: "dinner", label: "Dinner", offsetPct: 1 },
+    { type: "breakfast", label: "Breakfast", time: "8-9 AM" },
+    { type: "lunch", label: "Lunch", time: "12-1 PM" },
+    { type: "snack", label: "Snack", time: "3-4 PM" },
+    { type: "dinner", label: "Dinner", time: "6-7 PM" },
   ],
   5: [
-    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
-    { type: "snack", label: "Snack", offsetPct: 0.25 },
-    { type: "lunch", label: "Lunch", offsetPct: 0.5 },
-    { type: "snack", label: "Snack", offsetPct: 0.75 },
-    { type: "dinner", label: "Dinner", offsetPct: 1 },
+    { type: "breakfast", label: "Breakfast", time: "8-9 AM" },
+    { type: "snack", label: "Snack", time: "10-11 AM" },
+    { type: "lunch", label: "Lunch", time: "12-1 PM" },
+    { type: "snack", label: "Snack", time: "3-4 PM" },
+    { type: "dinner", label: "Dinner", time: "6-7 PM" },
   ],
   6: [
-    { type: "breakfast", label: "Breakfast", offsetPct: 0 },
-    { type: "snack", label: "Snack", offsetPct: 0.2 },
-    { type: "lunch", label: "Lunch", offsetPct: 0.4 },
-    { type: "snack", label: "Snack", offsetPct: 0.6 },
-    { type: "dinner", label: "Dinner", offsetPct: 0.85 },
-    { type: "snack", label: "Snack", offsetPct: 1 },
+    { type: "breakfast", label: "Breakfast", time: "7-8 AM" },
+    { type: "snack", label: "Snack", time: "10-11 AM" },
+    { type: "lunch", label: "Lunch", time: "12-1 PM" },
+    { type: "snack", label: "Snack", time: "3-4 PM" },
+    { type: "dinner", label: "Dinner", time: "6-7 PM" },
+    { type: "snack", label: "Snack", time: "7-8 PM" },
   ],
 };
-
-function parseTimeToMinutes(t: string | null): number | null {
-  if (!t) return null;
-  const match = t.match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return null;
-  return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
-}
-
-function formatMinutesAsTime(mins: number): string {
-  const normalized = ((mins % (24 * 60)) + 24 * 60) % (24 * 60);
-  const h24 = Math.floor(normalized / 60);
-  const m = normalized % 60;
-  const period = h24 >= 12 ? "PM" : "AM";
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 /**
  * Splits daily calorie/macro targets across meal slots so both the AI and
@@ -375,23 +363,9 @@ function formatMinutesAsTime(mins: number): string {
  * "protein at every meal" principle; calories/carbs/fat are weighted toward
  * full meals over snacks.
  */
-function distributeMealTargets(
-  targets: MacroTargets,
-  mealsPerDay: number | null,
-  wakeTime: string | null,
-  bedTime: string | null
-): MealTarget[] {
+function distributeMealTargets(targets: MacroTargets, mealsPerDay: number | null): MealTarget[] {
   const count = Math.min(Math.max(mealsPerDay ?? 4, 2), 6);
   const pattern = SLOT_PATTERNS[count] ?? SLOT_PATTERNS[4];
-
-  const wakeMin = parseTimeToMinutes(wakeTime);
-  const bedMin = parseTimeToMinutes(bedTime);
-  // Default eating window: 7:00 AM to 9:00 PM. If we have real wake/bed
-  // times, start 30 min after waking and end 2 hours before bed.
-  const windowStart = wakeMin != null ? wakeMin + 30 : 7 * 60;
-  let windowEnd = bedMin != null ? bedMin - 120 : 21 * 60;
-  if (bedMin != null && bedMin < wakeMin!) windowEnd += 24 * 60; // bedtime past midnight
-  if (windowEnd <= windowStart) windowEnd = windowStart + 12 * 60; // sane fallback spread
 
   const weights = pattern.map((slot) => (slot.type === "snack" ? 0.5 : 1));
   const weightSum = weights.reduce((a, b) => a + b, 0);
@@ -399,9 +373,8 @@ function distributeMealTargets(
 
   return pattern.map((slot, i) => {
     const share = weights[i] / weightSum;
-    const timeMin = Math.round(windowStart + (windowEnd - windowStart) * slot.offsetPct);
     return {
-      time: formatMinutesAsTime(timeMin),
+      time: slot.time,
       type: slot.type,
       label: slot.label,
       calories: Math.round((targets.dailyCalories * share) / 10) * 10,
@@ -416,7 +389,9 @@ const NUTRITION_SYSTEM_PROMPT = `You are a precision nutrition coach building a 
 
 This client is a busy, high-performing professional. They do not want to read, and they do not want to guess portion sizes — they want to glance at a checklist, know exactly what to eat, exactly how much, and when, and move on. No explanatory prose, no alternatives to choose between — one concrete set of foods per slot, not a menu of options.
 
-You will be given a per-meal calorie/protein/carb/fat budget for each slot. Choose real foods and exact quantities — grams for anything weighed (e.g. "180g Chicken Breast", "150g White Rice"), simple counts for discrete items (e.g. "2 Whole Eggs", "1 Banana", "1 Slice Whole Wheat Toast") — that land close to that slot's budget. Then report the ACTUAL calories/protein/carbs/fat for the exact quantities you chose (real nutrition values, calculated correctly for those amounts) — these do not need to match the budget exactly, they need to be true for the foods and quantities you listed. Give each meal a short, appealing dish title (e.g. "Protein Oatmeal Bowl", not just "Breakfast"), and 1-3 short, concrete prep steps — enough to actually make it, nothing padded.
+You will be given a per-meal calorie/protein/carb/fat budget for each slot, along with a general time block (e.g. "12-1 PM") for that slot — use that exact time block string in your response, verbatim. Never invent a more precise or different time; clients think in terms of "around lunchtime," not a scheduled minute.
+
+Choose real foods and exact quantities — grams for anything weighed (e.g. "180g Chicken Breast", "150g White Rice"), simple counts for discrete items (e.g. "2 Whole Eggs", "1 Banana", "1 Slice Whole Wheat Toast") — that land close to that slot's budget. Then report the ACTUAL calories/protein/carbs/fat for the exact quantities you chose (real nutrition values, calculated correctly for those amounts) — these do not need to match the budget exactly, they need to be true for the foods and quantities you listed. Give each meal a short, appealing dish title (e.g. "Protein Oatmeal Bowl", not just "Breakfast"), and 1-3 short, concrete prep steps — enough to actually make it, nothing padded.
 
 Rules:
 - NEVER suggest a food the client has listed as an allergy — treat this as a hard safety constraint, not a preference.
@@ -424,6 +399,8 @@ Rules:
 - Keep meals within their stated cooking skill and food budget — beginner/budget-conscious means simple, accessible staples, not technique or specialty ingredients. Instructions must match their cooking skill: beginner gets dead-simple steps (no technique assumed), advanced can include real technique.
 - Favor foods they said they love; avoid foods they said they hate, where compatible with the above.
 - Every meal must fit its slot, not just its macros. Breakfast means foods people actually eat in the morning — eggs, oats, yogurt, toast, a smoothie — never a dinner-style entree like grilled chicken or steak, even if the protein target is high. Lunch and dinner are full plated meals: a protein, a carb, a vegetable, each with its own quantity. Snacks are 1-2 simple, no-prep items. Do not reuse a lunch/dinner protein choice (e.g. chicken, beef, fish) as the breakfast protein.
+- Food should be genuinely appetizing, not bland. Season and prepare it with real flavor — herbs, spices, marinades, sauces, a specific cuisine lean (Mediterranean, Cajun, teriyaki, Mexican, Italian, etc.) — instead of defaulting to plain grilled/boiled/steamed staples every time. This should read like a meal someone would actually look forward to eating, not a macros-on-a-plate exercise. Vary the cuisine and flavor profile across the day's meals, not just the protein.
+- Rotate protein sources across the day and across lunch/dinner specifically (e.g. chicken, salmon, turkey, shrimp, beef, tofu) rather than defaulting to the same one or two proteins for every plated meal.
 - Supplements are short tags only (e.g. "Whey Protein", "Creatine Monohydrate", "Multivitamin") — no dosing, no sentences, never anything that could conflict with a stated medication or condition. Omit entirely if none are appropriate.
 - If the client has a chronic condition or takes medication, keep coachNotes generic and tell them to loop in their physician rather than giving anything that could interact with it.
 
@@ -431,7 +408,7 @@ Respond with ONLY valid JSON, no markdown fences, in this exact shape:
 {
   "eatingRhythm": "one short sentence, e.g. '4 meals, ~4 hours apart, protein with each one.'",
   "checklist": [
-    { "time": "6:30 AM", "type": "breakfast", "label": "Breakfast", "title": "Protein Oatmeal Bowl", "foods": ["3 Whole Eggs", "60g Dry Oats", "1 Banana"], "instructions": "Scramble the eggs. Cook oats with water or milk. Slice banana over the oats and plate together.", "calories": 520, "proteinG": 28, "carbsG": 58, "fatG": 19 }
+    { "time": "8-9 AM", "type": "breakfast", "label": "Breakfast", "title": "Protein Oatmeal Bowl", "foods": ["3 Whole Eggs", "60g Dry Oats", "1 Banana"], "instructions": "Scramble the eggs. Cook oats with water or milk. Slice banana over the oats and plate together.", "calories": 520, "proteinG": 28, "carbsG": 58, "fatG": 19 }
   ],
   "supplements": ["short tag", "short tag"],
   "coachNotes": "one sentence explaining the calorie/macro strategy in plain language"
@@ -457,7 +434,9 @@ async function generateMealPlanWithClaude(
   },
   targets: MacroTargets,
   classification: GoalClassification,
-  mealTargets: MealTarget[]
+  mealTargets: MealTarget[],
+  avoidTitles: string[] = [],
+  favorites: Array<{ mealType: string; title: string }> = []
 ): Promise<MealPlanContent> {
   const lines: string[] = [
     `Name: ${profile.firstName}`,
@@ -470,6 +449,11 @@ async function generateMealPlanWithClaude(
       (m) => `  - ${m.label} (${m.time}): ~${m.calories} cal, ~${m.proteinG}g protein, ~${m.carbsG}g carbs, ~${m.fatG}g fat`
     ),
   ];
+  if (favorites.length) {
+    lines.push(
+      `Client has previously favorited: ${favorites.map((f) => `${f.title} (${f.mealType})`).join(", ")}. Draw inspiration from their style where a slot's type matches, but don't just rename one — every meal in this checklist should be its own genuinely different dish.`
+    );
+  }
   if (profile.dietaryApproach) lines.push(`Dietary Approach: ${profile.dietaryApproach}`);
   if (profile.foodAllergies) lines.push(`Food Allergies (HARD CONSTRAINT — never include): ${profile.foodAllergies}`);
   if (profile.foodsLoved) lines.push(`Foods They Love: ${profile.foodsLoved}`);
@@ -479,6 +463,11 @@ async function generateMealPlanWithClaude(
   if (profile.foodBudget) lines.push(`Food Budget: ${profile.foodBudget}`);
   if (profile.chronicConditions) lines.push(`Chronic Conditions: ${profile.chronicConditions}`);
   if (profile.medications) lines.push(`Medications: ${profile.medications}`);
+  if (avoidTitles.length) {
+    lines.push(
+      `This is a plan regeneration. The client's previous meals were: ${avoidTitles.join(", ")}. Give genuinely different dishes this time — different proteins, different cuisines, different prep — not the same meals renamed.`
+    );
+  }
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-5",
@@ -538,6 +527,13 @@ async function generateMealPlanWithClaude(
 // Standard per-100g nutrition reference (per-unit for eggs/banana/shake) used
 // only by the rule-based fallback, so its quantities and macro totals are
 // real arithmetic on real foods — not placeholder numbers.
+// Keywords used to loosely match a client's favorited meal title against the
+// rule-based recipe pool's own titles, so a shuffle can lean toward "more
+// like this" without needing structured data about what a favorite is made of.
+const FAVORITE_MATCH_KEYWORDS = [
+  "chicken", "salmon", "turkey", "tofu", "chickpea", "fish", "egg", "yogurt", "cottage cheese", "avocado",
+];
+
 const FOOD_REF: Record<string, { cal: number; protein: number; carb: number; fat: number }> = {
   chickenBreast: { cal: 165, protein: 31, carb: 0, fat: 3.6 },
   whiteFish: { cal: 105, protein: 23, carb: 0, fat: 1 },
@@ -576,162 +572,27 @@ function scaledMacros(ref: { cal: number; protein: number; carb: number; fat: nu
 }
 
 /**
- * Fixed title per composition branch, plus prep steps built from whichever
- * foods actually ended up in the list — the protein-powder and olive-oil
- * top-ups are conditional, so instructions can't unconditionally reference
- * them without risking a step for an ingredient that isn't actually there.
- */
-function titleAndInstructionsFor(
-  type: ChecklistItem["type"],
-  isVegan: boolean,
-  isVegetarian: boolean,
-  isKeto: boolean,
-  foods: string[]
-): { title: string; instructions: string } {
-  const has = (needle: string) => foods.some((f) => f.toLowerCase().includes(needle));
-  const steps: string[] = [];
-
-  if (type === "breakfast") {
-    if (isVegan) {
-      steps.push("Crumble and pan-fry the tofu with a pinch of turmeric and black salt for an egg-like scramble.");
-      if (has("dry oats")) steps.push("Cook the oats with water.");
-    } else if (isKeto) {
-      steps.push("Scramble or fry the eggs in butter or oil.");
-      if (has("avocado")) steps.push("Slice the avocado and plate alongside.");
-    } else {
-      steps.push("Scramble the eggs.");
-      if (has("dry oats")) steps.push("Cook the oats with water or milk.");
-    }
-    if (has("banana")) steps.push("Slice the banana over the top.");
-    if (has("protein powder")) steps.push("Stir the protein powder into the oats or a splash of water.");
-    const title = isVegan ? "Tofu Scramble & Oats" : isKeto ? "Eggs & Avocado" : "Protein Oatmeal Bowl";
-    return { title, instructions: steps.join(" ") };
-  }
-
-  if (type === "lunch" || type === "dinner") {
-    const protein = isVegan || isVegetarian ? "tofu" : type === "lunch" ? "chicken breast" : "white fish";
-    steps.push(`Season and cook the ${protein} (grill, bake, or pan-sear).`);
-    if (has("white rice")) steps.push("Cook the rice per package instructions.");
-    steps.push("Steam or roast the vegetables.");
-    if (has("olive oil")) steps.push("Plate together and finish with the olive oil.");
-    else steps.push("Plate together.");
-    if (has("protein powder")) steps.push("Mix the protein powder into water on the side if you're short on the day's protein.");
-    const title = isVegan || isVegetarian ? "Tofu, Rice & Veg Bowl" : type === "lunch" ? "Grilled Chicken & Rice Bowl" : "Baked White Fish & Rice";
-    return { title, instructions: steps.join(" ") };
-  }
-
-  // snack
-  if (has("greek yogurt")) {
-    steps.push("Stir the protein powder into the Greek yogurt, if using.");
-    steps.push("Top with almonds.");
-    return { title: "Greek Yogurt & Almonds", instructions: steps.join(" ") };
-  }
-  steps.push("Blend the protein powder with water or a milk alternative.");
-  steps.push("Pair with the almonds.");
-  return { title: "Protein Shake & Almonds", instructions: steps.join(" ") };
-}
-
-/**
  * Simple, safe, dietary-approach-aware fallback if the AI call fails.
- * Builds each meal from real per-100g nutrition data sized to that meal's
- * target, so the displayed quantities and macro totals are genuinely
- * consistent with each other — not just a labeled placeholder.
+ * Delegates each slot to buildRuleBasedAlternatives (below) so the fallback
+ * gets the same real recipe variety, flavor styling, and protein-diversity
+ * ordering that shuffle/Meal Ideas use — a starter template shouldn't look
+ * or read any more generic than a regenerated one. avoidTitles carries the
+ * previous plan's meal titles (if regenerating) so a fresh plan doesn't just
+ * hand back the same meals, and each slot's own pick is added to the avoid
+ * list before the next slot runs so two same-type snacks in one day don't
+ * end up identical.
  */
-function generateRuleBasedMealPlan(dietaryApproach: string | null, mealTargets: MealTarget[]): MealPlanContent {
-  const isVegan = dietaryApproach === "vegan";
-  const isVegetarian = dietaryApproach === "vegetarian" || isVegan;
-  const isKeto = dietaryApproach === "keto";
-
+function generateRuleBasedMealPlan(
+  dietaryApproach: string | null,
+  mealTargets: MealTarget[],
+  avoidTitles: string[] = [],
+  favoritesByType: Partial<Record<ChecklistItem["type"], string>> = {}
+): MealPlanContent {
+  const usedTitles = [...avoidTitles];
   const checklist: ChecklistItem[] = mealTargets.map((mt) => {
-    const foods: string[] = [];
-    let cal = 0, protein = 0, carb = 0, fat = 0;
-
-    const addGrams = (label: string, ref: typeof FOOD_REF[string], grams: number) => {
-      const m = scaledMacros(ref, grams);
-      cal += m.cal; protein += m.protein; carb += m.carb; fat += m.fat;
-      foods.push(`${grams}g ${label}`);
-    };
-    const addCount = (label: string, ref: typeof FOOD_REF[string], count: number) => {
-      cal += ref.cal * count; protein += ref.protein * count; carb += ref.carb * count; fat += ref.fat * count;
-      foods.push(`${count} ${label}${count === 1 ? "" : "s"}`);
-    };
-
-    // Protein powder tops up whatever whole-food protein sources don't cover
-    // — it's what keeps a high protein target from turning into an absurd
-    // whole-food quantity (5+ eggs, a second chicken breast).
-    const topUpProtein = (label: string) => {
-      const remaining = mt.proteinG - protein;
-      if (remaining > 8) {
-        addGrams(label, FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
-      }
-    };
-    // A small amount of olive oil closes whatever fat gap lean proteins,
-    // carbs, and vegetables leave open — without it, calories and fat both
-    // undershoot the target regardless of how well protein/carbs are sized.
-    const topUpFat = () => {
-      const remaining = mt.fatG - fat;
-      if (remaining > 3) {
-        addGrams("Olive Oil", FOOD_REF.oliveOil, gramsFor(remaining, FOOD_REF.oliveOil.fat, 5, 30));
-      }
-    };
-
-    // Order matters: every food that meaningfully contributes protein (the
-    // primary source AND the carb source — oats/rice are not protein-free)
-    // must be added BEFORE topUpProtein runs, or the top-up double-counts
-    // and overshoots the target.
-    if (mt.type === "breakfast") {
-      if (isVegan) {
-        addGrams("Tofu Scramble", FOOD_REF.tofu, gramsFor(Math.min(mt.proteinG, 25), FOOD_REF.tofu.protein, 80, 200));
-        addGrams("Dry Oats", FOOD_REF.oatsDry, gramsFor(Math.max(mt.carbsG - carb, 20), FOOD_REF.oatsDry.carb, 30, 120));
-        if (!isKeto) addCount("Banana", FOOD_REF.banana, 1);
-        topUpProtein("Plant Protein Powder");
-      } else {
-        addCount("Whole Egg", FOOD_REF.egg, 3);
-        if (!isKeto) {
-          addGrams("Dry Oats", FOOD_REF.oatsDry, gramsFor(Math.max(mt.carbsG - carb, 20), FOOD_REF.oatsDry.carb, 30, 100));
-        } else {
-          addGrams("Avocado", FOOD_REF.avocado, 75);
-        }
-        if (!isKeto) addCount("Banana", FOOD_REF.banana, 1);
-        topUpProtein("Protein Powder");
-      }
-      topUpFat();
-    } else if (mt.type === "lunch" || mt.type === "dinner") {
-      const proteinRef = isVegan || isVegetarian ? FOOD_REF.tofu : mt.type === "lunch" ? FOOD_REF.chickenBreast : FOOD_REF.whiteFish;
-      const proteinLabel = isVegan || isVegetarian ? "Tofu" : mt.type === "lunch" ? "Chicken Breast" : "White Fish";
-      addGrams(proteinLabel, proteinRef, gramsFor(Math.min(mt.proteinG, 55), proteinRef.protein, 120, 300));
-      if (!isKeto) {
-        addGrams("White Rice", FOOD_REF.rice, gramsFor(Math.max(mt.carbsG - carb, 30), FOOD_REF.rice.carb, 50, 300));
-      }
-      addGrams("Mixed Vegetables", FOOD_REF.nonStarchyVeg, 150);
-      topUpProtein(isVegan ? "Plant Protein Powder" : "Protein Powder");
-      topUpFat();
-    } else {
-      // snack
-      if (isVegan) {
-        addGrams("Almonds", FOOD_REF.nuts, 20);
-        addGrams("Plant Protein Powder", FOOD_REF.proteinPowder, gramsFor(Math.max(mt.proteinG - protein, 10), FOOD_REF.proteinPowder.protein, 20, 60));
-      } else {
-        addGrams("Greek Yogurt", FOOD_REF.greekYogurt, gramsFor(Math.min(mt.proteinG, 25), FOOD_REF.greekYogurt.protein, 100, 250));
-        addGrams("Almonds", FOOD_REF.nuts, 15);
-        topUpProtein("Protein Powder");
-      }
-    }
-
-    const { title, instructions } = titleAndInstructionsFor(mt.type, isVegan, isVegetarian, isKeto, foods);
-
-    return {
-      time: mt.time,
-      type: mt.type,
-      label: mt.label,
-      title,
-      foods,
-      instructions,
-      calories: Math.round(cal),
-      proteinG: Math.round(protein),
-      carbsG: Math.round(carb),
-      fatG: Math.round(fat),
-    };
+    const [item] = buildRuleBasedAlternatives(dietaryApproach, mt, usedTitles, 1, undefined, favoritesByType[mt.type]);
+    usedTitles.push(item.title);
+    return item;
   });
 
   return {
@@ -763,8 +624,9 @@ Rules:
 - Keep meals within their stated cooking skill and food budget.
 - If a calorie cap is given, it is a HARD LIMIT — no alternative may exceed it. Any protein/carb/fat numbers given alongside a cap are optional guidance, not requirements.
 - If no cap is given, hit the given calorie/protein/carb/fat targets as closely as real food quantities allow.
-- Every alternative must be genuinely different from the others and from anything in the avoid-list — a different protein source or dish, not a minor variation on the same one.
+- Every alternative must be genuinely different from the others and from anything in the avoid-list — a different protein source or dish, not a minor variation on the same one. When generating more than one alternative, use a different protein source for each (e.g. don't return three fish dishes in a row) unless the client's dietary approach genuinely leaves no other option.
 - The meal must fit its slot type: breakfast means foods people actually eat in the morning, never a dinner-style entree. Lunch/dinner are full plated meals (protein, carb, vegetable). Snacks are 1-2 simple, no-prep items.
+- Food should be genuinely appetizing, not bland — season and prepare it with real flavor (herbs, spices, marinades, sauces, a specific cuisine lean) rather than plain grilled/boiled/steamed staples.
 
 Respond with ONLY valid JSON, no markdown fences, in this exact shape:
 {
@@ -789,7 +651,8 @@ async function generateMealAlternativesWithClaude(
   target: MealTarget,
   avoidTitles: string[],
   count: number,
-  calorieCap?: number
+  calorieCap?: number,
+  favoriteTitles: string[] = []
 ): Promise<Array<Pick<ChecklistItem, "title" | "foods" | "instructions" | "calories" | "proteinG" | "carbsG" | "fatG">>> {
   const lines: string[] = [
     `Name: ${profile.firstName}`,
@@ -798,6 +661,11 @@ async function generateMealAlternativesWithClaude(
       ? `Calorie Cap (HARD LIMIT — every alternative must be at or under this): ${calorieCap} calories`
       : `Target: ~${target.calories} calories, ~${target.proteinG}g protein, ~${target.carbsG}g carbs, ~${target.fatG}g fat — hit these as closely as real food quantities allow`,
   ];
+  if (favoriteTitles.length) {
+    lines.push(
+      `Client has previously favorited these ${target.type} meals: ${favoriteTitles.join(", ")}. Draw inspiration from their style (similar protein or flavor profile) where it fits the constraints below, but don't just rename one of them — it should read as a genuinely different dish.`
+    );
+  }
   if (calorieCap != null) {
     if (target.proteinG) lines.push(`Protein preference (optional guidance, not required): ~${target.proteinG}g`);
     if (target.carbsG) lines.push(`Carb preference (optional guidance, not required): ~${target.carbsG}g`);
@@ -888,7 +756,8 @@ function buildRuleBasedAlternatives(
   mt: { type: ChecklistItem["type"]; time: string; label: string; calories: number; proteinG: number; carbsG: number; fatG: number },
   avoidTitles: string[],
   count: number,
-  calorieCap?: number
+  calorieCap?: number,
+  favoriteHint?: string
 ): ChecklistItem[] {
   const isVegan = dietaryApproach === "vegan";
   const isVegetarian = dietaryApproach === "vegetarian" || isVegan;
@@ -930,7 +799,7 @@ function buildRuleBasedAlternatives(
         const remaining = targetProtein - a.totals().protein;
         if (remaining > 8) a.addGrams("Plant Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
         const t = a.totals();
-        return { title: "Tofu Scramble & Oats", foods: a.foods, instructions: "Crumble and pan-fry the tofu with turmeric and black salt. Cook oats with water. Slice banana over the top.", ...t };
+        return { title: "Turmeric Tofu Scramble & Oats", foods: a.foods, instructions: "Crumble and pan-fry the tofu with turmeric and black salt for an egg-like scramble. Cook oats with water. Slice banana over the top.", ...t };
       });
       recipes.push(() => {
         const a = acc();
@@ -939,7 +808,7 @@ function buildRuleBasedAlternatives(
         const remaining = targetProtein - a.totals().protein;
         if (remaining > 8) a.addGrams("Plant Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
         const t = a.totals();
-        return { title: "Chickpea Scramble & Berries", foods: a.foods, instructions: "Mash and pan-fry the chickpeas with turmeric and paprika. Serve with mixed berries on the side.", ...t };
+        return { title: "Paprika Chickpea Scramble & Berries", foods: a.foods, instructions: "Mash and pan-fry the chickpeas with paprika and cumin. Serve with mixed berries on the side.", ...t };
       });
     } else if (isKeto) {
       recipes.push(() => {
@@ -949,7 +818,7 @@ function buildRuleBasedAlternatives(
         const remaining = targetProtein - a.totals().protein;
         if (remaining > 8) a.addGrams("Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
         const t = a.totals();
-        return { title: "Eggs & Avocado", foods: a.foods, instructions: "Scramble or fry the eggs in butter. Slice the avocado and plate alongside.", ...t };
+        return { title: "Herb-Butter Eggs & Avocado", foods: a.foods, instructions: "Scramble or fry the eggs in butter with fresh herbs. Slice the avocado and plate alongside.", ...t };
       });
       recipes.push(() => {
         const a = acc();
@@ -958,7 +827,7 @@ function buildRuleBasedAlternatives(
         const remaining = targetProtein - a.totals().protein;
         if (remaining > 8) a.addGrams("Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
         const t = a.totals();
-        return { title: "Cottage Cheese & Avocado Bowl", foods: a.foods, instructions: "Spoon the cottage cheese into a bowl and top with sliced avocado.", ...t };
+        return { title: "Garlic-Herb Cottage Cheese & Avocado Bowl", foods: a.foods, instructions: "Stir cracked black pepper and garlic powder into the cottage cheese, then top with sliced avocado.", ...t };
       });
     } else {
       recipes.push(() => {
@@ -969,7 +838,7 @@ function buildRuleBasedAlternatives(
         const remaining = targetProtein - a.totals().protein;
         if (remaining > 8) a.addGrams("Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
         const t = a.totals();
-        return { title: "Protein Oatmeal Bowl", foods: a.foods, instructions: "Scramble the eggs. Cook oats with water or milk. Slice banana over the top.", ...t };
+        return { title: "Cinnamon Protein Oatmeal Bowl", foods: a.foods, instructions: "Scramble the eggs. Cook oats with water or milk and a dash of cinnamon. Slice banana over the top.", ...t };
       });
       recipes.push(() => {
         const a = acc();
@@ -979,7 +848,17 @@ function buildRuleBasedAlternatives(
         const remaining = targetProtein - a.totals().protein;
         if (remaining > 8) a.addGrams("Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
         const t = a.totals();
-        return { title: "Greek Yogurt Berry Bowl", foods: a.foods, instructions: "Layer the Greek yogurt with berries and a sprinkle of dry oats.", ...t };
+        return { title: "Honey Greek Yogurt Berry Bowl", foods: a.foods, instructions: "Layer the Greek yogurt with berries, a drizzle of honey, and a sprinkle of dry oats.", ...t };
+      });
+      recipes.push(() => {
+        const a = acc();
+        a.addCount("Whole Egg", FOOD_REF.egg, 3);
+        a.addGrams("Sweet Potato", FOOD_REF.sweetPotato, gramsFor(Math.max(mt.carbsG - a.totals().carb, 20), FOOD_REF.sweetPotato.carb, 30, 150));
+        a.addGrams("Mixed Vegetables", FOOD_REF.nonStarchyVeg, 60);
+        const remaining = targetProtein - a.totals().protein;
+        if (remaining > 8) a.addGrams("Protein Powder", FOOD_REF.proteinPowder, gramsFor(remaining, FOOD_REF.proteinPowder.protein, 10, 60));
+        const t = a.totals();
+        return { title: "Southwest Egg & Sweet Potato Hash", foods: a.foods, instructions: "Dice and pan-sear the sweet potato with peppers and onion until tender. Scramble the eggs with paprika and cumin, then fold together.", ...t };
       });
     }
   } else if (mt.type === "lunch" || mt.type === "dinner") {
@@ -990,12 +869,29 @@ function buildRuleBasedAlternatives(
           { label: "Salmon", ref: FOOD_REF.salmon },
           { label: "Turkey Breast", ref: FOOD_REF.turkeyBreast },
         ];
-    const carbOptions: Array<{ label: string; ref: Ref } | null> = isKeto
+    // Real seasoning/cuisine profiles instead of plain "protein & carb" — a
+    // flavor rides along with each carb choice so varying the carb also
+    // varies how the dish is actually seasoned and reads on the page.
+    const carbOptions: Array<{ label: string; ref: Ref; flavor: string; seasoning: string } | null> = isKeto
       ? [null]
-      : [{ label: "White Rice", ref: FOOD_REF.rice }, { label: "Quinoa", ref: FOOD_REF.quinoa }, { label: "Sweet Potato", ref: FOOD_REF.sweetPotato }];
+      : [
+          { label: "White Rice", ref: FOOD_REF.rice, flavor: "Teriyaki", seasoning: "Toss in a light teriyaki glaze — soy sauce, ginger, a touch of honey." },
+          { label: "Quinoa", ref: FOOD_REF.quinoa, flavor: "Lemon-Herb Mediterranean", seasoning: "Season with lemon, oregano, and garlic; finish with the olive oil." },
+          { label: "Sweet Potato", ref: FOOD_REF.sweetPotato, flavor: "Cajun-Spiced", seasoning: "Rub with a Cajun spice blend — paprika, garlic, cayenne — before cooking." },
+        ];
+    const ketoFlavors = [
+      { name: "Herb-Roasted", seasoning: "Season generously with rosemary, thyme, and garlic before cooking." },
+      { name: "Garlic Butter", seasoning: "Finish in garlic butter with fresh parsley." },
+      { name: "Blackened", seasoning: "Coat in a blackened Cajun seasoning before searing." },
+    ];
 
-    proteinOptions.forEach((p) => {
-      carbOptions.forEach((c) => {
+    // Carb outer, protein inner: this is what makes consecutive candidates
+    // cover different proteins first (chicken, salmon, turkey all paired
+    // with rice) before repeating any protein with a different carb — the
+    // fix for a 3-candidate search coming back as three near-identical fish
+    // dishes, since callers slice off the front of this array.
+    carbOptions.forEach((c) => {
+      proteinOptions.forEach((p, pi) => {
         recipes.push(() => {
           const a = acc();
           a.addGrams(p.label, p.ref, gramsFor(Math.min(targetProtein, 55), p.ref.protein, 120, 300));
@@ -1006,8 +902,11 @@ function buildRuleBasedAlternatives(
           const fatRemaining = mt.fatG - a.totals().fat;
           if (fatRemaining > 3) a.addGrams("Olive Oil", FOOD_REF.oliveOil, gramsFor(fatRemaining, FOOD_REF.oliveOil.fat, 5, 30));
           const t = a.totals();
-          const title = c ? `${p.label} & ${c.label} Bowl` : `${p.label} & Roasted Veg`;
-          const instructions = `Season and cook the ${p.label.toLowerCase()} (grill, bake, or pan-sear).${c ? ` Cook the ${c.label.toLowerCase()} per package instructions.` : ""} Steam or roast the vegetables. Plate together.`;
+          const ketoFlavor = ketoFlavors[pi % ketoFlavors.length];
+          const flavor = c ? c.flavor : ketoFlavor.name;
+          const seasoning = c ? c.seasoning : ketoFlavor.seasoning;
+          const title = c ? `${flavor} ${p.label} & ${c.label} Bowl` : `${flavor} ${p.label} & Roasted Veg`;
+          const instructions = `Season and cook the ${p.label.toLowerCase()} (grill, bake, or pan-sear). ${seasoning}${c ? ` Cook the ${c.label.toLowerCase()} per package instructions.` : ""} Steam or roast the vegetables. Plate together.`;
           return { title, foods: a.foods, instructions, ...t };
         });
       });
@@ -1052,13 +951,37 @@ function buildRuleBasedAlternatives(
   }
 
   const usedTitles = new Set(avoidTitles.map((t) => t.toLowerCase()));
-  const built = recipes.map((r) => r());
+  let built = recipes.map((r) => r());
+
+  // Bias a single pick toward whatever protein/style the client's favorite
+  // for this slot uses, without guaranteeing it (the exact favorite is
+  // handled separately, via rotation-day injection) — giving matches extra
+  // representation before the random draw below nudges the odds without
+  // forcing the same result every time. Only safe when count===1: adding
+  // duplicate entries to the pool could otherwise hand back the same title
+  // twice within one multi-candidate search.
+  if (favoriteHint && count === 1) {
+    const hint = favoriteHint.toLowerCase();
+    const keyword = FAVORITE_MATCH_KEYWORDS.find((k) => hint.includes(k));
+    if (keyword) {
+      const preferred = built.filter((b) => b.title.toLowerCase().includes(keyword));
+      if (preferred.length) built = [...built, ...preferred, ...preferred];
+    }
+  }
+
   const fresh = built.filter((b) => !usedTitles.has(b.title.toLowerCase()));
   const pool = fresh.length > 0 ? fresh : built;
 
+  // Random starting point rather than always pool[0] — otherwise this
+  // function is a pure deterministic function of (dietaryApproach, mt), so
+  // calling it again with the same inputs (e.g. clicking Regenerate) hands
+  // back the exact same meal every time. The carb-outer/protein-inner
+  // ordering above means consecutive pool entries are still protein-diverse
+  // regardless of where the offset starts.
+  const startOffset = Math.floor(Math.random() * pool.length);
   const results: ChecklistItem[] = [];
   for (let i = 0; i < count; i++) {
-    const b = pool[i % pool.length];
+    const b = pool[(startOffset + i) % pool.length];
     let cal = b.cal, protein = b.protein, carb = b.carb, fat = b.fat;
     // Rule-based sizing targets protein/carbs, which can occasionally push
     // calories a bit over a search cap — clamp proportionally rather than
@@ -1103,23 +1026,95 @@ export async function generateNutritionPlan(
 
   const classification = await classifyNutritionGoal(profile.nutritionGoals, profile.primaryGoal);
   const targets = calculateNutritionTargets(profile, classification);
-  const mealTargets = distributeMealTargets(targets, profile.mealsPerDay, profile.wakeTime, profile.bedTime);
+  const mealTargets = distributeMealTargets(targets, profile.mealsPerDay);
+
+  // If there's an existing active plan (this is a regeneration), avoid
+  // repeating its meals verbatim — otherwise "Regenerate" can silently hand
+  // back the same plan, which reads as broken even though it technically ran.
+  const previousPlan = await prisma.nutritionPlan.findFirst({
+    where: { athleteProfileId: profileId, isActive: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const previousTitles = previousPlan
+    ? ((previousPlan.sampleMeals as unknown as ChecklistItem[]) || []).map((c) => c.title).filter(Boolean)
+    : [];
+
+  const favorites = await prisma.nutritionFavorite.findMany({ where: { athleteProfileId: profileId } });
+  const favoritesForPrompt = favorites.map((f) => ({ mealType: f.mealType, title: f.title }));
+  const favoritesByType: Partial<Record<ChecklistItem["type"], string>> = {};
+  const favoriteRecordByType: Partial<Record<ChecklistItem["type"], (typeof favorites)[number]>> = {};
+  favorites.forEach((f) => {
+    const type = f.mealType as ChecklistItem["type"];
+    if (!favoritesByType[type]) favoritesByType[type] = f.title;
+    if (!favoriteRecordByType[type]) favoriteRecordByType[type] = f;
+  });
 
   let content: MealPlanContent;
   let source: "ai" | "fallback" = "ai";
   let fallbackReason: string | undefined;
 
   try {
-    content = await generateMealPlanWithClaude(profile, targets, classification, mealTargets);
+    content = await generateMealPlanWithClaude(profile, targets, classification, mealTargets, previousTitles, favoritesForPrompt);
   } catch (aiErr) {
     logger.error({ err: aiErr, profileId }, "Claude nutrition plan generation failed, using rule-based fallback");
     source = "fallback";
     fallbackReason = (aiErr as Error).message;
-    content = generateRuleBasedMealPlan(profile.dietaryApproach, mealTargets);
+    content = generateRuleBasedMealPlan(profile.dietaryApproach, mealTargets, previousTitles, favoritesByType);
   }
 
   if (targets.usedDefaults.length > 0) {
     content.coachNotes += ` (Note: ${targets.usedDefaults.join(", ")} defaulted for the calorie calculation — update your profile for more precise targets.)`;
+  }
+
+  // Generate 2 more distinct day-variants beyond the displayed "Today's
+  // Plan" so the grocery list reflects real rotation across a week instead
+  // of the same day's meals x7 — a client eating chicken/rice every single
+  // day was flagged as "super unrealistic." Each variant avoids every title
+  // used by the ones before it (and the previous plan's), so the whole
+  // rotation reads as genuinely different meals, not relabeled repeats.
+  const ROTATION_VARIANTS = 3;
+  const mealRotation: ChecklistItem[][] = [content.checklist];
+  const rotationUsedTitles = [...previousTitles, ...content.checklist.map((c) => c.title)];
+  for (let v = 1; v < ROTATION_VARIANTS; v++) {
+    let variantChecklist: ChecklistItem[];
+    if (source === "ai") {
+      try {
+        const variant = await generateMealPlanWithClaude(profile, targets, classification, mealTargets, rotationUsedTitles, favoritesForPrompt);
+        variantChecklist = variant.checklist;
+      } catch (variantErr) {
+        logger.error({ err: variantErr, profileId, variant: v }, "Claude rotation-variant generation failed, using rule-based fallback for this variant");
+        variantChecklist = generateRuleBasedMealPlan(profile.dietaryApproach, mealTargets, rotationUsedTitles, favoritesByType).checklist;
+      }
+    } else {
+      variantChecklist = generateRuleBasedMealPlan(profile.dietaryApproach, mealTargets, rotationUsedTitles, favoritesByType).checklist;
+    }
+    mealRotation.push(variantChecklist);
+    rotationUsedTitles.push(...variantChecklist.map((c) => c.title));
+  }
+
+  // Slot an exact favorite into the middle rotation day (index 1) — kept in
+  // rotation so the client actually gets to re-eat it, but only on the days
+  // that variant lands on, not every day of the week.
+  if (mealRotation.length > 1 && favorites.length > 0) {
+    const injected = new Set<string>();
+    mealRotation[1] = mealRotation[1].map((item) => {
+      const favRecord = favoriteRecordByType[item.type];
+      if (!favRecord || injected.has(favRecord.id)) return item;
+      injected.add(favRecord.id);
+      const favFoods = favRecord.foods as unknown as string[];
+      return {
+        time: item.time,
+        type: item.type,
+        label: item.label,
+        title: favRecord.title,
+        foods: favFoods,
+        instructions: favRecord.instructions || `Prepare and plate: ${favFoods.join(", ")}.`,
+        calories: favRecord.calories,
+        proteinG: favRecord.proteinG,
+        carbsG: favRecord.carbsG,
+        fatG: favRecord.fatG,
+      };
+    });
   }
 
   await prisma.nutritionPlan.updateMany({
@@ -1143,6 +1138,7 @@ export async function generateNutritionPlan(
       fatG: targets.fatG,
       mealTiming: content.eatingRhythm,
       sampleMeals: content.checklist as unknown as Prisma.InputJsonValue,
+      mealRotation: mealRotation as unknown as Prisma.InputJsonValue,
       supplementNotes: content.supplements.join(", "),
       coachNotes: content.coachNotes,
       source,
@@ -1168,6 +1164,33 @@ function notFound(message: string): Error & { statusCode: number } {
   const err = new Error(message) as Error & { statusCode: number };
   err.statusCode = 404;
   return err;
+}
+
+/**
+ * Patches one checklist slot and persists it — updates both sampleMeals
+ * (the displayed "Today's Plan") and mealRotation's day-0 entry, if a
+ * rotation exists, so the grocery list doesn't silently drift from what the
+ * client sees after a shuffle or applied Meal Idea.
+ */
+async function patchChecklistSlot(
+  plan: { id: string; mealRotation: unknown },
+  checklist: ChecklistItem[],
+  index: number,
+  item: ChecklistItem
+): Promise<void> {
+  const updatedChecklist = [...checklist];
+  updatedChecklist[index] = item;
+
+  const data: { sampleMeals: Prisma.InputJsonValue; mealRotation?: Prisma.InputJsonValue } = {
+    sampleMeals: updatedChecklist as unknown as Prisma.InputJsonValue,
+  };
+  const rotation = plan.mealRotation as unknown as ChecklistItem[][] | null;
+  if (Array.isArray(rotation) && Array.isArray(rotation[0])) {
+    const updatedRotation = rotation.map((day, i) => (i === 0 ? updatedChecklist : day));
+    data.mealRotation = updatedRotation as unknown as Prisma.InputJsonValue;
+  }
+
+  await prisma.nutritionPlan.update({ where: { id: plan.id }, data });
 }
 
 async function requireProfileAndActivePlan(userId: string) {
@@ -1203,24 +1226,25 @@ export async function shuffleMeal(
     time: slot.time, type: slot.type, label: slot.label,
     calories: slot.calories, proteinG: slot.proteinG, carbsG: slot.carbsG, fatG: slot.fatG,
   };
+  const favoriteForType = await prisma.nutritionFavorite.findFirst({
+    where: { athleteProfileId: profile.id, mealType: slot.type },
+    orderBy: { createdAt: "desc" },
+  });
 
   let item: ChecklistItem;
   let source: "ai" | "fallback" = "ai";
   try {
-    const [alt] = await generateMealAlternativesWithClaude(profile, target, avoidTitles, 1);
+    const [alt] = await generateMealAlternativesWithClaude(
+      profile, target, avoidTitles, 1, undefined, favoriteForType ? [favoriteForType.title] : []
+    );
     item = { time: slot.time, type: slot.type, label: slot.label, ...alt };
   } catch (err) {
     logger.error({ err, userId, index }, "Claude meal shuffle failed, using rule-based fallback");
     source = "fallback";
-    [item] = buildRuleBasedAlternatives(profile.dietaryApproach, target, avoidTitles, 1);
+    [item] = buildRuleBasedAlternatives(profile.dietaryApproach, target, avoidTitles, 1, undefined, favoriteForType?.title);
   }
 
-  const updatedChecklist = [...checklist];
-  updatedChecklist[index] = item;
-  await prisma.nutritionPlan.update({
-    where: { id: plan.id },
-    data: { sampleMeals: updatedChecklist as unknown as Prisma.InputJsonValue },
-  });
+  await patchChecklistSlot(plan, checklist, index, item);
 
   return { item, source };
 }
@@ -1252,11 +1276,17 @@ export async function searchMealIdeas(
     time: slot.time, type: slot.type, label: slot.label,
     calories: Math.min(slot.calories, params.calorieCap), proteinG, carbsG, fatG,
   };
+  const favoriteForType = await prisma.nutritionFavorite.findFirst({
+    where: { athleteProfileId: profile.id, mealType: slot.type },
+    orderBy: { createdAt: "desc" },
+  });
 
   let candidates: ChecklistItem[];
   let source: "ai" | "fallback" = "ai";
   try {
-    const alts = await generateMealAlternativesWithClaude(profile, target, avoidTitles, 3, params.calorieCap);
+    const alts = await generateMealAlternativesWithClaude(
+      profile, target, avoidTitles, 3, params.calorieCap, favoriteForType ? [favoriteForType.title] : []
+    );
     candidates = alts.map((alt) => ({ time: slot.time, type: slot.type, label: slot.label, ...alt }));
   } catch (err) {
     logger.error({ err, userId, params }, "Claude meal-idea search failed, using rule-based fallback");
@@ -1308,19 +1338,14 @@ export async function applyMealIdea(
     fatG: candidate.fatG,
   };
 
-  const updatedChecklist = [...checklist];
-  updatedChecklist[params.index] = item;
-  await prisma.nutritionPlan.update({
-    where: { id: plan.id },
-    data: { sampleMeals: updatedChecklist as unknown as Prisma.InputJsonValue },
-  });
+  await patchChecklistSlot(plan, checklist, params.index, item);
 
   return { item };
 }
 
 // ============================================================
-// Weekly grocery list — the plan's one sample day (sampleMeals repeats
-// identically every day of the term) scaled to 7 days and household size.
+// Weekly grocery list — distributes a 7-day week across the plan's meal
+// rotation (2-3 distinct days, not one day repeated) and household size.
 // Pure read/compute, nothing persisted.
 // ============================================================
 
@@ -1356,25 +1381,41 @@ export async function getGroceryList(
   userId: string,
   people: number
 ): Promise<{ items: GroceryListItem[]; people: number; days: number }> {
-  const { checklist } = await requireProfileAndActivePlan(userId);
+  const { plan, checklist } = await requireProfileAndActivePlan(userId);
 
   const DAYS_PER_WEEK = 7;
   const safePeople = Math.min(Math.max(Math.round(people) || 1, 1), 12);
 
+  // Prefer the real rotation (2-3 distinct days) so the list reflects actual
+  // variety across the week; older plans generated before mealRotation
+  // existed fall back to the single displayed day repeated x7.
+  const rotation = ((plan.mealRotation as unknown as ChecklistItem[][]) || []).filter((day) => Array.isArray(day) && day.length);
+  const days: ChecklistItem[][] = rotation.length > 0 ? rotation : [checklist];
+
+  // Spread the 7-day week evenly across however many distinct days exist
+  // (e.g. 3 variants -> [3, 2, 2] days each) rather than assuming equal
+  // 7/N split with no remainder.
+  const base = Math.floor(DAYS_PER_WEEK / days.length);
+  const remainder = DAYS_PER_WEEK % days.length;
+  const dayCounts = days.map((_, i) => base + (i < remainder ? 1 : 0));
+
   const totals = new Map<string, { name: string; quantity: number; unit: "g" | "count" }>();
 
-  checklist.forEach((item) => {
-    (item.foods || []).forEach((entry) => {
-      const parsed = parseFoodItem(entry);
-      if (!parsed) return;
-      const key = `${parsed.name.toLowerCase()}|${parsed.unit}`;
-      const scaled = parsed.quantity * DAYS_PER_WEEK * safePeople;
-      const existing = totals.get(key);
-      if (existing) {
-        existing.quantity += scaled;
-      } else {
-        totals.set(key, { name: parsed.name, quantity: scaled, unit: parsed.unit });
-      }
+  days.forEach((dayChecklist, dayIndex) => {
+    const occurrences = dayCounts[dayIndex];
+    dayChecklist.forEach((item) => {
+      (item.foods || []).forEach((entry) => {
+        const parsed = parseFoodItem(entry);
+        if (!parsed) return;
+        const key = `${parsed.name.toLowerCase()}|${parsed.unit}`;
+        const scaled = parsed.quantity * occurrences * safePeople;
+        const existing = totals.get(key);
+        if (existing) {
+          existing.quantity += scaled;
+        } else {
+          totals.set(key, { name: parsed.name, quantity: scaled, unit: parsed.unit });
+        }
+      });
     });
   });
 
@@ -1393,6 +1434,77 @@ export async function getGroceryList(
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return { items, people: safePeople, days: DAYS_PER_WEEK };
+}
+
+// ============================================================
+// Favorites — a meal the client explicitly liked enough to keep. Biases
+// future shuffles/rotation/Meal Ideas toward similar (not identical)
+// suggestions, and the exact favorite gets slotted back into the rotation
+// occasionally (see generateNutritionPlan's rotation loop), not every day.
+// ============================================================
+
+export interface NutritionFavoriteInput {
+  mealType: ChecklistItem["type"];
+  title: string;
+  foods: string[];
+  instructions?: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+export async function addNutritionFavorite(userId: string, input: NutritionFavoriteInput) {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) throw notFound("Athlete profile not found");
+
+  if (
+    !input ||
+    !input.title ||
+    !Array.isArray(input.foods) ||
+    !input.foods.length ||
+    typeof input.calories !== "number" ||
+    typeof input.proteinG !== "number" ||
+    typeof input.carbsG !== "number" ||
+    typeof input.fatG !== "number"
+  ) {
+    const err = new Error("Invalid favorite — missing title, foods, or macros") as Error & { statusCode?: number };
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return prisma.nutritionFavorite.upsert({
+    where: { athleteProfileId_title: { athleteProfileId: profile.id, title: input.title } },
+    create: {
+      athleteProfileId: profile.id,
+      mealType: input.mealType,
+      title: input.title,
+      foods: input.foods as unknown as Prisma.InputJsonValue,
+      instructions: input.instructions || null,
+      calories: Math.round(input.calories),
+      proteinG: Math.round(input.proteinG),
+      carbsG: Math.round(input.carbsG),
+      fatG: Math.round(input.fatG),
+    },
+    update: {}, // already favorited -- idempotent, no-op
+  });
+}
+
+export async function removeNutritionFavorite(userId: string, title: string): Promise<void> {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) throw notFound("Athlete profile not found");
+
+  await prisma.nutritionFavorite.deleteMany({ where: { athleteProfileId: profile.id, title } });
+}
+
+export async function listNutritionFavorites(userId: string) {
+  const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+  if (!profile) return [];
+
+  return prisma.nutritionFavorite.findMany({
+    where: { athleteProfileId: profile.id },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 // ============================================================

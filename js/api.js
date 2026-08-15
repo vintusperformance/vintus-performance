@@ -100,6 +100,6 @@ function apiPut(path, body) {
   return apiFetch(path, { method: 'PUT', body: body || undefined });
 }
 
-function apiDelete(path) {
-  return apiFetch(path, { method: 'DELETE' });
+function apiDelete(path, body) {
+  return apiFetch(path, { method: 'DELETE', body: body || undefined });
 }

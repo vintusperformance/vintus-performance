@@ -43,9 +43,26 @@ export const groceryListQuerySchema = z.object({
   people: z.coerce.number().int().min(1).max(12).default(1),
 });
 
+export const addFavoriteSchema = z.object({
+  mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+  title: z.string().min(1).max(200),
+  foods: z.array(z.string().min(1).max(200)).min(1).max(20),
+  instructions: z.string().max(1000).optional(),
+  calories: z.number().min(0).max(5000),
+  proteinG: z.number().min(0).max(500),
+  carbsG: z.number().min(0).max(800),
+  fatG: z.number().min(0).max(300),
+});
+
+export const removeFavoriteSchema = z.object({
+  title: z.string().min(1).max(200),
+});
+
 export type NutritionGoalUpdate = z.infer<typeof nutritionGoalUpdateSchema>;
 export type MacroCalculatorInput = z.infer<typeof macroCalculatorInputSchema>;
 export type ShuffleMealInput = z.infer<typeof shuffleMealSchema>;
 export type MealIdeasSearchInput = z.infer<typeof mealIdeasSearchSchema>;
 export type ApplyMealIdeaInput = z.infer<typeof applyMealIdeaSchema>;
 export type GroceryListQuery = z.infer<typeof groceryListQuerySchema>;
+export type AddFavoriteInput = z.infer<typeof addFavoriteSchema>;
+export type RemoveFavoriteInput = z.infer<typeof removeFavoriteSchema>;
