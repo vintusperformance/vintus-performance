@@ -5,6 +5,7 @@ import { anthropic } from "../lib/anthropic.js";
 import {
   pickTemplate,
   applyExperienceModifiers,
+  applyGoalRepScheme,
   scaleVolume,
   type SessionTemplate,
   type MainExercise,
@@ -282,7 +283,8 @@ function buildSessionContent(
   equipment: string,
   experienceLevel: string,
   avoidTemplateIds: string[] = [],
-  volumeMultiplier: number = 1.0
+  volumeMultiplier: number = 1.0,
+  goal: string = "well-rounded"
 ): { content: SessionContent; templateId: string } {
   const template = pickTemplate(sessionType, equipment, avoidTemplateIds);
 
@@ -300,8 +302,11 @@ function buildSessionContent(
     };
   }
 
-  // Apply experience modifiers then volume scaling
-  let adjustedMain = applyExperienceModifiers(template.main, experienceLevel);
+  // Goal first (sets the ramp/superset rep scheme), then experience
+  // modifiers (which skip ramp/superset entries so they don't overwrite what
+  // the goal just set), then volume scaling for deloads/adjustments.
+  let adjustedMain = applyGoalRepScheme(template.main, goal);
+  adjustedMain = applyExperienceModifiers(adjustedMain, experienceLevel);
   if (volumeMultiplier !== 1.0) {
     adjustedMain = scaleVolume(adjustedMain, volumeMultiplier);
   }
@@ -384,11 +389,27 @@ You must return ONLY valid JSON (no markdown, no explanation) with this exact st
       "description": "Personalized coach note for this session",
       "prescribedDuration": 45,
       "warmup": [{ "exercise": "Name", "duration": "30 sec", "notes": "Why" }],
-      "main": [{ "exercise": "Name", "sets": 3, "reps": "8-10", "rest": "90s", "intensity": "RPE 7", "notes": "Why this exercise" }],
+      "main": [{ "exercise": "Name", "sets": 3, "reps": "8-10", "rest": "90s", "intensity": "RPE 7", "notes": "Why this exercise", "isRamp": false, "isSuperset": false, "pairId": null }],
       "cooldown": [{ "exercise": "Name", "duration": "3 min" }]
     }
   ]
 }
+
+Programming philosophy — antagonist-paired supersets + autoregulated ramp sets:
+This is NOT a traditional same-muscle-twice split (never "Chest + Triceps" then "Back + Biceps" — by the time triceps get isolated work on a chest day, they're already pre-fatigued as a secondary mover on every press and can never perform at capacity). Instead:
+- STRENGTH_PUSH = Chest + Biceps + Rear Delts, paired. Pick 2 primary chest movements (e.g. one horizontal press, one vertical press). Each primary movement is a RAMP entry ("isRamp": true) — build up to a true top set, then rest. During the ramp's early sets, superset with an antagonist accessory ("isSuperset": true, sharing the same "pairId" as its ramp partner): biceps work for the first primary movement, rear-delt work for the second. Never pair chest with triceps.
+- STRENGTH_PULL = Back + Triceps + Front/Side Delts, paired. Same structure: 2 primary back/row/pull movements, each a ramp, each paired ("pairId") with triceps work on the first and front/side-delt work on the second. Never pair back with biceps.
+- STRENGTH_UPPER = a compressed version combining one paired chest+biceps round and one paired back+triceps round in a single session, plus 1-2 straight-set finishers.
+- STRENGTH_LOWER / STRENGTH_FULL = the single heaviest compound lift (squat/deadlift variant) is a ramp entry; everything else is straight sets. Optionally pair the ramp with a low-fatigue-cost accessory (core or calf work) via isSuperset/pairId, never another heavy lower-body lift.
+- A ramp entry's "reps" is a full comma-separated build-up sequence ending in the top set (NOT a flat range like "8-10"), and "sets" equals how many numbers are in that sequence. A superset entry's "rest" is "—" (it's performed during the ramp's rest window); a ramp entry's "rest" describes when the rest happens, e.g. "60-90s (after the paired accessory)".
+- Tune the ramp and its paired accessory to the client's actual Primary Goal — this is what makes "why these specific rep ranges" a real, tailored answer instead of a generic number:
+  - build-muscle ("gain strength and size"): ramp "20, 20, 5, 4, 3", top set "Build to a true top set of 3 — first two sets should feel easy, save the tank for the last one.", accessory reps "8-10".
+  - recomposition: ramp "20, 15, 8, 6, 5", top set "Build to a strong top set of 5 — heavy and controlled, not a grind.", accessory reps "10-12".
+  - lose-fat: ramp "20, 15, 12, 10", top set "Build to a strong top set of 10 — keep the pace up between sets.", accessory reps "15-20".
+  - endurance: ramp "20, 15, 12, 12", top set "Controlled top set of 12 — this session supports the cardio training, it's not a max-strength day.", accessory reps "15-20".
+  - well-rounded: ramp "15, 12, 8, 6", top set "Build to a solid top set of 6 — heavy enough to build real strength, light enough to leave energy for the rest of the week.", accessory reps "10-12".
+  Put the top-set text in "intensity" for the ramp entry. Put "RPE 5-6 — light, active recovery for the [resting muscle]" in "intensity" for its paired superset accessory, regardless of goal — the accessory should always stay light, only its rep target changes by goal.
+- Autoregulation: no fixed weight is gospel. On every straight-set main exercise, weave in a short cue (in "notes") that permission-gives the client to adjust to how their body actually shows up that day — more reps at a lighter load instead of forcing a number, no ego lifting. Never write copy that implies a missed number is a failure.
 
 Rules:
 - dayOffset: 0=Monday through 6=Sunday. Schedule exactly the number of training days specified.
@@ -412,8 +433,8 @@ Rules:
   - NUTRITION_4WEEK / NUTRITION_8WEEK: lighter training focus, recovery-oriented
 - Each session should have 3-4 warmup exercises, 4-6 main exercises, and 2-3 cooldown exercises.
 - The tone should be direct, confident, and premium — like a high-end coach.
-- Set RPE based on experience: beginners RPE 5-6, intermediate RPE 7, advanced RPE 8, elite RPE 8-9.
-- "rest" must always be one of these clean values: "30s", "45s", "60s", "90s", "120s", "2-3 min", "3-5 min". Never an arbitrary number like "51s" or "64s" — nobody times a rest period to the second.`;
+- Set RPE based on experience for straight-set (non-ramp) exercises: beginners RPE 5-6, intermediate RPE 7, advanced RPE 8, elite RPE 8-9.
+- "rest" must always be one of these clean values for straight-set exercises: "30s", "45s", "60s", "90s", "120s", "2-3 min", "3-5 min". Never an arbitrary number like "51s" or "64s" — nobody times a rest period to the second. Ramp/superset entries use the descriptive rest format shown above instead.`;
 
 // ============================================================
 // generateInitialPlan — Claude-powered with rule-based fallback
@@ -598,7 +619,8 @@ async function generateUpfrontRemainingWeeks(
         profile.equipmentAccess,
         profile.experienceLevel,
         usedTemplateIds,
-        volumeMultiplier
+        volumeMultiplier,
+        profile.primaryGoal
       );
       usedTemplateIds.push(templateId);
 
@@ -925,7 +947,8 @@ async function regenerateFutureSessions(
           profile.equipmentAccess,
           profile.experienceLevel,
           usedTemplateIds,
-          volumeMultiplier
+          volumeMultiplier,
+          profile.primaryGoal
         );
         usedTemplateIds.push(templateId);
         return {
@@ -975,7 +998,7 @@ async function generatePlanWithClaude(
     description: string;
     prescribedDuration: number;
     warmup: Array<{ exercise: string; duration: string; notes: string }>;
-    main: Array<{ exercise: string; sets: number; reps: string; rest: string; intensity: string; notes?: string }>;
+    main: Array<{ exercise: string; sets: number; reps: string; rest: string; intensity: string; notes?: string; isRamp?: boolean; isSuperset?: boolean; pairId?: string | null }>;
     cooldown: Array<{ exercise: string; duration: string }>;
   }>;
 }> {
@@ -1162,7 +1185,9 @@ function generateRuleBasedPlan(
       spec.type,
       profile.equipmentAccess,
       profile.experienceLevel,
-      usedTemplateIds
+      usedTemplateIds,
+      1.0,
+      profile.primaryGoal
     );
     usedTemplateIds.push(templateId);
 
@@ -1304,7 +1329,8 @@ export async function generateNextWeek(
       profile.equipmentAccess,
       profile.experienceLevel,
       usedIds,
-      volumeMultiplier
+      volumeMultiplier,
+      profile.primaryGoal
     );
     usedIds.push(templateId);
 
@@ -1403,7 +1429,8 @@ export async function adjustForMissedStrengthDay(
         plan.athleteProfile.equipmentAccess,
         plan.athleteProfile.experienceLevel,
         [],
-        0.85 // slightly reduced volume
+        0.85, // slightly reduced volume
+        plan.athleteProfile.primaryGoal
       );
 
       await prisma.workoutSession.update({
@@ -1436,7 +1463,8 @@ export async function adjustForMissedStrengthDay(
         plan.athleteProfile.equipmentAccess,
         plan.athleteProfile.experienceLevel,
         [],
-        0.85 // -15% volume
+        0.85, // -15% volume
+        plan.athleteProfile.primaryGoal
       );
 
       const created = await prisma.workoutSession.create({
@@ -1465,7 +1493,8 @@ export async function adjustForMissedStrengthDay(
           plan.athleteProfile.equipmentAccess,
           plan.athleteProfile.experienceLevel,
           [],
-          0.85
+          0.85,
+          plan.athleteProfile.primaryGoal
         );
 
         const created = await prisma.workoutSession.create({
@@ -2045,7 +2074,8 @@ export async function adjustForTravelWeek(
         "bodyweight-only",
         profile.experienceLevel,
         [],
-        0.85 // slightly reduced for travel
+        0.85, // slightly reduced for travel
+        profile.primaryGoal
       );
 
       await prisma.workoutSession.update({

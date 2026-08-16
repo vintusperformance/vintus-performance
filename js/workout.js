@@ -59,6 +59,12 @@
       sessionData = res.data;
       canSwap = res.data.planTier === 'PRIVATE_COACHING' && res.data.status === 'SCHEDULED';
       renderWorkout(res.data);
+      var whyBtn = document.getElementById('whyWorkoutsBtn');
+      if (whyBtn) {
+        whyBtn.style.display = '';
+        // Arrived via the dashboard card's "Why These Workouts?" link
+        if (params.get('why') === '1') whyBtn.click();
+      }
     } catch (err) {
       showError(err.message || 'Failed to load workout.');
     }
@@ -551,5 +557,85 @@
       openIllustrationModal(exerciseName, imageUrl);
     });
     return btn;
+  }
+
+  // ── Why These Workouts? (antagonist pairing / ramp / goal explainer) ──
+  var whyWorkoutsBtn = document.getElementById('whyWorkoutsBtn');
+  var whyWorkoutsModal = document.getElementById('whyWorkoutsModal');
+  var whyWorkoutsModalClose = document.getElementById('whyWorkoutsModalClose');
+  var whyWorkoutsBody = document.getElementById('whyWorkoutsBody');
+  var whyWorkoutsCache = null;
+
+  function closeWhyWorkoutsModal() {
+    whyWorkoutsModal.classList.remove('active');
+    unlockBodyScroll();
+  }
+
+  if (whyWorkoutsModalClose) whyWorkoutsModalClose.addEventListener('click', closeWhyWorkoutsModal);
+  if (whyWorkoutsModal) {
+    whyWorkoutsModal.addEventListener('click', function (e) {
+      if (e.target === whyWorkoutsModal) closeWhyWorkoutsModal();
+    });
+  }
+
+  function renderWhyWorkouts(data) {
+    var html = '';
+
+    html += '<div class="why-workouts-section">' +
+      '<div class="why-workouts-label">Programmed For: ' + escapeHtml(data.goalLabel) + '</div>' +
+      '<p>' + escapeHtml(data.goalPhilosophy) + '</p>' +
+      '</div>';
+
+    if (data.hasPairing && data.pairings.length) {
+      html += '<div class="why-workouts-section">' +
+        '<div class="why-workouts-label">Why This Pairing</div>' +
+        '<p>' + escapeHtml(data.pairingPrinciple) + '</p>';
+      data.pairings.forEach(function (p) {
+        html += '<div class="why-workouts-pairing">' +
+          '<div class="why-workouts-pairing-title">' + escapeHtml(p.primary) + ' + ' + escapeHtml(p.accessory) + '</div>' +
+          (p.primaryNote ? '<div class="why-workouts-pairing-note">' + escapeHtml(p.primaryNote) + '</div>' : '') +
+          '</div>';
+      });
+      html += '</div>';
+    }
+
+    if (data.hasRamp) {
+      html += '<div class="why-workouts-section">' +
+        '<div class="why-workouts-label">Why The Build-Up Sets</div>' +
+        '<p>' + escapeHtml(data.rampPrinciple) + '</p>' +
+        '</div>';
+    }
+
+    html += '<div class="why-workouts-section">' +
+      '<div class="why-workouts-label">Listen To Your Body</div>' +
+      '<p>' + escapeHtml(data.autoregulationNote) + '</p>' +
+      '</div>';
+
+    whyWorkoutsBody.innerHTML = html;
+  }
+
+  if (whyWorkoutsBtn) {
+    whyWorkoutsBtn.addEventListener('click', async function () {
+      whyWorkoutsModal.classList.add('active');
+      lockBodyScroll();
+
+      if (whyWorkoutsCache) {
+        renderWhyWorkouts(whyWorkoutsCache);
+        return;
+      }
+
+      whyWorkoutsBody.innerHTML = '<p style="color:var(--gray);">Loading…</p>';
+      try {
+        var res = await apiGet('/api/v1/workout/' + sessionId + '/why');
+        if (!res.success || !res.data) {
+          whyWorkoutsBody.innerHTML = '<p style="color:var(--gray);">Unable to load the explanation for this session.</p>';
+          return;
+        }
+        whyWorkoutsCache = res.data;
+        renderWhyWorkouts(res.data);
+      } catch (err) {
+        whyWorkoutsBody.innerHTML = '<p style="color:var(--gray);">' + escapeHtml(err.message || 'Unable to load the explanation for this session.') + '</p>';
+      }
+    });
   }
 })();

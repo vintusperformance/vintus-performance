@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=2">
-    <link rel="stylesheet" href="css/workout.css?v=5">
+    <link rel="stylesheet" href="css/workout.css?v=6">
     <script src="https://brightengine-production.up.railway.app/api/track/c60c83573ea90b0d" async></script>
 </head>
 <body class="workout-page">
@@ -69,6 +69,10 @@
                 <h1 class="workout-title" id="workoutTitle"></h1>
                 <div class="workout-meta" id="workoutMeta"></div>
                 <p class="workout-description" id="workoutDesc"></p>
+                <button type="button" class="workout-why-btn" id="whyWorkoutsBtn" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Why These Workouts?
+                </button>
             </div>
 
             <!-- Warmup Phase -->
@@ -147,6 +151,17 @@
         </div>
     </div>
 
+    <!-- Why These Workouts Modal -->
+    <div class="workout-modal-overlay" id="whyWorkoutsModal">
+        <div class="workout-modal workout-modal--wide">
+            <button class="workout-modal-close" id="whyWorkoutsModalClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <h3>Why These Workouts?</h3>
+            <div id="whyWorkoutsBody" class="why-workouts-body"></div>
+        </div>
+    </div>
+
     <!-- Completion Modal -->
     <div class="workout-modal-overlay" id="completeModal">
         <div class="workout-modal">
@@ -211,6 +226,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=3"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/workout.js?v=6"></script>
+    <script src="js/workout.js?v=7"></script>
 </body>
 </html>

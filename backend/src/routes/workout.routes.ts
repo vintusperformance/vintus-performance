@@ -16,6 +16,7 @@ import {
 } from "../services/workout.service.js";
 import { getWeekView } from "../services/dashboard.service.js";
 import { getApprovedIllustrationMap } from "../services/exercise-illustration.service.js";
+import { explainSessionProgramming } from "../services/workout-explainer.service.js";
 
 const router = Router();
 
@@ -31,6 +32,34 @@ router.get(
     try {
       const illustrations = await getApprovedIllustrationMap();
       res.status(200).json({ success: true, data: illustrations });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /workout/:sessionId/why — "Why These Workouts?" explanation: the real
+// antagonist-pairing/ramp/goal logic behind this specific session.
+router.get(
+  "/:sessionId/why",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const sessionId = req.params.sessionId as string;
+
+      const profile = await prisma.athleteProfile.findUnique({ where: { userId } });
+      if (!profile) {
+        res.status(404).json({ success: false, error: "Athlete profile not found" });
+        return;
+      }
+
+      const explanation = await explainSessionProgramming(sessionId, profile.id);
+      if (!explanation) {
+        res.status(404).json({ success: false, error: "Workout session not found" });
+        return;
+      }
+
+      res.status(200).json({ success: true, data: explanation });
     } catch (err) {
       next(err);
     }
