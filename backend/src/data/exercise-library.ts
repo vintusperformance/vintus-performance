@@ -10,6 +10,22 @@
  * - 3 interval/tempo endurance
  * - 3 HIIT
  * - 3 mobility/recovery
+ *
+ * Programming philosophy for strength templates (push/pull/upper/lower/full):
+ * antagonist-paired supersets + autoregulated ramp sets, not a traditional
+ * same-muscle-twice split. A push day pairs chest with biceps/rear-delt
+ * (never triceps — triceps are already pre-fatigued as a secondary mover on
+ * every chest press, so isolating them last means they never perform at
+ * capacity) and a pull day pairs back with triceps/front-delt the same way.
+ * The primary lift for each pairing is marked `isRamp: true` — its `reps`
+ * encodes a full build-up sequence (e.g. "20, 20, 5, 4, 3") ending in a true,
+ * autoregulated top set, not a flat range. Its paired accessory is marked
+ * `isSuperset: true` and shares a `pairId` — performed between the ramp's
+ * sets so the resting muscle group gets productive work instead of dead
+ * time, then a full rest before the next ramp set. `applyGoalRepScheme`
+ * (below) rewrites both fields at generation time based on the client's
+ * actual primaryGoal, so a strength-emphasis goal gets a heavier top set
+ * than a fat-loss or endurance-support goal.
  */
 
 // ============================================================
@@ -29,6 +45,23 @@ export interface MainExercise {
   rest: string;
   intensity: string;
   notes?: string;
+  /**
+   * This entry's `reps` encodes a full autoregulated build-up sequence
+   * (comma-separated, ending in the top set) rather than a flat range.
+   * `applyGoalRepScheme` rewrites `sets`/`reps`/`intensity` on these entries
+   * based on the client's goal; `applyExperienceModifiers`/`scaleVolume`
+   * must NOT overwrite them or the sequence breaks.
+   */
+  isRamp?: boolean;
+  /**
+   * The antagonist accessory performed between a paired ramp's sets — kept
+   * deliberately light/moderate (active recovery for the resting muscle),
+   * regardless of experience level. `applyGoalRepScheme` still tunes its
+   * rep target by goal.
+   */
+  isSuperset?: boolean;
+  /** Shared between an isRamp entry and its isSuperset partner. */
+  pairId?: string;
 }
 
 export interface CooldownExercise {
@@ -87,6 +120,80 @@ export const EXPERIENCE_MODIFIERS: Record<string, ExperienceModifiers> = {
 };
 
 // ============================================================
+// Goal-based rep scheme — tunes ramp/superset entries to what the
+// client is actually training for, not a one-size-fits-all rep range.
+// ============================================================
+
+export interface GoalRepProfile {
+  /** Comma-separated set-by-set reps, e.g. "20, 20, 5, 4, 3" — length = set count. */
+  rampSteps: string;
+  /** Replaces `intensity` on ramp entries — the autoregulation cue for the top set. */
+  topSetLabel: string;
+  /** Rep target for the paired antagonist accessory. */
+  accessoryReps: string;
+  /** One-line rationale, surfaced by the "Why These Workouts?" explainer. */
+  philosophy: string;
+}
+
+export const GOAL_REP_PROFILES: Record<string, GoalRepProfile> = {
+  "build-muscle": {
+    rampSteps: "20, 20, 5, 4, 3",
+    topSetLabel: "Build to a true top set of 3 — the first two sets should feel easy, save the tank for the last one.",
+    accessoryReps: "8-10",
+    philosophy:
+      "Build Muscle is framed around gaining strength and size, so the ramp ends heavy — a true 3-rep top set biases the fast-twitch, max-strength motor units. The paired accessory stays moderate (8-10 reps) so it doesn't eat into your energy for the next heavy set.",
+  },
+  recomposition: {
+    rampSteps: "20, 15, 8, 6, 5",
+    topSetLabel: "Build to a strong top set of 5 — heavy and controlled, not a grind.",
+    accessoryReps: "10-12",
+    philosophy:
+      "Recomposition blends strength and fat-loss work, so the ramp lands a bit higher than a pure strength goal (5 vs 3) — still heavy enough to build real strength, with more total training density to support the fat-loss side.",
+  },
+  "lose-fat": {
+    rampSteps: "20, 15, 12, 10",
+    topSetLabel: "Build to a strong top set of 10 — keep the pace up between sets.",
+    accessoryReps: "15-20",
+    philosophy:
+      "Lose Fat prioritizes total work density over max load, so reps stay higher throughout the ramp and the paired accessory runs higher-rep too — more quality work in less time, without turning it into a grinding max-effort session.",
+  },
+  endurance: {
+    rampSteps: "20, 15, 12, 12",
+    topSetLabel: "Controlled top set of 12 — this session supports your cardio training, it's not a max-strength day.",
+    accessoryReps: "15-20",
+    philosophy:
+      "Strength work here supports your endurance training rather than competing with it — reps stay high and the top set stays controlled so you're not carrying heavy soreness or fatigue into your cardio days.",
+  },
+  "well-rounded": {
+    rampSteps: "15, 12, 8, 6",
+    topSetLabel: "Build to a solid top set of 6 — heavy enough to build real strength, light enough to leave energy for the rest of your week.",
+    accessoryReps: "10-12",
+    philosophy:
+      "Well-Rounded blends every rep range across the week, so this ramp sits in the middle — heavy enough to build real strength, light enough to leave room for the cardio and mobility work also on your schedule.",
+  },
+};
+
+/**
+ * Rewrites ramp/superset entries to match the client's actual goal. Must run
+ * before applyExperienceModifiers so experience-level logic can see the
+ * isRamp/isSuperset flags and skip them correctly.
+ */
+export function applyGoalRepScheme(main: MainExercise[], goal: string): MainExercise[] {
+  const profile = GOAL_REP_PROFILES[goal] ?? GOAL_REP_PROFILES["well-rounded"];
+  const rampStepCount = profile.rampSteps.split(",").length;
+
+  return main.map((ex) => {
+    if (ex.isRamp) {
+      return { ...ex, sets: rampStepCount, reps: profile.rampSteps, intensity: profile.topSetLabel };
+    }
+    if (ex.isSuperset) {
+      return { ...ex, reps: profile.accessoryReps };
+    }
+    return ex;
+  });
+}
+
+// ============================================================
 // Standard warmups & cooldowns
 // ============================================================
 
@@ -142,176 +249,134 @@ const HIIT_COOLDOWN: CooldownExercise[] = [
   { exercise: "Controlled Breathing", duration: "2 min" },
 ];
 
+// Shared autoregulation line, appended to a template's straight-set (non-ramp)
+// main exercises where it reads naturally — no fixed weight is gospel; how the
+// body actually shows up today (sleep, stress, recovery) decides the load.
+const AUTOREG_NOTE = "If today's not a good day, don't force the weight — more reps, lighter load, no ego.";
+
 // ============================================================
-// UPPER BODY STRENGTH — PUSH FOCUSED (3)
+// CHEST + BICEPS + REAR DELT — paired push day (STRENGTH_PUSH) (3)
 // ============================================================
 
 const UPPER_PUSH_GYM: SessionTemplate[] = [
   {
-    id: "upper-push-gym-1",
+    id: "chest-bi-reardelt-gym-1",
     sessionType: "STRENGTH_PUSH",
-    label: "Push Strength A — Horizontal Press Focus",
+    label: "Chest, Biceps & Rear Delts — Paired Strength",
     equipment: "full-gym",
     warmup: UPPER_WARMUP,
     main: [
-      { exercise: "Barbell Bench Press", sets: 4, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Incline Dumbbell Press", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Cable Flyes", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Overhead Press", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Tricep Pushdowns", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 7" },
-    ],
-    cooldown: STRENGTH_COOLDOWN,
-    estimatedDuration: 50,
-    estimatedTSS: 65,
-  },
-  {
-    id: "upper-push-gym-2",
-    sessionType: "STRENGTH_PUSH",
-    label: "Push Strength B — Vertical Press Focus",
-    equipment: "full-gym",
-    warmup: UPPER_WARMUP,
-    main: [
-      { exercise: "Overhead Press", sets: 4, reps: "6-8", rest: "120s", intensity: "RPE 8" },
-      { exercise: "Dumbbell Bench Press", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Landmine Press", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Lateral Raises", sets: 3, reps: "12-15", rest: "45s", intensity: "RPE 7" },
-      { exercise: "Overhead Tricep Extension", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 7" },
-    ],
-    cooldown: STRENGTH_COOLDOWN,
-    estimatedDuration: 50,
-    estimatedTSS: 65,
-  },
-  {
-    id: "upper-push-bw-1",
-    sessionType: "STRENGTH_PUSH",
-    label: "Push Strength — Bodyweight",
-    equipment: "bodyweight-only",
-    warmup: UPPER_WARMUP,
-    main: [
-      { exercise: "Push-ups", sets: 4, reps: "12-15", rest: "60s", intensity: "RPE 7", notes: "Full range of motion" },
-      { exercise: "Pike Push-ups", sets: 3, reps: "8-10", rest: "75s", intensity: "RPE 7", notes: "Feet elevated for more difficulty" },
-      { exercise: "Diamond Push-ups", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Bench Dips", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Plank Shoulder Taps", sets: 3, reps: "20 total", rest: "45s", intensity: "RPE 6" },
-    ],
-    cooldown: STRENGTH_COOLDOWN,
-    estimatedDuration: 45,
-    estimatedTSS: 55,
-  },
-];
-
-// ============================================================
-// UPPER BODY STRENGTH — PULL FOCUSED (3)
-// ============================================================
-
-const UPPER_PULL_GYM: SessionTemplate[] = [
-  {
-    id: "upper-pull-gym-1",
-    sessionType: "STRENGTH_PULL",
-    label: "Pull Strength A — Horizontal Pull Focus",
-    equipment: "full-gym",
-    warmup: UPPER_WARMUP,
-    main: [
-      { exercise: "Barbell Rows", sets: 4, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Seated Cable Rows", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6" },
-      { exercise: "Dumbbell Curls", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Hammer Curls", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-    ],
-    cooldown: STRENGTH_COOLDOWN,
-    estimatedDuration: 50,
-    estimatedTSS: 60,
-  },
-  {
-    id: "upper-pull-gym-2",
-    sessionType: "STRENGTH_PULL",
-    label: "Pull Strength B — Vertical Pull Focus",
-    equipment: "full-gym",
-    warmup: UPPER_WARMUP,
-    main: [
-      { exercise: "Weighted Pull-ups", sets: 4, reps: "6-8", rest: "120s", intensity: "RPE 8" },
-      { exercise: "Lat Pulldowns", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Single-Arm Dumbbell Row", sets: 3, reps: "10-12 each", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6" },
-      { exercise: "Barbell Curls", sets: 3, reps: "8-10", rest: "60s", intensity: "RPE 7" },
-    ],
-    cooldown: STRENGTH_COOLDOWN,
-    estimatedDuration: 50,
-    estimatedTSS: 65,
-  },
-  {
-    id: "upper-pull-bw-1",
-    sessionType: "STRENGTH_PULL",
-    label: "Pull Strength — Bodyweight",
-    equipment: "bodyweight-only",
-    warmup: UPPER_WARMUP,
-    main: [
-      { exercise: "Inverted Rows", sets: 4, reps: "10-12", rest: "60s", intensity: "RPE 7", notes: "Adjust angle for difficulty" },
-      { exercise: "Chin-up Negatives", sets: 3, reps: "5-6", rest: "90s", intensity: "RPE 8", notes: "5 sec lowering phase" },
-      { exercise: "Superman Hold", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 6" },
-      { exercise: "Band Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6" },
-      { exercise: "Dead Hang", sets: 3, reps: "30 sec", rest: "60s", intensity: "RPE 6" },
-    ],
-    cooldown: STRENGTH_COOLDOWN,
-    estimatedDuration: 45,
-    estimatedTSS: 50,
-  },
-];
-
-// ============================================================
-// UPPER BODY — COMBINED (for STRENGTH_UPPER type)
-// ============================================================
-
-const UPPER_COMBINED_GYM: SessionTemplate[] = [
-  {
-    id: "upper-combined-gym-1",
-    sessionType: "STRENGTH_UPPER",
-    label: "Upper Body A — Balanced Push/Pull",
-    equipment: "full-gym",
-    warmup: UPPER_WARMUP,
-    main: [
-      { exercise: "Barbell Bench Press", sets: 4, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Barbell Rows", sets: 4, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Overhead Press", sets: 3, reps: "8-10", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Lat Pulldowns", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6" },
-      { exercise: "Dumbbell Curls", sets: 2, reps: "12-15", rest: "45s", intensity: "RPE 6" },
+      {
+        exercise: "Incline Dumbbell Press",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Dumbbell Curls below, then take your full rest before the next Incline Press set.",
+        isRamp: true, pairId: "cb1-1",
+      },
+      {
+        exercise: "Dumbbell Curls",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, this is active recovery for your chest",
+        notes: "Performed between Incline Dumbbell Press sets above. Pick a weight that stays easy for all 3 rounds.",
+        isSuperset: true, pairId: "cb1-1",
+      },
+      {
+        exercise: "Flat Dumbbell Bench Press",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Band Rear Delt Flys below, then take your full rest before the next Flat Bench set.",
+        isRamp: true, pairId: "cb1-2",
+      },
+      {
+        exercise: "Band Rear Delt Flys",
+        sets: 3, reps: "12-15", rest: "—",
+        intensity: "RPE 5-6 — controlled, not heavy",
+        notes: "Performed between Flat Dumbbell Bench Press sets above.",
+        isSuperset: true, pairId: "cb1-2",
+      },
+      { exercise: "Pec Deck Fly", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 7", notes: `Straight sets — full stretch and squeeze. ${AUTOREG_NOTE}` },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 55,
     estimatedTSS: 70,
   },
   {
-    id: "upper-combined-gym-2",
-    sessionType: "STRENGTH_UPPER",
-    label: "Upper Body B — Volume Focus",
+    id: "chest-bi-reardelt-gym-2",
+    sessionType: "STRENGTH_PUSH",
+    label: "Chest, Biceps & Rear Delts — Barbell Variation",
     equipment: "full-gym",
     warmup: UPPER_WARMUP,
     main: [
-      { exercise: "Incline Dumbbell Press", sets: 4, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Seated Cable Rows", sets: 4, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Dumbbell Shoulder Press", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Cable Flyes", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 6" },
-      { exercise: "Lateral Raises", sets: 3, reps: "12-15", rest: "45s", intensity: "RPE 7" },
-      { exercise: "Tricep Pushdowns", sets: 3, reps: "12-15", rest: "45s", intensity: "RPE 6" },
+      {
+        exercise: "Flat Barbell Bench Press",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Hammer Curls below, then take your full rest before the next Bench Press set.",
+        isRamp: true, pairId: "cb2-1",
+      },
+      {
+        exercise: "Hammer Curls",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, this is active recovery for your chest",
+        notes: "Performed between Flat Barbell Bench Press sets above.",
+        isSuperset: true, pairId: "cb2-1",
+      },
+      {
+        exercise: "Seated Dumbbell Shoulder Press",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Face Pulls below, then take your full rest before the next Shoulder Press set.",
+        isRamp: true, pairId: "cb2-2",
+      },
+      {
+        exercise: "Face Pulls",
+        sets: 3, reps: "15-20", rest: "—",
+        intensity: "RPE 5-6 — controlled, not heavy",
+        notes: "Performed between Seated Dumbbell Shoulder Press sets above.",
+        isSuperset: true, pairId: "cb2-2",
+      },
+      { exercise: "Cable Crossover", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 7", notes: `Straight sets — finisher for chest. ${AUTOREG_NOTE}` },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 55,
-    estimatedTSS: 68,
+    estimatedTSS: 70,
   },
   {
-    id: "upper-combined-bw-1",
-    sessionType: "STRENGTH_UPPER",
-    label: "Upper Body — Bodyweight",
+    id: "chest-bi-reardelt-bw-1",
+    sessionType: "STRENGTH_PUSH",
+    label: "Chest, Biceps & Rear Delts — Bodyweight",
     equipment: "bodyweight-only",
     warmup: UPPER_WARMUP,
     main: [
-      { exercise: "Push-ups", sets: 4, reps: "12-15", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Inverted Rows", sets: 4, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Pike Push-ups", sets: 3, reps: "8-10", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Chin-up Negatives", sets: 3, reps: "5-6", rest: "90s", intensity: "RPE 8" },
-      { exercise: "Diamond Push-ups", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Plank Hold", sets: 3, reps: "45 sec", rest: "45s", intensity: "RPE 6" },
+      {
+        exercise: "Push-ups",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5 — elevate feet or slow the tempo to make it harder",
+        notes: "Superset with the isometric bicep hold below. If you have any resistance band or light household object, use Band/Object Curls instead — true bicep isolation needs load, this is the honest bodyweight substitute.",
+        isRamp: true, pairId: "cbbw-1",
+      },
+      {
+        exercise: "Doorframe Isometric Bicep Hold",
+        sets: 3, reps: "20-30 sec", rest: "—",
+        intensity: "RPE 5-6 — light tension, this is active recovery for your chest",
+        notes: "Pull against a doorframe with elbows bent, holding tension. Performed between Push-up sets above.",
+        isSuperset: true, pairId: "cbbw-1",
+      },
+      {
+        exercise: "Pike Push-ups",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5",
+        notes: "Superset each set with Superman Y-Raises below, then take your full rest before the next Pike Push-up set.",
+        isRamp: true, pairId: "cbbw-2",
+      },
+      {
+        exercise: "Superman Y-Raise",
+        sets: 3, reps: "12-15", rest: "—",
+        intensity: "RPE 5-6 — controlled, not heavy",
+        notes: "Performed between Pike Push-up sets above. Targets rear delts.",
+        isSuperset: true, pairId: "cbbw-2",
+      },
+      { exercise: "Diamond Push-ups", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7", notes: `Straight sets — chest/tricep finisher. ${AUTOREG_NOTE}` },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 45,
@@ -320,7 +385,272 @@ const UPPER_COMBINED_GYM: SessionTemplate[] = [
 ];
 
 // ============================================================
-// LOWER BODY STRENGTH (4)
+// BACK + TRICEPS + FRONT/SIDE DELT — paired pull day (STRENGTH_PULL) (3)
+// ============================================================
+
+const UPPER_PULL_GYM: SessionTemplate[] = [
+  {
+    id: "back-tri-frontdelt-gym-1",
+    sessionType: "STRENGTH_PULL",
+    label: "Back, Triceps & Front/Side Delts — Paired Strength",
+    equipment: "full-gym",
+    warmup: UPPER_WARMUP,
+    main: [
+      {
+        exercise: "Seated Cable Row",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Tricep Pushdowns below, then take your full rest before the next Row set.",
+        isRamp: true, pairId: "bt1-1",
+      },
+      {
+        exercise: "Tricep Pushdowns",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, this is active recovery for your back",
+        notes: "Performed between Seated Cable Row sets above.",
+        isSuperset: true, pairId: "bt1-1",
+      },
+      {
+        exercise: "Lat Pulldown",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Lateral Raises below, then take your full rest before the next Pulldown set. This is where the pairing shifts from triceps to front/side delt.",
+        isRamp: true, pairId: "bt1-2",
+      },
+      {
+        exercise: "Lateral Raises",
+        sets: 3, reps: "12-15", rest: "—",
+        intensity: "RPE 5-6 — controlled, not heavy",
+        notes: "Performed between Lat Pulldown sets above.",
+        isSuperset: true, pairId: "bt1-2",
+      },
+      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6", notes: `Straight sets — rear delt and upper back health. ${AUTOREG_NOTE}` },
+    ],
+    cooldown: STRENGTH_COOLDOWN,
+    estimatedDuration: 55,
+    estimatedTSS: 68,
+  },
+  {
+    id: "back-tri-frontdelt-gym-2",
+    sessionType: "STRENGTH_PULL",
+    label: "Back, Triceps & Front/Side Delts — Barbell Variation",
+    equipment: "full-gym",
+    warmup: UPPER_WARMUP,
+    main: [
+      {
+        exercise: "Barbell Bent-Over Row",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Overhead Tricep Extension below, then take your full rest before the next Row set.",
+        isRamp: true, pairId: "bt2-1",
+      },
+      {
+        exercise: "Overhead Tricep Extension",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, this is active recovery for your back",
+        notes: "Performed between Barbell Bent-Over Row sets above.",
+        isSuperset: true, pairId: "bt2-1",
+      },
+      {
+        exercise: "Weighted Pull-ups",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — bodyweight only for the first sets if needed",
+        notes: "Superset each set with Front Raises below, then take your full rest before the next Pull-up set.",
+        isRamp: true, pairId: "bt2-2",
+      },
+      {
+        exercise: "Front Raises",
+        sets: 3, reps: "12-15", rest: "—",
+        intensity: "RPE 5-6 — controlled, not heavy",
+        notes: "Performed between Weighted Pull-up sets above.",
+        isSuperset: true, pairId: "bt2-2",
+      },
+      { exercise: "Single-Arm Dumbbell Row", sets: 3, reps: "10-12 each", rest: "60s", intensity: "RPE 7", notes: `Straight sets — finisher for back. ${AUTOREG_NOTE}` },
+    ],
+    cooldown: STRENGTH_COOLDOWN,
+    estimatedDuration: 55,
+    estimatedTSS: 70,
+  },
+  {
+    id: "back-tri-frontdelt-bw-1",
+    sessionType: "STRENGTH_PULL",
+    label: "Back, Triceps & Front/Side Delts — Bodyweight",
+    equipment: "bodyweight-only",
+    warmup: UPPER_WARMUP,
+    main: [
+      {
+        exercise: "Inverted Rows",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5 — adjust body angle to make it harder",
+        notes: "Superset each set with Bench Dips below, then take your full rest before the next Row set.",
+        isRamp: true, pairId: "btbw-1",
+      },
+      {
+        exercise: "Bench Dips",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, this is active recovery for your back",
+        notes: "Performed between Inverted Row sets above.",
+        isSuperset: true, pairId: "btbw-1",
+      },
+      {
+        exercise: "Chin-up Negatives",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5 — 5 sec lowering phase on the heaviest sets",
+        notes: "Superset each set with Plank Shoulder Taps below, then take your full rest before the next set. This is where the pairing shifts from triceps to front/side delt.",
+        isRamp: true, pairId: "btbw-2",
+      },
+      {
+        exercise: "Plank Shoulder Taps",
+        sets: 3, reps: "20 total", rest: "—",
+        intensity: "RPE 5-6 — controlled, not fast",
+        notes: "Performed between Chin-up Negative sets above.",
+        isSuperset: true, pairId: "btbw-2",
+      },
+      { exercise: "Superman Hold", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 6", notes: `Straight sets — upper back and rear delt endurance. ${AUTOREG_NOTE}` },
+    ],
+    cooldown: STRENGTH_COOLDOWN,
+    estimatedDuration: 45,
+    estimatedTSS: 55,
+  },
+];
+
+// ============================================================
+// FULL UPPER — PAIRED (for STRENGTH_UPPER type) — a compressed version of
+// both the push and pull pairing patterns in one session (3)
+// ============================================================
+
+const UPPER_COMBINED_GYM: SessionTemplate[] = [
+  {
+    id: "full-upper-paired-gym-1",
+    sessionType: "STRENGTH_UPPER",
+    label: "Full Upper — Paired Push & Pull",
+    equipment: "full-gym",
+    warmup: UPPER_WARMUP,
+    main: [
+      {
+        exercise: "Flat Dumbbell Bench Press",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Dumbbell Curls below, then take your full rest before the next Bench set.",
+        isRamp: true, pairId: "fu1-1",
+      },
+      {
+        exercise: "Dumbbell Curls",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, active recovery for your chest",
+        notes: "Performed between Flat Dumbbell Bench Press sets above.",
+        isSuperset: true, pairId: "fu1-1",
+      },
+      {
+        exercise: "Seated Cable Row",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Tricep Pushdowns below, then take your full rest before the next Row set.",
+        isRamp: true, pairId: "fu1-2",
+      },
+      {
+        exercise: "Tricep Pushdowns",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, active recovery for your back",
+        notes: "Performed between Seated Cable Row sets above.",
+        isSuperset: true, pairId: "fu1-2",
+      },
+      { exercise: "Standing Overhead Press", sets: 3, reps: "8-10", rest: "75s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6", notes: "Straight sets — rear delt and upper back health." },
+    ],
+    cooldown: STRENGTH_COOLDOWN,
+    estimatedDuration: 55,
+    estimatedTSS: 70,
+  },
+  {
+    id: "full-upper-paired-gym-2",
+    sessionType: "STRENGTH_UPPER",
+    label: "Full Upper — Paired Volume Focus",
+    equipment: "full-gym",
+    warmup: UPPER_WARMUP,
+    main: [
+      {
+        exercise: "Incline Dumbbell Press",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Hammer Curls below, then take your full rest before the next Press set.",
+        isRamp: true, pairId: "fu2-1",
+      },
+      {
+        exercise: "Hammer Curls",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, active recovery for your chest",
+        notes: "Performed between Incline Dumbbell Press sets above.",
+        isSuperset: true, pairId: "fu2-1",
+      },
+      {
+        exercise: "Lat Pulldown",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Overhead Tricep Extension below, then take your full rest before the next Pulldown set.",
+        isRamp: true, pairId: "fu2-2",
+      },
+      {
+        exercise: "Overhead Tricep Extension",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, active recovery for your back",
+        notes: "Performed between Lat Pulldown sets above.",
+        isSuperset: true, pairId: "fu2-2",
+      },
+      { exercise: "Lateral Raises", sets: 3, reps: "12-15", rest: "45s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Cable Flyes", sets: 3, reps: "12-15", rest: "60s", intensity: "RPE 6", notes: "Straight sets — chest finisher." },
+    ],
+    cooldown: STRENGTH_COOLDOWN,
+    estimatedDuration: 55,
+    estimatedTSS: 68,
+  },
+  {
+    id: "full-upper-paired-bw-1",
+    sessionType: "STRENGTH_UPPER",
+    label: "Full Upper — Paired Bodyweight",
+    equipment: "bodyweight-only",
+    warmup: UPPER_WARMUP,
+    main: [
+      {
+        exercise: "Push-ups",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5",
+        notes: "Superset with the isometric bicep hold below. Use Band/Object Curls instead if you have anything with resistance.",
+        isRamp: true, pairId: "fubw-1",
+      },
+      {
+        exercise: "Doorframe Isometric Bicep Hold",
+        sets: 3, reps: "20-30 sec", rest: "—",
+        intensity: "RPE 5-6 — light tension, active recovery for your chest",
+        notes: "Performed between Push-up sets above.",
+        isSuperset: true, pairId: "fubw-1",
+      },
+      {
+        exercise: "Inverted Rows",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5",
+        notes: "Superset each set with Bench Dips below, then take your full rest before the next Row set.",
+        isRamp: true, pairId: "fubw-2",
+      },
+      {
+        exercise: "Bench Dips",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — light, active recovery for your back",
+        notes: "Performed between Inverted Row sets above.",
+        isSuperset: true, pairId: "fubw-2",
+      },
+      { exercise: "Pike Push-ups", sets: 3, reps: "8-10", rest: "75s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Superman Hold", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 6", notes: "Straight sets — rear delt and upper back endurance." },
+    ],
+    cooldown: STRENGTH_COOLDOWN,
+    estimatedDuration: 45,
+    estimatedTSS: 55,
+  },
+];
+
+// ============================================================
+// LOWER BODY STRENGTH (4) — ramp + autoregulation, paired with a
+// low-fatigue-cost accessory (core/calves) rather than a competing lift
 // ============================================================
 
 const LOWER_GYM: SessionTemplate[] = [
@@ -331,11 +661,23 @@ const LOWER_GYM: SessionTemplate[] = [
     equipment: "full-gym",
     warmup: LOWER_WARMUP,
     main: [
-      { exercise: "Barbell Back Squat", sets: 4, reps: "6-8", rest: "120s", intensity: "RPE 8" },
-      { exercise: "Romanian Deadlift", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Walking Lunges", sets: 3, reps: "10 each", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Leg Press", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Calf Raises", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 7" },
+      {
+        exercise: "Barbell Back Squat",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Standing Calf Raises below, then take your full rest before the next Squat set.",
+        isRamp: true, pairId: "lg1-1",
+      },
+      {
+        exercise: "Standing Calf Raises",
+        sets: 3, reps: "15-20", rest: "—",
+        intensity: "RPE 5-6 — light, low central fatigue",
+        notes: "Performed between Barbell Back Squat sets above.",
+        isSuperset: true, pairId: "lg1-1",
+      },
+      { exercise: "Romanian Deadlift", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Walking Lunges", sets: 3, reps: "10 each", rest: "75s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Leg Press", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 55,
@@ -348,11 +690,23 @@ const LOWER_GYM: SessionTemplate[] = [
     equipment: "full-gym",
     warmup: LOWER_WARMUP,
     main: [
-      { exercise: "Barbell Deadlift", sets: 4, reps: "5-6", rest: "150s", intensity: "RPE 8" },
-      { exercise: "Front Squat", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Bulgarian Split Squats", sets: 3, reps: "10 each", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Hamstring Curls", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Calf Raises", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 7" },
+      {
+        exercise: "Barbell Deadlift",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "75-100s (after the paired accessory)",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "Superset each set with Hanging Knee Raises below, then take your full rest before the next Deadlift set.",
+        isRamp: true, pairId: "lg2-1",
+      },
+      {
+        exercise: "Hanging Knee Raises",
+        sets: 3, reps: "10-12", rest: "—",
+        intensity: "RPE 5-6 — controlled, low central fatigue",
+        notes: "Performed between Barbell Deadlift sets above.",
+        isSuperset: true, pairId: "lg2-1",
+      },
+      { exercise: "Front Squat", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Bulgarian Split Squats", sets: 3, reps: "10 each", rest: "75s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Calf Raises", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 7", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 55,
@@ -365,11 +719,23 @@ const LOWER_GYM: SessionTemplate[] = [
     equipment: "bodyweight-only",
     warmup: LOWER_WARMUP,
     main: [
-      { exercise: "Bulgarian Split Squats", sets: 4, reps: "12 each", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Pistol Squat Progressions", sets: 3, reps: "6-8 each", rest: "90s", intensity: "RPE 8" },
-      { exercise: "Glute Bridges", sets: 3, reps: "15-20", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Step-ups", sets: 3, reps: "12 each", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Single-Leg Calf Raises", sets: 3, reps: "15 each", rest: "45s", intensity: "RPE 7" },
+      {
+        exercise: "Bulgarian Split Squats",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5 each side",
+        notes: "Superset each set with Plank Hold below, then take your full rest before the next set.",
+        isRamp: true, pairId: "lbw1-1",
+      },
+      {
+        exercise: "Plank Hold",
+        sets: 3, reps: "30-45 sec", rest: "—",
+        intensity: "RPE 5-6 — controlled, low central fatigue",
+        notes: "Performed between Bulgarian Split Squat sets above.",
+        isSuperset: true, pairId: "lbw1-1",
+      },
+      { exercise: "Pistol Squat Progressions", sets: 3, reps: "6-8 each", rest: "90s", intensity: "RPE 8", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Glute Bridges", sets: 3, reps: "15-20", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Single-Leg Calf Raises", sets: 3, reps: "15 each", rest: "45s", intensity: "RPE 7", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 45,
@@ -382,11 +748,23 @@ const LOWER_GYM: SessionTemplate[] = [
     equipment: "bodyweight-only",
     warmup: LOWER_WARMUP,
     main: [
-      { exercise: "Jump Squats", sets: 4, reps: "10-12", rest: "75s", intensity: "RPE 7", notes: "Land softly" },
-      { exercise: "Single-Leg Deadlift", sets: 3, reps: "10 each", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Lateral Lunges", sets: 3, reps: "10 each", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Wall Sit", sets: 3, reps: "45 sec", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Nordic Curl Negatives", sets: 3, reps: "5-6", rest: "90s", intensity: "RPE 8" },
+      {
+        exercise: "Jump Squats",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s (after the paired accessory)",
+        intensity: "Build to your hardest true top set of 3-5 — land soft",
+        notes: "Superset each set with Single-Leg Deadlift below, then take your full rest before the next set.",
+        isRamp: true, pairId: "lbw2-1",
+      },
+      {
+        exercise: "Single-Leg Deadlift",
+        sets: 3, reps: "10 each", rest: "—",
+        intensity: "RPE 5-6 — controlled, low central fatigue",
+        notes: "Performed between Jump Squat sets above.",
+        isSuperset: true, pairId: "lbw2-1",
+      },
+      { exercise: "Lateral Lunges", sets: 3, reps: "10 each", rest: "60s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Wall Sit", sets: 3, reps: "45 sec", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Nordic Curl Negatives", sets: 3, reps: "5-6", rest: "90s", intensity: "RPE 8", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 45,
@@ -395,7 +773,8 @@ const LOWER_GYM: SessionTemplate[] = [
 ];
 
 // ============================================================
-// FULL BODY STRENGTH (4)
+// FULL BODY STRENGTH (4) — ramp on the primary compound lift,
+// autoregulation on the rest
 // ============================================================
 
 const FULL_BODY_GYM: SessionTemplate[] = [
@@ -406,11 +785,17 @@ const FULL_BODY_GYM: SessionTemplate[] = [
     equipment: "full-gym",
     warmup: STRENGTH_WARMUP,
     main: [
-      { exercise: "Barbell Deadlift", sets: 4, reps: "5-6", rest: "150s", intensity: "RPE 8" },
-      { exercise: "Dumbbell Bench Press", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Barbell Squats", sets: 3, reps: "8-10", rest: "120s", intensity: "RPE 7" },
-      { exercise: "Pull-ups", sets: 3, reps: "6-8", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Dumbbell Shoulder Press", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
+      {
+        exercise: "Barbell Deadlift",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "90-120s",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "The heaviest lift of the session — build to a real top set, then move on.",
+        isRamp: true,
+      },
+      { exercise: "Dumbbell Bench Press", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Barbell Squats", sets: 3, reps: "8-10", rest: "120s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Pull-ups", sets: 3, reps: "6-8", rest: "90s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Dumbbell Shoulder Press", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 55,
@@ -423,11 +808,17 @@ const FULL_BODY_GYM: SessionTemplate[] = [
     equipment: "full-gym",
     warmup: STRENGTH_WARMUP,
     main: [
-      { exercise: "Front Squat", sets: 4, reps: "8-10", rest: "120s", intensity: "RPE 7" },
-      { exercise: "Barbell Rows", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Incline Dumbbell Press", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Romanian Deadlift", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7" },
-      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6" },
+      {
+        exercise: "Front Squat",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "90-120s",
+        intensity: "Build to a true top set of 3 — first two sets should feel easy",
+        notes: "The heaviest lift of the session — build to a real top set, then move on.",
+        isRamp: true,
+      },
+      { exercise: "Barbell Rows", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Incline Dumbbell Press", sets: 3, reps: "10-12", rest: "75s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Romanian Deadlift", sets: 3, reps: "8-10", rest: "90s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Face Pulls", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 6", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 55,
@@ -440,11 +831,17 @@ const FULL_BODY_GYM: SessionTemplate[] = [
     equipment: "bodyweight-only",
     warmup: STRENGTH_WARMUP,
     main: [
-      { exercise: "Push-ups", sets: 4, reps: "15-20", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Bodyweight Squats", sets: 4, reps: "15-20", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Inverted Rows", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Lunges", sets: 3, reps: "12 each", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Plank", sets: 3, reps: "45 sec", rest: "45s", intensity: "RPE 6" },
+      {
+        exercise: "Bodyweight Squats",
+        sets: 5, reps: "20, 20, 5, 4, 3", rest: "60-90s",
+        intensity: "Build to your hardest true top set of 3-5 — slow the tempo or add a pause to make it harder",
+        notes: "The primary lift of the session — build to a real top effort, then move on.",
+        isRamp: true,
+      },
+      { exercise: "Push-ups", sets: 3, reps: "15-20", rest: "60s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Inverted Rows", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Lunges", sets: 3, reps: "12 each", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Plank", sets: 3, reps: "45 sec", rest: "45s", intensity: "RPE 6", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 45,
@@ -457,12 +854,12 @@ const FULL_BODY_GYM: SessionTemplate[] = [
     equipment: "bodyweight-only",
     warmup: STRENGTH_WARMUP,
     main: [
-      { exercise: "Burpees", sets: 3, reps: "10", rest: "75s", intensity: "RPE 7" },
-      { exercise: "Bulgarian Split Squats", sets: 3, reps: "10 each", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Diamond Push-ups", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7" },
-      { exercise: "Glute Bridges", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 7" },
-      { exercise: "Superman Hold", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 6" },
-      { exercise: "Mountain Climbers", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 7" },
+      { exercise: "Burpees", sets: 3, reps: "10", rest: "75s", intensity: "RPE 7", notes: `Straight sets. ${AUTOREG_NOTE}` },
+      { exercise: "Bulgarian Split Squats", sets: 3, reps: "10 each", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Diamond Push-ups", sets: 3, reps: "10-12", rest: "60s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Glute Bridges", sets: 3, reps: "15-20", rest: "45s", intensity: "RPE 7", notes: "Straight sets." },
+      { exercise: "Superman Hold", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 6", notes: "Straight sets." },
+      { exercise: "Mountain Climbers", sets: 3, reps: "30 sec", rest: "45s", intensity: "RPE 7", notes: "Straight sets." },
     ],
     cooldown: STRENGTH_COOLDOWN,
     estimatedDuration: 45,
@@ -786,13 +1183,24 @@ export function applyExperienceModifiers(
 ): MainExercise[] {
   const mods = EXPERIENCE_MODIFIERS[experienceLevel] ?? EXPERIENCE_MODIFIERS["intermediate"];
 
-  return main.map((ex) => ({
-    ...ex,
-    sets: Math.max(2, Math.round(ex.sets * mods.setsMultiplier)),
-    reps: mods.repRange !== "8-10" ? mods.repRange : ex.reps,
-    rest: adjustRest(ex.rest, mods.restMultiplier),
-    intensity: mods.intensityLabel,
-  }));
+  return main.map((ex) => {
+    if (ex.isRamp || ex.isSuperset) {
+      // Ramp sequences and their paired accessory reps are set by
+      // applyGoalRepScheme based on the client's actual goal — a flat
+      // experience-level rep range would overwrite that goal-specific
+      // structure. Their `rest` strings are descriptive ("60-90s (after the
+      // paired accessory)"), not a bare number, so adjustRest's leading-digit
+      // regex would silently truncate the explanation — leave rest as authored.
+      return ex;
+    }
+    return {
+      ...ex,
+      sets: Math.max(2, Math.round(ex.sets * mods.setsMultiplier)),
+      reps: mods.repRange !== "8-10" ? mods.repRange : ex.reps,
+      rest: adjustRest(ex.rest, mods.restMultiplier),
+      intensity: mods.intensityLabel,
+    };
+  });
 }
 
 /**
@@ -802,10 +1210,15 @@ export function scaleVolume(
   main: MainExercise[],
   multiplier: number
 ): MainExercise[] {
-  return main.map((ex) => ({
-    ...ex,
-    sets: Math.max(1, Math.round(ex.sets * multiplier)),
-  }));
+  return main.map((ex) => {
+    if (ex.isRamp) {
+      // A ramp's set count is the number of prescribed build-up steps, not a
+      // generic volume dial -- multiplying it would corrupt the sequence.
+      // The ramp's own autoregulation framing already absorbs a bad day.
+      return ex;
+    }
+    return { ...ex, sets: Math.max(1, Math.round(ex.sets * multiplier)) };
+  });
 }
 
 function adjustRest(rest: string, multiplier: number): string {

@@ -100,6 +100,36 @@
     line-height: 1.6;
 }
 
+.workout-why-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.55rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border-color-hover);
+    color: var(--silver);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+.workout-why-btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.workout-why-btn:hover {
+    color: var(--white);
+    border-color: var(--silver);
+    background: rgba(192, 192, 192, 0.06);
+}
+
 /* ── Phases ── */
 
 .workout-phase {
@@ -463,6 +493,64 @@
     background: var(--black-light);
     border: 1px solid var(--border-color-hover);
     padding: 2.5rem 2rem 2rem;
+}
+
+.workout-modal--wide {
+    max-width: 620px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.why-workouts-body {
+    color: var(--off-white);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.why-workouts-section {
+    margin-bottom: 1.5rem;
+}
+
+.why-workouts-section:last-child {
+    margin-bottom: 0;
+}
+
+.why-workouts-label {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--silver);
+    margin-bottom: 0.6rem;
+}
+
+.why-workouts-pairing {
+    background: var(--black-card);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--silver);
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
+.why-workouts-pairing:last-child {
+    margin-bottom: 0;
+}
+
+.why-workouts-pairing-title {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--off-white);
+    margin-bottom: 0.4rem;
+}
+
+.why-workouts-pairing-note {
+    color: var(--gray);
+    font-size: 0.85rem;
+    line-height: 1.5;
 }
 
 .workout-modal-close {
