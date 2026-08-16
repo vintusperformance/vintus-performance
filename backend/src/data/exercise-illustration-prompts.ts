@@ -4,11 +4,16 @@
  * data below carries over unchanged (it's dietary-neutral body-mechanics
  * data, equally valid for describing a still illustration or a video).
  *
- * Scope: the ~24 highest-frequency exercises across exercise-library.ts
- * session templates, not the full ~112-exercise exercise-swaps.ts list.
- * Illustration quality and admin review time both thin out fast past the
- * "major lift" tier, so start narrow and expand deliberately rather than
- * generating all ~112 uniformly — same reasoning the video pilot used.
+ * The list below is the curated, highest-quality tier — the ~24
+ * highest-frequency exercises, hand-written with camera angle, equipment,
+ * and biomechanical form cues for a better prompt than a bare exercise name
+ * alone produces. It is NOT the ceiling on what can be generated: client
+ * plans are AI-generated free text, not drawn from a fixed list, so full
+ * coverage requires generating from just the exercise name for anything
+ * outside this curated set too — see buildGenericIllustrationPrompt below,
+ * and exercise-illustration.service.ts's getExercisesNeedingIllustration,
+ * which finds exactly which names real client plans are currently using
+ * without an illustration yet.
  *
  * Unlike the video pilot, illustrations have no gender variant — a form
  * diagram depicts the movement, not a person to identify with, so one
@@ -342,4 +347,22 @@ export function buildIllustrationPrompt(cue: ExerciseIllustrationCue): string {
 
 export function getStarterCue(exerciseName: string): ExerciseIllustrationCue | undefined {
   return STARTER_EXERCISE_CUES.find((c) => c.exerciseName === exerciseName);
+}
+
+/**
+ * Fallback for any exercise name without curated cue data. Client plans are
+ * AI-generated free text, not drawn from a fixed list, so the curated set
+ * above can never have full coverage on its own — this is what makes "every
+ * exercise a client sees" achievable at all. Lower fidelity than a curated
+ * cue (no camera angle or biomechanical form cues to steer the model with,
+ * just the name itself), but still gated by the same admin-approval step
+ * before a client ever sees it, so a worse prompt just means more likely to
+ * need a Reject + Regenerate, not a safety risk.
+ */
+export function buildGenericIllustrationPrompt(exerciseName: string): string {
+  return [
+    `A professional fitness instructional illustration demonstrating proper form for: ${exerciseName}.`,
+    `Choose a camera angle (side, front, or three-quarter) that best shows the movement pattern implied by the exercise name. Show the full body and the complete range of motion — depict the start and end position, or use motion arrows to show the movement path within a single image. Infer reasonable equipment and setup from the exercise name.`,
+    PROMPT_SUFFIX,
+  ].join(" ");
 }

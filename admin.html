@@ -346,25 +346,36 @@
             <!-- Exercise Illustrations Tab -->
             <div class="admin-tab-content" id="tabExerciseIllustrations">
                 <div class="admin-card">
-                    <h3 class="admin-card-title">Generate a "Show Me How" Diagram</h3>
-                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;margin-bottom:1rem;">One illustration exists per exercise — generated once and reused for every client. Generation is synchronous (a few seconds), no polling needed. Nothing here is visible to clients until you approve it below.</p>
-                    <div class="admin-form-row" style="align-items:flex-end;">
-                        <div class="admin-form-group" style="flex:1;">
-                            <label for="illustrationExerciseSelect">Exercise</label>
-                            <select class="admin-select" id="illustrationExerciseSelect" style="width:100%;"></select>
-                        </div>
-                        <button class="admin-btn-primary" id="illustrationGenerateBtn" type="button">Generate</button>
+                    <p style="color:rgba(192,192,192,0.4);font-size:0.8rem;">Every exercise name used in a real client plan, plus the curated set, in one sheet — sorted by how many sessions use it. One illustration per exercise, reused for every client. Nothing here is visible to clients until you approve it.</p>
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:1rem;">
+                        <button class="admin-btn-primary admin-btn-small" id="illustrationGenerateAllBtn" type="button">Generate All Missing</button>
+                        <button class="admin-btn-primary admin-btn-small" id="illustrationApproveAllBtn" type="button">Approve All Needing Review</button>
+                        <button class="admin-btn-secondary admin-btn-small" id="illustrationRefreshBtn" type="button">Refresh</button>
                     </div>
-                    <div id="illustrationGenerateStatus" style="margin-top:0.75rem;"></div>
+                    <div id="illustrationBulkStatus" style="margin-top:0.75rem;"></div>
                 </div>
                 <div class="admin-esc-toolbar">
                     <button class="admin-filter-btn illustration-filter-btn admin-filter-btn--active" data-illustration-filter="all">All</button>
+                    <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="NOT_GENERATED">Not Generated</button>
                     <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="NEEDS_REVIEW">Needs Review</button>
                     <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="APPROVED">Approved</button>
                     <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="REJECTED">Rejected</button>
                     <button class="admin-filter-btn illustration-filter-btn" data-illustration-filter="FAILED">Failed</button>
                 </div>
-                <div id="exerciseIllustrationsList" class="admin-esc-list"></div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Preview</th>
+                                <th>Exercise</th>
+                                <th>Used In</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exerciseIllustrationsList"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </section>
@@ -477,6 +488,6 @@
     <script src="js/config.js?v=2"></script>
     <script src="js/api.js?v=3"></script>
     <script src="js/nav-auth.js?v=2"></script>
-    <script src="js/admin.js?v=4"></script>
+    <script src="js/admin.js?v=5"></script>
 </body>
 </html>
