@@ -5,6 +5,7 @@ import { generateImage, isImageGenConfigured } from "../lib/image-gen.js";
 import {
   STARTER_EXERCISE_CUES,
   buildIllustrationPrompt,
+  buildGenericIllustrationPrompt,
   getStarterCue,
 } from "../data/exercise-illustration-prompts.js";
 
@@ -46,11 +47,102 @@ export async function listExerciseIllustrations(status?: ExerciseIllustrationSta
   });
 }
 
+export interface IllustrationBoardRow {
+  exerciseName: string;
+  usageCount: number;
+  status: ExerciseIllustrationStatus | "NOT_GENERATED";
+  id: string | null;
+  imageUrl: string | null;
+  rejectionNote: string | null;
+  updatedAt: Date | null;
+  isCurated: boolean;
+}
+
 /**
- * Generates (or regenerates) the illustration for one exercise. Errors if
- * the exercise isn't in the starter metadata list (buildIllustrationPrompt
- * needs cue data) or the image API isn't configured. Synchronous — resolves
- * once the image is ready, with the row already at its final status.
+ * The one spreadsheet-style admin view: every exercise name that needs a
+ * decision, in one list. Client plans are freeform AI text, not drawn from
+ * the curated ~24, so the row set is a union of three sources — names
+ * actually used in real WorkoutSessions (with a usage count, so the
+ * highest-impact gaps sort first), the curated starter list (may not be in
+ * any session yet), and existing ExerciseIllustration rows of any status
+ * (so REJECTED/FAILED attempts stay visible instead of disappearing).
+ * Matching across sources is case-insensitive so "Push-Up" and "push-up"
+ * collapse into one row.
+ */
+export async function getIllustrationBoard(): Promise<IllustrationBoardRow[]> {
+  const sessions = await prisma.workoutSession.findMany({ select: { content: true } });
+
+  const usageCounts = new Map<string, number>();
+  const displayNames = new Map<string, string>();
+
+  for (const session of sessions) {
+    const content = session.content as
+      | { warmup?: Array<{ exercise?: string }>; main?: Array<{ exercise?: string }>; cooldown?: Array<{ exercise?: string }> }
+      | null;
+    if (!content || typeof content !== "object") continue;
+
+    const namesInSession = new Set<string>();
+    for (const section of ["warmup", "main", "cooldown"] as const) {
+      const items = Array.isArray(content[section]) ? content[section]! : [];
+      for (const item of items) {
+        const name = typeof item?.exercise === "string" ? item.exercise.trim() : "";
+        if (name) namesInSession.add(name);
+      }
+    }
+
+    for (const name of namesInSession) {
+      const key = name.toLowerCase();
+      usageCounts.set(key, (usageCounts.get(key) || 0) + 1);
+      if (!displayNames.has(key)) displayNames.set(key, name);
+    }
+  }
+
+  for (const name of listStarterExercises()) {
+    const key = name.toLowerCase();
+    if (!displayNames.has(key)) displayNames.set(key, name);
+  }
+
+  const illustrations = await prisma.exerciseIllustration.findMany();
+  const illustrationByKey = new Map(illustrations.map((i) => [i.exerciseName.toLowerCase(), i]));
+  for (const illustration of illustrations) {
+    const key = illustration.exerciseName.toLowerCase();
+    if (!displayNames.has(key)) displayNames.set(key, illustration.exerciseName);
+  }
+
+  const curatedKeys = new Set(listStarterExercises().map((n) => n.toLowerCase()));
+
+  const rows: IllustrationBoardRow[] = [];
+  for (const [key, fallbackDisplayName] of displayNames) {
+    const illustration = illustrationByKey.get(key);
+    rows.push({
+      exerciseName: illustration ? illustration.exerciseName : fallbackDisplayName,
+      usageCount: usageCounts.get(key) || 0,
+      status: illustration ? illustration.status : "NOT_GENERATED",
+      id: illustration ? illustration.id : null,
+      imageUrl: illustration ? illustration.imageUrl : null,
+      rejectionNote: illustration ? illustration.rejectionNote : null,
+      updatedAt: illustration ? illustration.updatedAt : null,
+      isCurated: curatedKeys.has(key),
+    });
+  }
+
+  rows.sort((a, b) => {
+    if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+    return a.exerciseName.localeCompare(b.exerciseName);
+  });
+
+  return rows;
+}
+
+/**
+ * Generates (or regenerates) the illustration for one exercise. Uses the
+ * curated cue-based prompt when this exercise is one of the ~24 starter
+ * exercises (better prompt, more consistent results); falls back to a
+ * generic name-only prompt for anything else, since client plans use
+ * freeform AI-generated exercise names that were never going to fit inside
+ * a hand-curated list. Errors only if the image API isn't configured.
+ * Synchronous — resolves once the image is ready, with the row already at
+ * its final status.
  */
 export async function generateExerciseIllustration(exerciseName: string) {
   if (!isImageGenConfigured()) {
@@ -58,13 +150,7 @@ export async function generateExerciseIllustration(exerciseName: string) {
   }
 
   const cue = getStarterCue(exerciseName);
-  if (!cue) {
-    throw new Error(
-      `No illustration-prompt metadata for "${exerciseName}" — add it to exercise-illustration-prompts.ts first`
-    );
-  }
-
-  const prompt = buildIllustrationPrompt(cue);
+  const prompt = cue ? buildIllustrationPrompt(cue) : buildGenericIllustrationPrompt(exerciseName);
   const result = await generateImage(prompt);
 
   if (!result.imageUrl) {

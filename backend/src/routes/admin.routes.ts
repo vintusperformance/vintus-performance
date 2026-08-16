@@ -693,6 +693,21 @@ router.get(
   }
 );
 
+// GET /admin/exercise-illustrations/board — merged spreadsheet view: every
+// exercise name across real client plans + the curated list + existing rows,
+// one row per exercise, sorted by how many sessions use it.
+router.get(
+  "/exercise-illustrations/board",
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const rows = await exerciseIllustrationService.getIllustrationBoard();
+      res.status(200).json({ success: true, data: rows });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /admin/exercise-illustrations/starter-list — exercise names with prompt metadata ready
 router.get(
   "/exercise-illustrations/starter-list",

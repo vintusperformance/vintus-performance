@@ -2022,8 +2022,12 @@
   }
 
   /* ============================================================
-     EXERCISE ILLUSTRATIONS TAB — generate/approve/reject "show me how" diagrams
+     EXERCISE ILLUSTRATIONS TAB — spreadsheet-style board: every exercise
+     name from real client plans + the curated set + existing rows, one
+     table, with per-row actions and bulk "do them all" buttons.
      ============================================================ */
+
+  var illustrationBoardCache = [];
 
   var illustrationFilterBtns = document.querySelectorAll('.illustration-filter-btn');
   illustrationFilterBtns.forEach(function (btn) {
@@ -2031,35 +2035,19 @@
       illustrationFilterBtns.forEach(function (b) { b.classList.remove('admin-filter-btn--active'); });
       btn.classList.add('admin-filter-btn--active');
       illustrationFilter = btn.getAttribute('data-illustration-filter');
-      loadExerciseIllustrations();
+      renderIllustrationBoard();
     });
   });
 
-  var illustrationGenerateBtn = document.getElementById('illustrationGenerateBtn');
-  if (illustrationGenerateBtn) {
-    illustrationGenerateBtn.addEventListener('click', async function () {
-      var select = document.getElementById('illustrationExerciseSelect');
-      var statusEl = document.getElementById('illustrationGenerateStatus');
-      var exerciseName = select ? select.value : '';
-      if (!exerciseName) return;
-
-      illustrationGenerateBtn.disabled = true;
-      statusEl.innerHTML = '<div class="admin-empty">Generating…</div>';
-      try {
-        await apiPost('/api/v1/admin/exercise-illustrations/' + encodeURIComponent(exerciseName) + '/generate', {});
-        statusEl.innerHTML = '<div class="admin-alert admin-alert--success">Generated "' + esc(exerciseName) + '" — ready for review below.</div>';
-        loadExerciseIllustrations();
-      } catch (err) {
-        statusEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
-      } finally {
-        illustrationGenerateBtn.disabled = false;
-      }
-    });
+  var illustrationRefreshBtn = document.getElementById('illustrationRefreshBtn');
+  if (illustrationRefreshBtn) {
+    illustrationRefreshBtn.addEventListener('click', function () { loadExerciseIllustrations(); });
   }
 
   function illustrationStatusBadge(status) {
-    var badgeBaseStyle = 'display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:600;margin-left:0.4rem;vertical-align:middle;';
+    var badgeBaseStyle = 'display:inline-block;padding:0.1rem 0.5rem;border-radius:3px;font-size:0.7rem;font-weight:600;vertical-align:middle;white-space:nowrap;';
     var map = {
+      NOT_GENERATED: 'background:rgba(156,163,175,0.15);color:#9ca3af;',
       GENERATING: 'background:rgba(245,158,11,0.15);color:#f59e0b;',
       NEEDS_REVIEW: 'background:rgba(59,130,246,0.15);color:#3b82f6;',
       APPROVED: 'background:rgba(34,197,94,0.15);color:#22c55e;',
@@ -2071,127 +2059,207 @@
 
   async function loadExerciseIllustrations() {
     var listEl = document.getElementById('exerciseIllustrationsList');
-    var select = document.getElementById('illustrationExerciseSelect');
-
     try {
-      if (select && !select.options.length) {
-        var starterRes = await apiGet('/api/v1/admin/exercise-illustrations/starter-list');
-        var exercises = starterRes.data.exercises || [];
-        select.innerHTML = exercises.map(function (name) {
-          return '<option value="' + esc(name) + '">' + esc(name) + '</option>';
-        }).join('');
-      }
-
-      var params = illustrationFilter !== 'all' ? '?status=' + encodeURIComponent(illustrationFilter) : '';
-      var res = await apiGet('/api/v1/admin/exercise-illustrations' + params);
-      var illustrations = res.data || [];
+      listEl.innerHTML = '<tr><td colspan="5"><div class="admin-empty">Loading…</div></td></tr>';
+      var res = await apiGet('/api/v1/admin/exercise-illustrations/board');
+      illustrationBoardCache = res.data || [];
 
       var badge = document.getElementById('illustrationReviewBadge');
       if (badge) {
-        var needsReview = illustrations.filter(function (v) { return v.status === 'NEEDS_REVIEW'; }).length;
-        if (illustrationFilter === 'all' && needsReview > 0) {
+        var needsReview = illustrationBoardCache.filter(function (v) { return v.status === 'NEEDS_REVIEW'; }).length;
+        if (needsReview > 0) {
           badge.textContent = needsReview;
           badge.style.display = '';
-        } else if (illustrationFilter === 'all') {
+        } else {
           badge.style.display = 'none';
         }
       }
 
-      if (!illustrations.length) {
-        listEl.innerHTML = '<div class="admin-empty">No exercise illustrations yet — generate one above</div>';
+      renderIllustrationBoard();
+    } catch (err) {
+      listEl.innerHTML = '<tr><td colspan="5"><div class="admin-alert admin-alert--error">' + esc(err.message) + '</div></td></tr>';
+    }
+  }
+
+  function renderIllustrationBoard() {
+    var listEl = document.getElementById('exerciseIllustrationsList');
+    var rows = illustrationFilter === 'all'
+      ? illustrationBoardCache
+      : illustrationBoardCache.filter(function (v) { return v.status === illustrationFilter; });
+
+    if (!rows.length) {
+      listEl.innerHTML = '<tr><td colspan="5"><div class="admin-empty">Nothing here</div></td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      var v = rows[i];
+      html += '<tr>';
+
+      html += '<td>' + (v.imageUrl
+        ? '<img src="' + esc(v.imageUrl) + '" style="width:56px;height:56px;object-fit:cover;border-radius:4px;display:block;" alt="' + esc(v.exerciseName) + '">'
+        : '<div style="width:56px;height:56px;border:1px dashed var(--border-color-hover);border-radius:4px;"></div>') + '</td>';
+
+      html += '<td style="white-space:normal;max-width:260px;">' + esc(v.exerciseName) +
+        (v.isCurated ? ' <span style="color:rgba(192,192,192,0.35);font-size:0.7rem;">(curated)</span>' : '') +
+        (v.rejectionNote ? '<div style="color:rgba(192,192,192,0.4);font-size:0.72rem;margin-top:0.2rem;">' + esc(v.rejectionNote) + '</div>' : '') +
+        '</td>';
+
+      html += '<td>' + v.usageCount + (v.usageCount === 1 ? ' session' : ' sessions') + '</td>';
+      html += '<td>' + illustrationStatusBadge(v.status) + '</td>';
+
+      html += '<td style="white-space:normal;"><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">';
+      if (v.status === 'NOT_GENERATED') {
+        html += '<button class="admin-btn-primary illustration-generate-btn" data-name="' + esc(v.exerciseName) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.75rem;">Generate</button>';
+      }
+      if (v.status === 'NEEDS_REVIEW') {
+        html += '<button class="admin-btn-primary illustration-approve-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.75rem;">Approve</button>';
+        html += '<button class="admin-btn-secondary illustration-reject-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.75rem;">Reject</button>';
+      }
+      if (v.status === 'REJECTED' || v.status === 'FAILED') {
+        html += '<button class="admin-btn-secondary illustration-regenerate-btn" data-id="' + esc(v.id) + '" data-name="' + esc(v.exerciseName) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.75rem;">Regenerate</button>';
+        html += '<button class="admin-btn-secondary illustration-delete-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.75rem;color:#f87171;border-color:#f87171;">Delete</button>';
+      }
+      if (v.status === 'APPROVED') {
+        html += '<button class="admin-btn-secondary illustration-regenerate-btn" data-id="' + esc(v.id) + '" data-name="' + esc(v.exerciseName) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.75rem;">Regenerate</button>';
+      }
+      html += '</div></td></tr>';
+    }
+    listEl.innerHTML = html;
+
+    listEl.querySelectorAll('.illustration-generate-btn').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        btn.disabled = true;
+        try {
+          await apiPost('/api/v1/admin/exercise-illustrations/' + encodeURIComponent(btn.getAttribute('data-name')) + '/generate', {});
+          loadExerciseIllustrations();
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+        }
+      });
+    });
+
+    listEl.querySelectorAll('.illustration-approve-btn').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        btn.disabled = true;
+        try {
+          await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/approve', {});
+          loadExerciseIllustrations();
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+        }
+      });
+    });
+
+    listEl.querySelectorAll('.illustration-reject-btn').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var note = prompt('Why is this rejected? (helps whoever regenerates it)');
+        if (!note) return;
+        btn.disabled = true;
+        try {
+          await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/reject', { note: note });
+          loadExerciseIllustrations();
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+        }
+      });
+    });
+
+    listEl.querySelectorAll('.illustration-regenerate-btn').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        btn.disabled = true;
+        try {
+          await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/regenerate', {});
+          loadExerciseIllustrations();
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+        }
+      });
+    });
+
+    listEl.querySelectorAll('.illustration-delete-btn').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        if (!confirm('Permanently delete this illustration? This cannot be undone.')) return;
+        btn.disabled = true;
+        try {
+          await apiDelete('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id'));
+          loadExerciseIllustrations();
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  /**
+   * Bulk actions run as sequential client-side loops over the existing
+   * single-item endpoints — not a new backend bulk endpoint — so a batch of
+   * 40 exercises can't time out one long HTTP request, progress is visible
+   * as it goes, and one failure doesn't abort the rest.
+   */
+  var illustrationGenerateAllBtn = document.getElementById('illustrationGenerateAllBtn');
+  if (illustrationGenerateAllBtn) {
+    illustrationGenerateAllBtn.addEventListener('click', async function () {
+      var statusEl = document.getElementById('illustrationBulkStatus');
+      var missing = illustrationBoardCache.filter(function (v) { return v.status === 'NOT_GENERATED'; });
+      if (!missing.length) {
+        statusEl.innerHTML = '<div class="admin-empty">Nothing missing — every exercise already has an illustration or is in progress.</div>';
         return;
       }
-
-      var html = '';
-      for (var i = 0; i < illustrations.length; i++) {
-        var v = illustrations[i];
-        html += '<div class="admin-esc-card">' +
-          '<div class="admin-esc-card-header">' +
-          '<span class="admin-esc-client">' + esc(v.exerciseName) + illustrationStatusBadge(v.status) + '</span>' +
-          '<span class="admin-esc-date">' + fmtDateTime(v.updatedAt) + '</span>' +
-          '</div>';
-
-        if (v.imageUrl) {
-          html += '<div style="margin:0.6rem 0;"><img src="' + esc(v.imageUrl) + '" style="max-width:320px;border-radius:6px;display:block;" alt="' + esc(v.exerciseName) + '"></div>';
+      illustrationGenerateAllBtn.disabled = true;
+      illustrationApproveAllBtn.disabled = true;
+      var failures = [];
+      for (var i = 0; i < missing.length; i++) {
+        statusEl.innerHTML = '<div class="admin-empty">Generating ' + (i + 1) + ' of ' + missing.length + '… (' + esc(missing[i].exerciseName) + ')</div>';
+        try {
+          await apiPost('/api/v1/admin/exercise-illustrations/' + encodeURIComponent(missing[i].exerciseName) + '/generate', {});
+        } catch (err) {
+          failures.push(missing[i].exerciseName);
         }
-
-        if (v.status === 'FAILED' && v.rejectionNote) {
-          html += '<div class="admin-esc-reason">Failure reason: ' + esc(v.rejectionNote) + '</div>';
-        }
-        if (v.status === 'REJECTED' && v.rejectionNote) {
-          html += '<div class="admin-esc-reason">Rejected: ' + esc(v.rejectionNote) + '</div>';
-        }
-
-        html += '<div class="admin-esc-meta" style="gap:0.5rem;">';
-        if (v.status === 'NEEDS_REVIEW') {
-          html += '<button class="admin-btn-primary illustration-approve-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Approve</button>';
-          html += '<button class="admin-btn-secondary illustration-reject-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Reject</button>';
-        }
-        if (v.status === 'REJECTED' || v.status === 'FAILED') {
-          html += '<button class="admin-btn-secondary illustration-regenerate-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;">Regenerate</button>';
-          html += '<button class="admin-btn-secondary illustration-delete-btn" data-id="' + esc(v.id) + '" type="button" style="padding:0.35rem 0.9rem;font-size:0.8rem;color:#f87171;border-color:#f87171;">Delete</button>';
-        }
-        html += '</div></div>';
       }
-      listEl.innerHTML = html;
+      statusEl.innerHTML = failures.length
+        ? '<div class="admin-alert admin-alert--error">Generated ' + (missing.length - failures.length) + ' of ' + missing.length + '. Failed: ' + esc(failures.join(', ')) + '</div>'
+        : '<div class="admin-alert admin-alert--success">Generated all ' + missing.length + ' — ready for review below.</div>';
+      illustrationGenerateAllBtn.disabled = false;
+      illustrationApproveAllBtn.disabled = false;
+      loadExerciseIllustrations();
+    });
+  }
 
-      listEl.querySelectorAll('.illustration-approve-btn').forEach(function (btn) {
-        btn.addEventListener('click', async function () {
-          btn.disabled = true;
-          try {
-            await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/approve', {});
-            loadExerciseIllustrations();
-          } catch (err) {
-            alert(err.message);
-            btn.disabled = false;
-          }
-        });
-      });
-
-      listEl.querySelectorAll('.illustration-reject-btn').forEach(function (btn) {
-        btn.addEventListener('click', async function () {
-          var note = prompt('Why is this rejected? (helps whoever regenerates it)');
-          if (!note) return;
-          btn.disabled = true;
-          try {
-            await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/reject', { note: note });
-            loadExerciseIllustrations();
-          } catch (err) {
-            alert(err.message);
-            btn.disabled = false;
-          }
-        });
-      });
-
-      listEl.querySelectorAll('.illustration-regenerate-btn').forEach(function (btn) {
-        btn.addEventListener('click', async function () {
-          btn.disabled = true;
-          try {
-            await apiPost('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id') + '/regenerate', {});
-            loadExerciseIllustrations();
-          } catch (err) {
-            alert(err.message);
-            btn.disabled = false;
-          }
-        });
-      });
-
-      listEl.querySelectorAll('.illustration-delete-btn').forEach(function (btn) {
-        btn.addEventListener('click', async function () {
-          if (!confirm('Permanently delete this illustration? This cannot be undone.')) return;
-          btn.disabled = true;
-          try {
-            await apiDelete('/api/v1/admin/exercise-illustrations/' + btn.getAttribute('data-id'));
-            loadExerciseIllustrations();
-          } catch (err) {
-            alert(err.message);
-            btn.disabled = false;
-          }
-        });
-      });
-    } catch (err) {
-      listEl.innerHTML = '<div class="admin-alert admin-alert--error">' + esc(err.message) + '</div>';
-    }
+  var illustrationApproveAllBtn = document.getElementById('illustrationApproveAllBtn');
+  if (illustrationApproveAllBtn) {
+    illustrationApproveAllBtn.addEventListener('click', async function () {
+      var statusEl = document.getElementById('illustrationBulkStatus');
+      var pending = illustrationBoardCache.filter(function (v) { return v.status === 'NEEDS_REVIEW'; });
+      if (!pending.length) {
+        statusEl.innerHTML = '<div class="admin-empty">Nothing needs review right now.</div>';
+        return;
+      }
+      if (!confirm('Approve all ' + pending.length + ' pending illustrations? Switch to the "Needs Review" filter first if you want to eyeball them one by one instead.')) return;
+      illustrationGenerateAllBtn.disabled = true;
+      illustrationApproveAllBtn.disabled = true;
+      var failures = [];
+      for (var i = 0; i < pending.length; i++) {
+        statusEl.innerHTML = '<div class="admin-empty">Approving ' + (i + 1) + ' of ' + pending.length + '… (' + esc(pending[i].exerciseName) + ')</div>';
+        try {
+          await apiPost('/api/v1/admin/exercise-illustrations/' + pending[i].id + '/approve', {});
+        } catch (err) {
+          failures.push(pending[i].exerciseName);
+        }
+      }
+      statusEl.innerHTML = failures.length
+        ? '<div class="admin-alert admin-alert--error">Approved ' + (pending.length - failures.length) + ' of ' + pending.length + '. Failed: ' + esc(failures.join(', ')) + '</div>'
+        : '<div class="admin-alert admin-alert--success">Approved all ' + pending.length + ' — now visible to clients.</div>';
+      illustrationGenerateAllBtn.disabled = false;
+      illustrationApproveAllBtn.disabled = false;
+      loadExerciseIllustrations();
+    });
   }
 
   /* ============================================================
