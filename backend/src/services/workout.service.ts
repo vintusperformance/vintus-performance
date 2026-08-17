@@ -432,6 +432,7 @@ Rules:
   - TRAINING_90DAY: 12-week comprehensive transformation with periodization
   - NUTRITION_4WEEK / NUTRITION_8WEEK: lighter training focus, recovery-oriented
 - Each session should have 3-4 warmup exercises, 4-6 main exercises, and 2-3 cooldown exercises.
+- Keep every "notes" field to one short sentence. The pairing/ramp instructions above are the substance to convey — don't pad with extra explanation once that's said.
 - The tone should be direct, confident, and premium — like a high-end coach.
 - Set RPE based on experience for straight-set (non-ramp) exercises: beginners RPE 5-6, intermediate RPE 7, advanced RPE 8, elite RPE 8-9.
 - "rest" must always be one of these clean values for straight-set exercises: "30s", "45s", "60s", "90s", "120s", "2-3 min", "3-5 min". Never an arbitrary number like "51s" or "64s" — nobody times a rest period to the second. Ramp/superset entries use the descriptive rest format shown above instead.`;
@@ -1087,8 +1088,14 @@ async function generatePlanWithClaude(
     model: "claude-sonnet-5",
     // A full week at the prescribed exercise counts runs 2.5-4k tokens of JSON.
     // 4000 sat right on the edge and truncated mid-object, which surfaced as an
-    // opaque JSON parse failure and a silent fall back to templates.
-    max_tokens: 8000,
+    // opaque JSON parse failure and a silent fall back to templates. The
+    // antagonist-pairing rewrite added isRamp/isSuperset/pairId to every main
+    // exercise plus longer pairing-specific "notes" copy, which pushed real
+    // 5-6 day/week plans past 8000 too (confirmed in production -- a Private
+    // Coaching client's regenerate hit max_tokens and silently fell back to
+    // the generic template plan). 16000 leaves real headroom over the
+    // measured worst case instead of chasing the ceiling one client at a time.
+    max_tokens: 16000,
     system: PLAN_GENERATION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userPrompt }],
   });
