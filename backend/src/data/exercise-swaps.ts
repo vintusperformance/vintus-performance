@@ -32,18 +32,23 @@ interface SwapMember {
 }
 
 const GROUPS: SwapMember[][] = [
-  // Horizontal push
+  // Horizontal push (chest)
   [
-    { exercise: "Barbell Bench Press", tier: "full-gym", avoid: ["shoulder"] },
-    { exercise: "Incline Dumbbell Press", tier: "home-gym", avoid: ["shoulder"] },
+    { exercise: "Flat Barbell Bench Press", tier: "full-gym", avoid: ["shoulder"] },
+    { exercise: "Flat Dumbbell Bench Press", tier: "home-gym", avoid: ["shoulder"] },
     { exercise: "Dumbbell Bench Press", tier: "home-gym", avoid: ["shoulder"] },
+    { exercise: "Incline Dumbbell Press", tier: "home-gym", avoid: ["shoulder"] },
+    { exercise: "Incline Barbell Bench Press", tier: "full-gym", avoid: ["shoulder"] },
+    { exercise: "Cable Crossover", tier: "full-gym", avoid: ["shoulder"] },
     { exercise: "Cable Flyes", tier: "full-gym", avoid: ["shoulder"] },
+    { exercise: "Pec Deck Fly", tier: "full-gym", avoid: ["shoulder"] },
     { exercise: "Push-ups", tier: "bodyweight-only", avoid: ["wrist"] },
     { exercise: "Diamond Push-ups", tier: "bodyweight-only", avoid: ["wrist", "elbow"] },
   ],
-  // Vertical push
+  // Vertical push (shoulders)
   [
-    { exercise: "Overhead Press", tier: "full-gym", avoid: ["shoulder"] },
+    { exercise: "Standing Overhead Press", tier: "full-gym", avoid: ["shoulder"] },
+    { exercise: "Seated Dumbbell Shoulder Press", tier: "home-gym", avoid: ["shoulder"] },
     { exercise: "Dumbbell Shoulder Press", tier: "home-gym", avoid: ["shoulder"] },
     { exercise: "Landmine Press", tier: "full-gym", avoid: ["shoulder"] },
     { exercise: "Pike Push-ups", tier: "bodyweight-only", avoid: ["shoulder", "wrist"] },
@@ -52,19 +57,24 @@ const GROUPS: SwapMember[][] = [
   [
     { exercise: "Tricep Pushdowns", tier: "full-gym", avoid: ["elbow"] },
     { exercise: "Overhead Tricep Extension", tier: "home-gym", avoid: ["elbow", "shoulder"] },
+    { exercise: "Skull Crushers", tier: "home-gym", avoid: ["elbow"] },
+    { exercise: "Close-Grip Bench Press", tier: "full-gym", avoid: ["elbow", "shoulder"] },
     { exercise: "Bench Dips", tier: "bodyweight-only", avoid: ["elbow", "shoulder"] },
   ],
-  // Horizontal pull
+  // Horizontal pull (back — rows)
   [
     { exercise: "Barbell Rows", tier: "full-gym", avoid: ["lower-back"] },
-    { exercise: "Seated Cable Rows", tier: "full-gym", avoid: ["lower-back"] },
+    { exercise: "Barbell Bent-Over Row", tier: "full-gym", avoid: ["lower-back"] },
+    { exercise: "Seated Cable Row", tier: "full-gym", avoid: ["lower-back"] },
+    { exercise: "T-Bar Row", tier: "full-gym", avoid: ["lower-back"] },
+    { exercise: "Chest-Supported Row", tier: "home-gym", avoid: ["lower-back"] },
     { exercise: "Single-Arm Dumbbell Row", tier: "home-gym", avoid: ["lower-back"] },
     { exercise: "Inverted Rows", tier: "minimal", avoid: ["shoulder"] },
   ],
-  // Vertical pull
+  // Vertical pull (back — lat)
   [
     { exercise: "Weighted Pull-ups", tier: "full-gym", avoid: ["shoulder"] },
-    { exercise: "Lat Pulldowns", tier: "full-gym", avoid: ["shoulder"] },
+    { exercise: "Lat Pulldown", tier: "full-gym", avoid: ["shoulder"] },
     { exercise: "Pull-ups", tier: "minimal", avoid: ["shoulder"] },
     { exercise: "Chin-up Negatives", tier: "minimal", avoid: ["shoulder", "elbow"] },
     { exercise: "Dead Hang", tier: "minimal", avoid: ["shoulder"] },
@@ -73,18 +83,25 @@ const GROUPS: SwapMember[][] = [
   [
     { exercise: "Face Pulls", tier: "full-gym", avoid: ["shoulder"] },
     { exercise: "Band Face Pulls", tier: "minimal", avoid: ["shoulder"] },
+    { exercise: "Band Pull-Aparts", tier: "minimal", avoid: ["shoulder"] },
+    { exercise: "Band Rear Delt Flys", tier: "minimal", avoid: ["shoulder"] },
+    { exercise: "Superman Y-Raise", tier: "bodyweight-only", avoid: ["shoulder", "lower-back"] },
   ],
   // Biceps isolation
   [
     { exercise: "Dumbbell Curls", tier: "home-gym", avoid: ["elbow"] },
     { exercise: "Hammer Curls", tier: "home-gym", avoid: ["elbow"] },
     { exercise: "Barbell Curls", tier: "full-gym", avoid: ["elbow"] },
+    { exercise: "Concentration Curls", tier: "home-gym", avoid: ["elbow"] },
+    { exercise: "Preacher Curls", tier: "full-gym", avoid: ["elbow"] },
+    { exercise: "Cable Curls", tier: "full-gym", avoid: ["elbow"] },
   ],
   // Squat pattern
   [
     { exercise: "Barbell Back Squat", tier: "full-gym", avoid: ["knee", "lower-back"] },
     { exercise: "Front Squat", tier: "full-gym", avoid: ["knee", "lower-back"] },
     { exercise: "Barbell Squats", tier: "full-gym", avoid: ["knee", "lower-back"] },
+    { exercise: "Goblet Squat", tier: "minimal", avoid: ["knee", "lower-back"] },
     { exercise: "Leg Press", tier: "full-gym", avoid: ["knee"] },
     { exercise: "Bodyweight Squats", tier: "bodyweight-only", avoid: ["knee"] },
     { exercise: "Jump Squats", tier: "bodyweight-only", avoid: ["knee"] },
@@ -103,6 +120,7 @@ const GROUPS: SwapMember[][] = [
     { exercise: "Romanian Deadlift", tier: "home-gym", avoid: ["lower-back", "hamstring"] },
     { exercise: "Barbell Deadlift", tier: "full-gym", avoid: ["lower-back"] },
     { exercise: "Single-Leg Deadlift", tier: "minimal", avoid: ["lower-back", "hamstring"] },
+    { exercise: "Hip Thrust", tier: "home-gym", avoid: ["lower-back"] },
     { exercise: "Glute Bridges", tier: "bodyweight-only", avoid: ["lower-back"] },
   ],
   // Lunge pattern
@@ -113,6 +131,7 @@ const GROUPS: SwapMember[][] = [
   // Calf
   [
     { exercise: "Calf Raises", tier: "minimal", avoid: [] },
+    { exercise: "Standing Calf Raises", tier: "minimal", avoid: [] },
     { exercise: "Single-Leg Calf Raises", tier: "bodyweight-only", avoid: [] },
   ],
   // Hamstring isolation
@@ -174,6 +193,24 @@ function hasInjuryOverlap(avoid: BodyArea[], injuryBlob: string): boolean {
   return avoid.some((area) => AREA_KEYWORDS[area].some((kw) => injuryBlob.includes(kw)));
 }
 
+// Exercise names retired by earlier plan-generation templates (e.g. before
+// the antagonist-pairing rewrite renamed "Barbell Bench Press" to "Flat
+// Barbell Bench Press"). Sessions generated before a rename still have the
+// old string stored in `WorkoutSession.content`, so swaps must still
+// resolve for them. These map to the current canonical group member rather
+// than existing as their own member, so they don't show up as a redundant
+// near-duplicate "alternative" to the exercise they're now identical to.
+const LEGACY_ALIASES: Record<string, string> = {
+  "Barbell Bench Press": "Flat Barbell Bench Press",
+  "Overhead Press": "Standing Overhead Press",
+  "Seated Cable Rows": "Seated Cable Row",
+  "Lat Pulldowns": "Lat Pulldown",
+};
+
+function canonicalize(exerciseName: string): string {
+  return LEGACY_ALIASES[exerciseName] ?? exerciseName;
+}
+
 /**
  * Returns up to 3 pre-approved alternative exercise names for `exerciseName`,
  * filtered to what the client's equipment can perform and clear of anything
@@ -187,12 +224,13 @@ export function getSwapOptions(
   const tier = (equipmentAccess as EquipmentTier) in EQUIPMENT_RANK ? (equipmentAccess as EquipmentTier) : "bodyweight-only";
   const clientRank = EQUIPMENT_RANK[tier];
   const lowerBlob = injuryBlob.toLowerCase();
+  const canonical = canonicalize(exerciseName);
 
-  const group = GROUPS.find((g) => g.some((m) => m.exercise === exerciseName));
+  const group = GROUPS.find((g) => g.some((m) => m.exercise === canonical));
   if (!group) return [];
 
   return group
-    .filter((m) => m.exercise !== exerciseName)
+    .filter((m) => m.exercise !== canonical)
     .filter((m) => EQUIPMENT_RANK[m.tier] <= clientRank)
     .filter((m) => !hasInjuryOverlap(m.avoid, lowerBlob))
     .slice(0, 3)
@@ -201,7 +239,8 @@ export function getSwapOptions(
 
 /** True if `exerciseName` and `candidate` are both valid members of the same group. */
 export function isValidSwap(exerciseName: string, candidate: string): boolean {
-  const group = GROUPS.find((g) => g.some((m) => m.exercise === exerciseName));
+  const canonical = canonicalize(exerciseName);
+  const group = GROUPS.find((g) => g.some((m) => m.exercise === canonical));
   if (!group) return false;
   return group.some((m) => m.exercise === candidate);
 }
