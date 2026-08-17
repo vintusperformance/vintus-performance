@@ -49,10 +49,22 @@
   var dailySummaryData = null;
   var selectedDate = null;
   var todaySession = null;
-  var today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Local-midnight Date whose Y/M/D equal the backend's UTC calendar day --
+  // NOT `new Date(); setHours(0,0,0,0)`, which anchors to the browser's
+  // local calendar day instead. The backend computes "today" and week
+  // boundaries in UTC (getWeekStart in workout.service.ts) with
+  // WorkoutSession.scheduledDate stored as plain UTC-midnight dates. In the
+  // evening in US timezones, UTC has already rolled to the next calendar
+  // day while the browser's local day hasn't, so using local time here
+  // picked an entirely wrong Monday (a full week off, not a one-day skew,
+  // since the Sunday/Monday boundary flips which week is "this week").
+  // Building `today` as a local Date from the UTC Y/M/D components mirrors
+  // parseDateOnly's approach elsewhere in the codebase for backend-supplied
+  // date strings, so every getDate()/getDay()/setDate() call below reads
+  // back the correct calendar day with no further UTC-vs-local juggling.
+  var _now = new Date();
+  var today = new Date(_now.getUTCFullYear(), _now.getUTCMonth(), _now.getUTCDate());
 
-  // ── Timezone-safe date helper ──
   function toLocalDateStr(d) {
     var y = d.getFullYear();
     var m = String(d.getMonth() + 1).padStart(2, '0');
