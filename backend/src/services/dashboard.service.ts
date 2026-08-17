@@ -278,7 +278,16 @@ export async function getWeekView(
       startDate: { lt: weekEnd },
       endDate: { gte: weekStart },
     },
-    orderBy: { createdAt: "desc" },
+    // isActive first: "Regenerate AI Plan" deactivates the old row for a
+    // week rather than deleting it, so two plans can cover the exact same
+    // date range with the stale one sometimes created *after* the active
+    // one (e.g. a cron run interleaved with an admin regenerate). Plain
+    // createdAt-desc could then pick the deactivated row and silently show
+    // an empty or stale week even though the real, current plan exists.
+    // Preferring isActive keeps this in sync with how "today's workout"
+    // already looks up its session. Falls back to createdAt desc among
+    // ties (e.g. future pre-generated weeks, none of which are active yet).
+    orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
   });
 
   const scheduledCount = sessions.length;
@@ -517,7 +526,8 @@ async function getWeekSessions(profileId: string, weekOffset: number): Promise<u
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
-  // Find the most recent plan covering this week to avoid duplicates from old regenerated plans
+  // Find the plan covering this week, preferring the active one to avoid
+  // duplicates from old regenerated plans.
   const plan = await prisma.workoutPlan.findFirst({
     where: {
       athleteProfileId: profileId,
@@ -531,7 +541,15 @@ async function getWeekSessions(profileId: string, weekOffset: number): Promise<u
       startDate: { lt: weekEnd },
       endDate: { gte: weekStart },
     },
-    orderBy: { createdAt: "desc" },
+    // isActive first: "Regenerate AI Plan" deactivates the old row for a
+    // week rather than deleting it, so two plans can cover the exact same
+    // date range with the stale one sometimes created *after* the active
+    // one (e.g. a cron run interleaved with an admin regenerate). Plain
+    // createdAt-desc could then pick the deactivated row and silently show
+    // an empty or stale week even though the real, current plan exists.
+    // Falls back to createdAt desc among ties (e.g. future pre-generated
+    // weeks, none of which are active yet).
+    orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
     select: { id: true },
   });
 
