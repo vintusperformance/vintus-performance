@@ -422,8 +422,9 @@ router.get(
   }
 );
 
-// GET /dashboard/full-plan — every day of a fixed-term Training plan, start
-// date to expiration, in one response (not paginated week by week)
+// GET /dashboard/full-plan — every generated day of a client's plan in one
+// response (not paginated week by week): the full paid term for fixed-term
+// Training tiers, or everything generated so far for Private Coaching.
 router.get(
   "/full-plan",
   async (req: Request, res: Response, next: NextFunction) => {

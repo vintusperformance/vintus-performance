@@ -178,13 +178,15 @@
           if (currentTier === 'PRIVATE_COACHING') loadWeeklyCallStatus();
         }
 
-        // Full Plan view only applies to fixed-term Training tiers -- every
-        // week is generated upfront at purchase, so there's a real start-to-
-        // finish plan to show. Private Coaching has no fixed end date.
+        // Full Plan view: fixed-term Training tiers show their whole paid
+        // term (every week generated upfront at purchase). Private Coaching
+        // has no fixed end date, but still shows everything generated so
+        // far -- it just keeps growing week to week via the rolling cron.
         var fullPlanLink = document.getElementById('viewFullPlanLink');
         if (fullPlanLink) {
           var isFixedTermTraining = currentTier === 'TRAINING_30DAY' || currentTier === 'TRAINING_60DAY' || currentTier === 'TRAINING_90DAY';
-          fullPlanLink.style.display = isFixedTermTraining ? 'flex' : 'none';
+          var showFullPlanLink = isFixedTermTraining || currentTier === 'PRIVATE_COACHING';
+          fullPlanLink.style.display = showFullPlanLink ? 'flex' : 'none';
         }
       }
 

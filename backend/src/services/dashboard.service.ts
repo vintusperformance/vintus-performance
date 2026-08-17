@@ -293,10 +293,14 @@ export async function getWeekView(
 // ============================================================
 
 /**
- * A paying client's entire fixed-term plan, start date to expiration --
- * not one week at a time. Only meaningful for fixed-duration Training
- * tiers, which get every week generated upfront at purchase; Private
- * Coaching has no fixed end date, so it stays on the weekly rolling view.
+ * A client's whole plan, every generated week in one shot -- not one week at
+ * a time. Fixed-duration Training tiers get every week generated upfront at
+ * purchase, so their range is the full paid term. Private Coaching has no
+ * fixed end date, but that doesn't mean there's nothing to show -- it means
+ * showing everything generated so far (which keeps growing week to week via
+ * the rolling cron) instead of a fixed start-to-expiration range. `isOpenEnded`
+ * tells the frontend which framing applies so it doesn't imply a PC plan
+ * "ends" on whatever the last generated week happens to be.
  */
 export async function getFullPlan(userId: string): Promise<unknown> {
   const user = await prisma.user.findUnique({
@@ -318,7 +322,12 @@ export async function getFullPlan(userId: string): Promise<unknown> {
 
   const isFixedTermTraining =
     sub?.planTier === "TRAINING_30DAY" || sub?.planTier === "TRAINING_60DAY" || sub?.planTier === "TRAINING_90DAY";
-  if (!isFixedTermTraining || !sub?.currentPeriodStart || !sub?.currentPeriodEnd) {
+  const isPrivateCoaching = sub?.planTier === "PRIVATE_COACHING";
+
+  if (isFixedTermTraining && (!sub?.currentPeriodStart || !sub?.currentPeriodEnd)) {
+    return { available: false };
+  }
+  if (!isFixedTermTraining && !isPrivateCoaching) {
     return { available: false };
   }
 
@@ -358,15 +367,30 @@ export async function getFullPlan(userId: string): Promise<unknown> {
     plans.push(plan);
   }
 
+  if (plans.length === 0) {
+    return { available: false };
+  }
+
   const allSessions = plans.flatMap((p) => p.sessions);
   const completedCount = allSessions.filter((s) => s.status === "COMPLETED").length;
   const adherenceRate = allSessions.length > 0 ? completedCount / allSessions.length : 0;
 
+  // Fixed-term Training's range is the paid term (billing period). Private
+  // Coaching has no such term -- its range is just the earliest-to-latest
+  // generated week, which grows as the rolling cron adds more.
+  const startDate = isFixedTermTraining
+    ? new Date(sub!.currentPeriodStart!).toISOString().split("T")[0]
+    : plans[0].startDate.toISOString().split("T")[0];
+  const endDate = isFixedTermTraining
+    ? new Date(sub!.currentPeriodEnd!).toISOString().split("T")[0]
+    : plans[plans.length - 1].endDate.toISOString().split("T")[0];
+
   return {
     available: true,
-    planTier: sub.planTier,
-    startDate: new Date(sub.currentPeriodStart).toISOString().split("T")[0],
-    endDate: new Date(sub.currentPeriodEnd).toISOString().split("T")[0],
+    planTier: sub!.planTier,
+    isOpenEnded: isPrivateCoaching,
+    startDate,
+    endDate,
     totalSessions: allSessions.length,
     completedCount,
     adherenceRate,
