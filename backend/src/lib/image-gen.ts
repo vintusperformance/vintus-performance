@@ -2,13 +2,16 @@ import { env } from "../config/env.js";
 import { logger } from "./logger.js";
 
 /**
- * VERIFICATION NEEDED: endpoint path, request/response field names below are
- * reconstructed from general knowledge of OpenAI's Images API, not confirmed
- * against live docs from this environment. Confirm against
- * https://platform.openai.com/docs/api-reference/images once OPENAI_API_KEY
- * is issued, before relying on this in production. The shape (POST prompt,
- * get back b64_json or a hosted url) is standard for this class of API and
- * is unlikely to be wrong even if field/model names drift.
+ * Endpoint, size/quality/output_format/output_compression parameters below
+ * are confirmed against OpenAI's live gpt-image-1 API reference (checked
+ * 2026-08). 1024x1024 is gpt-image-1's smallest supported square size (no
+ * 512x512 option exists for this model) so pixel dimensions can't be
+ * shrunk -- but output_format defaults to lossless PNG, which is what
+ * actually filled the production Postgres volume (images are stored as
+ * base64 text, see the storage note below). webp at compression=80 cuts
+ * real file size well below PNG with no meaningful visual quality loss --
+ * important since an admin visually reviews every image for correct form
+ * before approval, so quality itself (kept at "medium") isn't touched.
  */
 const OPENAI_API_BASE_URL = "https://api.openai.com/v1";
 
@@ -52,6 +55,8 @@ export async function generateImage(prompt: string): Promise<ImageGenResult> {
         prompt,
         size: "1024x1024",
         quality: "medium",
+        output_format: "webp",
+        output_compression: 80,
         n: 1,
       }),
     });
@@ -70,7 +75,7 @@ export async function generateImage(prompt: string): Promise<ImageGenResult> {
     }
 
     if (first.b64_json) {
-      return { imageUrl: `data:image/png;base64,${first.b64_json}`, failureReason: null };
+      return { imageUrl: `data:image/webp;base64,${first.b64_json}`, failureReason: null };
     }
     if (first.url) {
       return { imageUrl: first.url, failureReason: null };
