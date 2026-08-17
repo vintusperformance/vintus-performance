@@ -430,7 +430,7 @@
       if (!data || !data.available) {
         rangeEl.textContent = '';
         adhEl.textContent = '';
-        body.innerHTML = '<p class="cal-full-plan__unavailable">Full plan view is available for fixed-length Training Plans. Private Coaching runs on an ongoing weekly basis with no fixed end date — check "This Week" for what\'s next.</p>';
+        body.innerHTML = '<p class="cal-full-plan__unavailable">No plan generated yet — check back soon.</p>';
         fullPlanLoaded = true;
         return;
       }
@@ -439,7 +439,7 @@
       var startD = parseDateOnly(data.startDate);
       var endD = parseDateOnly(data.endDate);
       var weekCount = data.weeks.length;
-      rangeEl.textContent = formatLongDate(startD) + ' – ' + formatLongDate(endD) + ' (' + weekCount + (weekCount === 1 ? ' week' : ' weeks') + ')';
+      rangeEl.textContent = formatLongDate(startD) + ' – ' + formatLongDate(endD) + (data.isOpenEnded ? ' so far' : '') + ' (' + weekCount + (weekCount === 1 ? ' week' : ' weeks') + ')';
       adhEl.textContent = data.totalSessions > 0
         ? Math.round(data.adherenceRate * 100) + '% adherence overall · ' + data.completedCount + ' of ' + data.totalSessions + ' sessions completed'
         : '';
