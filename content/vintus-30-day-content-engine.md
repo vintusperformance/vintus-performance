@@ -119,7 +119,7 @@ it; flag back rather than wedging it in awkwardly.
 | 1 ✅ | Fri | Executive Performance | IG+TT, LI | Your calendar has a budget. Why doesn't your training? | Talking-head | Scripts written: `content/day-01-scripts.md` |
 | 2 ✅ | Sat | Systems | IG+TT | The 6am decision most operators get wrong: deciding what to do at the gym, instead of already knowing | Talking-head, text overlay of a sample pre-built day | Scripts written: `content/day-02-scripts.md` |
 | 3 ✅ | Sun | Hybrid Performance | IG+TT | Why I stopped optimizing for one number and built general capacity instead — the same mistake I see in operators who only optimize revenue | Talking-head + training b-roll | **Repurpose:** "gym=incomplete" post (07/25), rewritten with explicit business-operator analogy instead of pure fitness-identity framing. Scripts written: `content/day-03-scripts.md` |
-| 4 | Mon | Executive Performance | IG+TT | Most executives are running the fitness equivalent of no strategic plan at all | Talking-head | — |
+| 4 ✅ | Mon | Executive Performance | IG+TT | Most executives are running the fitness equivalent of no strategic plan at all | Talking-head | Scripts written: `content/day-04-scripts.md` |
 | 5 | Tue | Leadership Through Health | IG+TT, LI | The health decision that tells your team more about your standards than any performance review | Talking-head, serious tone | **Branded phrase (1 of 4 — see Part 2 policy above):** close on "We build performance systems for people whose careers don't allow average health." |
 | 6 | Wed | Systems | IG+TT | "I'll just wing it today" is the most expensive sentence in your calendar | POV / direct-to-lens | — |
 | 7 | Thu | Executive Performance | IG+TT | Energy is the real KPI nobody puts on the dashboard | Talking-head | — |
