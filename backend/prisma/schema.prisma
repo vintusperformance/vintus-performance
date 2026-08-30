@@ -478,6 +478,12 @@ enum MessageCategory {
   PC_AFTERNOON_CHECKIN
   TRAINING_DAILY_PUSH
   NUTRITION_DAILY_PUSH
+  // Abandoned-assessment recovery. Someone completed the full intake but never
+  // subscribed; every other category here requires an ACTIVE subscription, so
+  // without these two that person is never contacted again. Both are EMAIL-only
+  // (SMS would need smsConsent, which a non-client hasn't given).
+  ASSESSMENT_FOLLOWUP_1
+  ASSESSMENT_FOLLOWUP_2
 }
 
 // ============================================================

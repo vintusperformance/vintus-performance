@@ -57,7 +57,17 @@ const DAILY_SMS_CAP = 3;
 // category is safe to fully automate (see the template audit from the
 // PC_DAILY_PUSH rollout); this one is a deliberate, standing exception,
 // not a bug.
-const ALWAYS_MANUAL_REVIEW = new Set(["ESCALATION"]);
+// The assessment follow-ups go to PROSPECTS, not clients -- people who
+// completed an intake and never bought. First contact with a non-customer is
+// the highest brand-risk message the system sends, and Anthony may already
+// have spoken to them personally, which no flag here would know. Standing
+// Rule 4 (draft-first, Anthony approves) applies most strongly here, so these
+// stay on manual review even with AUTO_MESSAGING_ENABLED on.
+const ALWAYS_MANUAL_REVIEW = new Set([
+  "ESCALATION",
+  "ASSESSMENT_FOLLOWUP_1",
+  "ASSESSMENT_FOLLOWUP_2",
+]);
 
 async function triggerOrQueue(
   userId: string,
@@ -276,6 +286,11 @@ export function startCrons(): void {
       await coachRenewalReminderCron();
     } catch (err) {
       logger.error({ err }, "Coach renewal reminder cron failed");
+    }
+    try {
+      await abandonedAssessmentCron();
+    } catch (err) {
+      logger.error({ err }, "Abandoned assessment cron failed");
     }
   });
 
@@ -1423,6 +1438,137 @@ async function sendWeeklyDigest(userId: string): Promise<void> {
     { userId, completedCount, scheduledCount, adherenceRate, trend: trends.trend },
     "Weekly digest sent"
   );
+}
+
+// ============================================================
+// abandonedAssessmentCron — recover completed-but-unconverted intakes.
+//
+// Every other cron in this file selects on Subscription (status ACTIVE), so
+// someone who completes the full assessment and never checks out is never
+// contacted again by anything. This is the one path that reaches them.
+//
+// Two touches, then silence: ~48h and ~day 7 after the profile was created.
+// EMAIL only -- a non-client has not given smsConsent, and AthleteProfile's
+// smsConsent gates all SMS sending.
+// ============================================================
+
+const ASSESSMENT_TOUCH_1_HOURS = 48;
+const ASSESSMENT_TOUCH_2_HOURS = 24 * 7;
+// Each window is one hourly tick wide. The cron runs hourly, so a 1-hour
+// band catches every profile exactly once as it ages past the threshold,
+// without re-selecting it on later ticks. The MessageLog dedup below is the
+// real guarantee; this just keeps the query small.
+const ASSESSMENT_WINDOW_HOURS = 1;
+
+// Their own intake answers, phrased to read naturally mid-sentence. Anything
+// unrecognized (including free text, which clients can enter) falls back to a
+// neutral phrase rather than being interpolated raw into an email.
+const GOAL_TEXT: Record<string, string> = {
+  "build-muscle": "building lean muscle",
+  "lose-fat": "losing body fat",
+  endurance: "improving endurance and conditioning",
+  recomposition: "changing your body composition",
+  "well-rounded": "becoming well-rounded across strength and performance",
+};
+
+const BLOCKER_TEXT: Record<string, string> = {
+  structure: "not having a structure to follow",
+  "no-results": "putting in the effort without seeing the results",
+  energy: "inconsistent energy and recovery",
+  unsure: "not being sure how to train and fuel for it",
+};
+
+function goalText(primaryGoal: string | null): string {
+  return (primaryGoal && GOAL_TEXT[primaryGoal]) || "getting your training in order";
+}
+
+function blockerText(biggestChallenge: string | null): string {
+  return (
+    (biggestChallenge && BLOCKER_TEXT[biggestChallenge]) ||
+    "keeping it consistent when the week gets busy"
+  );
+}
+
+async function queueAssessmentTouch(
+  touch: 1 | 2,
+  hoursAgo: number
+): Promise<number> {
+  const category = touch === 1 ? "ASSESSMENT_FOLLOWUP_1" : "ASSESSMENT_FOLLOWUP_2";
+  const windowEnd = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+  const windowStart = new Date(
+    Date.now() - (hoursAgo + ASSESSMENT_WINDOW_HOURS) * 60 * 60 * 1000
+  );
+
+  const candidates = await prisma.athleteProfile.findMany({
+    where: {
+      createdAt: { gte: windowStart, lt: windowEnd },
+      // Never contact someone who converted -- on either product. A client
+      // gets the subscriber sequences instead; this path is prospects only.
+      user: {
+        subscription: { is: null },
+        nutritionSubscription: { is: null },
+      },
+    },
+    select: {
+      // `id` is the profileId results.js reads from ?id= — without it the
+      // results page renders "No assessment ID found", so the link in the
+      // email must carry it.
+      id: true,
+      userId: true,
+      firstName: true,
+      primaryGoal: true,
+      biggestChallenge: true,
+    },
+  });
+
+  let queued = 0;
+
+  for (const profile of candidates) {
+    try {
+      // Dedup on the category itself, covering pending-approval rows too, so a
+      // redeploy or an overlapping tick can never double-contact a prospect.
+      const already = await prisma.messageLog.count({
+        where: { userId: profile.userId, category: category as MessageCategory },
+      });
+      if (already > 0) continue;
+
+      await triggerOrQueue(
+        profile.userId,
+        category,
+        "EMAIL",
+        {
+          firstName: profile.firstName,
+          primaryGoalText: goalText(profile.primaryGoal),
+          blockerText: blockerText(profile.biggestChallenge),
+          resultsLink: `${env.FRONTEND_URL}/results?id=${profile.id}`,
+          consultationLink: `${env.FRONTEND_URL}/book`,
+        },
+        `Assessment follow-up ${touch} of 2 — completed intake, no subscription`
+      );
+      queued++;
+    } catch (err) {
+      logger.error(
+        { err, userId: profile.userId, touch },
+        "Assessment follow-up queue failed for prospect"
+      );
+    }
+  }
+
+  return queued;
+}
+
+// Exported so the admin trigger-review tooling and local verification can run
+// it on demand, same as dailyReviewForClient above.
+export async function abandonedAssessmentCron(): Promise<void> {
+  const first = await queueAssessmentTouch(1, ASSESSMENT_TOUCH_1_HOURS);
+  const second = await queueAssessmentTouch(2, ASSESSMENT_TOUCH_2_HOURS);
+
+  if (first > 0 || second > 0) {
+    logger.info(
+      { touch1: first, touch2: second },
+      "Abandoned assessment follow-ups queued"
+    );
+  }
 }
 
 // ============================================================

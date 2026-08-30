@@ -1154,6 +1154,65 @@ export const messageTemplates: Record<string, MessageTemplate[]> = {
   RENEWAL_FOLLOWUP: [
     { id: "rf-1", category: "RENEWAL_FOLLOWUP", channel: "SMS" as const, content: "{{firstName}}, following up on your program ending. If you want to keep going, take a look here: {{renewalLink}}", cooldownHours: 720, tags: ["renewal"] },
   ],
+
+  // ============================================================
+  // ASSESSMENT_FOLLOWUP_1 — ~48h after an abandoned assessment
+  //
+  // EMAIL only: the recipient completed the intake but never subscribed, so
+  // they have not given SMS consent. Deliberately no offer, no price, and no
+  // discount -- this is a coach following up on what they told us, not a
+  // drip campaign. {{primaryGoalText}} and {{blockerText}} come from their
+  // own intake answers, so the specificity is real rather than implied.
+  // ============================================================
+  ASSESSMENT_FOLLOWUP_1: [
+    {
+      id: "af1-1",
+      category: "ASSESSMENT_FOLLOWUP_1",
+      channel: "EMAIL" as const,
+      content:
+        "{{firstName}},\n\nYou finished the assessment a couple of days ago. I read it.\n\nYou said the goal is {{primaryGoalText}}, and that the thing getting in the way is {{blockerText}}. That second part is the one that actually decides the outcome. Most people in your position aren't short on effort. They're short on a plan that survives a real week.\n\nYour results are still here if you want to look again: {{resultsLink}}\n\nIf you have a question about any of it, reply to this email. It comes to me.\n\nAnthony\nVintus Performance",
+      cooldownHours: 8760,
+      tags: ["assessment-recovery", "first-touch"],
+    },
+    {
+      id: "af1-2",
+      category: "ASSESSMENT_FOLLOWUP_1",
+      channel: "EMAIL" as const,
+      content:
+        "{{firstName}},\n\nYou put real detail into that assessment, so here's the honest read.\n\nWanting {{primaryGoalText}} isn't the hard part. {{blockerText}} is. That's a structural problem, not a discipline problem, and it doesn't resolve by trying harder next Monday.\n\nYour results are saved here: {{resultsLink}}\n\nIf something in there didn't match how your week actually runs, tell me. Reply to this email.\n\nAnthony\nVintus Performance",
+      cooldownHours: 8760,
+      tags: ["assessment-recovery", "first-touch"],
+    },
+  ],
+
+  // ============================================================
+  // ASSESSMENT_FOLLOWUP_2 — ~day 7, final touch
+  //
+  // Points at the free consultation, which is already enforced one-time
+  // per person by email match on Lead (see leads.service.ts). Still no
+  // price and no offer language -- the consultation IS the next step.
+  // Closes the sequence: nothing is sent after this one.
+  // ============================================================
+  ASSESSMENT_FOLLOWUP_2: [
+    {
+      id: "af2-1",
+      category: "ASSESSMENT_FOLLOWUP_2",
+      channel: "EMAIL" as const,
+      content:
+        "{{firstName}},\n\nLast note from me on this.\n\nIf {{blockerText}} is still the sticking point, a short call is usually faster than another month of figuring it out alone. No pitch. I'll ask about your schedule, your travel, and how you sleep, and tell you what I'd change first.\n\nYou can book it here: {{consultationLink}}\n\nIf the timing isn't right, that's a fine answer. Your results stay available either way: {{resultsLink}}\n\nAnthony\nVintus Performance",
+      cooldownHours: 8760,
+      tags: ["assessment-recovery", "final-touch"],
+    },
+    {
+      id: "af2-2",
+      category: "ASSESSMENT_FOLLOWUP_2",
+      channel: "EMAIL" as const,
+      content:
+        "{{firstName}},\n\nI'll leave this one here.\n\nYou told me the goal is {{primaryGoalText}}. If that's still true and the week keeps winning, the fastest thing I can do is look at your actual calendar with you and tell you where the training goes.\n\nThat conversation is here if you want it: {{consultationLink}}\n\nNo follow-up after this. Your results stay up: {{resultsLink}}\n\nAnthony\nVintus Performance",
+      cooldownHours: 8760,
+      tags: ["assessment-recovery", "final-touch"],
+    },
+  ],
 };
 
 /**
