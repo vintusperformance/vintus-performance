@@ -57,17 +57,21 @@ const DAILY_SMS_CAP = 3;
 // category is safe to fully automate (see the template audit from the
 // PC_DAILY_PUSH rollout); this one is a deliberate, standing exception,
 // not a bug.
-// The assessment follow-ups go to PROSPECTS, not clients -- people who
-// completed an intake and never bought. First contact with a non-customer is
-// the highest brand-risk message the system sends, and Anthony may already
-// have spoken to them personally, which no flag here would know. Standing
-// Rule 4 (draft-first, Anthony approves) applies most strongly here, so these
-// stay on manual review even with AUTO_MESSAGING_ENABLED on.
-const ALWAYS_MANUAL_REVIEW = new Set([
-  "ESCALATION",
-  "ASSESSMENT_FOLLOWUP_1",
-  "ASSESSMENT_FOLLOWUP_2",
-]);
+// ESCALATION stays on manual review even when AUTO_MESSAGING_ENABLED is on.
+// It's the at-risk-client signal — Anthony sees each one in the Actions
+// queue and can call the client instead of just texting them. Every other
+// category is safe to fully automate (see the template audit from the
+// PC_DAILY_PUSH rollout); this one is a deliberate, standing exception,
+// not a bug.
+//
+// The assessment follow-ups were briefly listed here too. Removed on
+// Anthony's call: a message that only ever queues, in a queue that isn't
+// being cleared, is a message that never sends — the feature would do
+// nothing. They are low-risk enough to follow the normal flag: EMAIL only,
+// to someone who volunteered their address and completed an 8-step intake
+// (not cold outreach), with fixed templates carrying no offer, no price and
+// no claims, and a hard dedup cap of two per person for life.
+const ALWAYS_MANUAL_REVIEW = new Set(["ESCALATION"]);
 
 async function triggerOrQueue(
   userId: string,
